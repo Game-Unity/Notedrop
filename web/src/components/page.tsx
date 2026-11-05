@@ -2,9 +2,9 @@
 import { ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-/** The page column: one width, one padding. `wide` is for dashboards (Stats). */
-export function Page({ wide, className, children }: { wide?: boolean; className?: string; children: React.ReactNode }) {
-  return <div className={cn("mx-auto w-full px-4 pt-6 pb-10 max-md:pt-[calc(1.25rem+env(safe-area-inset-top))] sm:px-8 sm:pt-10 sm:pb-12", wide ? "max-w-5xl" : "max-w-4xl", className)}>{children}</div>;
+/** The page content uses the available width with consistent vertical spacing. */
+export function Page({ className, children }: { className?: string; children: React.ReactNode }) {
+  return <div className={cn("w-full pt-6 pb-10 max-md:pt-[calc(1.25rem+env(safe-area-inset-top))] sm:pt-10 sm:pb-12", className)}>{children}</div>;
 }
 
 /** Page titles on a phone are set in Computer Modern, large ("Score", docs/mobile-design.md). */
@@ -39,13 +39,13 @@ export function PageHeader({ title, description, actions, crumbs, titleAside, cl
 }) {
   return (
     <header className={cn("mb-6 sm:mb-8", className)}>
-      {crumbs && crumbs.length > 0 && <Breadcrumb items={crumbs} />}
       <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-3">
         <div className="min-w-0 flex-1 basis-40">
           <div className="flex min-w-0 items-start gap-1">
             <h1 className={cn("min-w-0 text-2xl font-semibold tracking-tight break-words", PHONE_H1)}>{title}</h1>
             {titleAside}
           </div>
+          {crumbs && crumbs.length > 0 && <Breadcrumb items={crumbs} />}
           {description && <div className="mt-1 text-sm text-pretty text-muted-foreground">{description}</div>}
         </div>
         {actions && <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div>}

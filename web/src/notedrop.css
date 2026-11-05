@@ -75,7 +75,7 @@ html:root {
     --sidebar: oklch(0.97 0 0);
     --sidebar-accent: oklch(0.925 0 0);
     --sidebar-border: oklch(0 0 0 / 8%);
-    --highlight: #4e62ff;
+    --highlight: #121212;
     --success: oklch(0.55 0.15 150);
     --warning: oklch(0.64 0.15 70);
     --danger: oklch(0.56 0.2 25);
@@ -114,6 +114,7 @@ select {
 
 .prose-etude p, .prose-etude li,.prose-etude td {
     color: var(--muted-foreground);
+    font-weight: 500;
 }
 
 .prose-etude h1, .prose-etude h2, .prose-etude h3, .prose-etude h4, .prose-etude h5, .prose-etude h6 {
@@ -147,7 +148,7 @@ h2, h3, h4, h5, h6 {
 }
 
 .prose-etude td, .prose-etude th {
-    padding: 13px 25px;
+    padding: 17px 25px;
     text-align: left;
     border-bottom-style: var(--tw-border-style);
     border-bottom-width: 1px;
@@ -348,7 +349,7 @@ nav[aria-label="Breadcrumb"] {
     font-size: 11px;
     letter-spacing: 0.3px;
     font-weight: 700;
-    margin-bottom: 18px;
+    margin: 12px 0 45px 0;
 }
 
 nav[aria-label=Breadcrumb] button {
@@ -631,7 +632,7 @@ color-mix(in oklab, var(--highlight) 15%, transparent);
 .nd-deck-actions {
     position: fixed;
     bottom: 24px;
-    left: calc(50% - 112px);
+    left: var(--nd-deck-actions-center, 50%);
     transform: translateX(-50%);
     z-index: 100;
     --tw-shadow: 0 10px 15px -3px var(--tw-shadow-color, #0000001a), 0 4px 6px -4px var(--tw-shadow-color, #0000001a);
@@ -677,12 +678,8 @@ color-mix(in oklab, var(--highlight) 15%, transparent);
 }
 
 .nd-app-content .nd-deck-tabs {
-    position: absolute;
-    top: 35px;
-    left: 50%;
-    transform: translateX(-50%);
     width: max-content;
-    z-index: 10;
+    margin-inline: auto;
 }
 
 .nd-app-content .nd-deck-tabs-root {
@@ -723,11 +720,6 @@ color-mix(in oklab, var(--highlight) 15%, transparent);
         flex: 1 1 0% !important;
         min-width: 0 !important;
         margin-right: 3px;
-    }
-
-    .nd-app-shell--deck .nd-deck-subdecks,
-    .nd-app-shell--deck .nd-empty-cards {
-        display: none;
     }
 
     #notedrop-tree .nd-progress-value {
@@ -955,4 +947,12 @@ color-mix(in oklab, var(--highlight) 15%, transparent);
 #notedrop-tree .nd-tree-header::before,
 #notedrop-tree .nd-tree-root::before {
     display: none !important;
+}
+
+.dark\:data-\[state\=active\]\:text-foreground:is(.dark *)[data-state="active"] {
+    background: white;
+}
+
+.dark\:bg-input\/30:is(.dark *) {
+    background: white;
 }

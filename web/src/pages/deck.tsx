@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Archive, ArchiveRestore, ArrowUpToLine, BarChart3, CalendarClock, Check, ChevronDown, ChevronRight, Download, Eye, FastForward, FolderInput, Library, Pencil, Play, Plus, Search, Trash2, X } from "lucide-react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { Archive, ArchiveRestore, ArrowUpToLine, BarChart3, CalendarClock, Check, ChevronDown, Download, Eye, FastForward, FolderInput, Library, Pencil, Play, Plus, Search, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,11 +16,9 @@ import { etudeDownload } from "@/lib/local-url";
 import { navigate } from "@/lib/router";
 import { cn } from "@/lib/utils";
 import { Block, Breadcrumb, EmptyState, LinkRow, Page, Section } from "@/components/page";
-import { TreeGuides } from "@/pages/decks";
 import { childrenOf, clashes, leafOf, moveDeck, MoveDeckDialog, parentOf } from "@/components/move-deck";
 import { usePhone } from "@/lib/phone";
-import { DeckList } from "@/components/phone-decks";
-import { Mark, PhoneTitle } from "@/components/phone-shell";
+import { PhoneTitle } from "@/components/phone-shell";
 import { useDeckActions } from "@/components/deck-actions";
 import { dueSearch, invalidateProgress, loadDeckList } from "@/lib/notedrop-progress";
 
@@ -134,6 +132,17 @@ export function DeckPage({ name }: { name: string }) {
   );
   const optionsTab = <DeckOptions deck={deck} decks={decks} presets={presets} onChanged={reload} />;
   const manageTab = <DangerZone deck={deck} decks={decks} hasChildren={children.length > 0} onMoved={(to) => navigate(`/deck?name=${enc(to)}&tab=manage`, { replace: true })} />;
+  const breadcrumb = (
+    <Breadcrumb
+      items={[
+        { label: deck.archived ? "Archive" : "Decks", onClick: () => navigate(deck.archived ? "/archive" : "/") },
+        ...parts.slice(0, -1).map((p, i) => ({
+          label: p,
+          onClick: () => navigate(`/deck?name=${enc(parts.slice(0, i + 1).join("::"))}`),
+        })),
+      ]}
+    />
+  );
 
   if (phone)
     return (
@@ -145,7 +154,7 @@ export function DeckPage({ name }: { name: string }) {
           className="pb-3"
         />
         <div className="px-5">
-          <Header deck={deck} node={node} work={work} tags={tags} phone onRenamed={(to) => navigate(`/deck?name=${enc(to)}`, { replace: true })} onAddCards={tab === "cards" ? undefined : () => switchTab("cards")} />
+          <Header deck={deck} node={node} work={work} tags={tags} phone onRenamed={(to) => navigate(`/deck?name=${enc(to)}`, { replace: true })} />
         </div>
         <Tabs value={tab} onValueChange={switchTab} className="mt-7">
           <div className="sticky top-[calc(3rem+env(safe-area-inset-top))] z-10 border-b bg-background/95 px-5 backdrop-blur">
@@ -156,7 +165,6 @@ export function DeckPage({ name }: { name: string }) {
             </TabsList>
           </div>
           <TabsContent value="overview" className="mt-0 flex flex-col gap-8 pb-4">
-            {children.length > 0 && <DeckList decks={decks} parent={deck.name} label="Subdecks" onChanged={reload} />}
             <div className="flex flex-col gap-8 px-5">
               {overviewText}
             </div>
@@ -170,10 +178,7 @@ export function DeckPage({ name }: { name: string }) {
 
   return (
     <Page className="nd-deck-page">
-      <Breadcrumb items={[{ label: deck.archived ? "Archive" : "Decks", onClick: () => navigate(deck.archived ? "/archive" : "/") }, ...parts.slice(0, -1).map((p, i) => ({ label: p, onClick: () => navigate(`/deck?name=${enc(parts.slice(0, i + 1).join("::"))}`) }))]} />
-      <Header deck={deck} node={node} work={work} tags={tags} onRenamed={(to) => navigate(`/deck?name=${enc(to)}`, { replace: true })} onAddCards={tab === "cards" ? undefined : () => switchTab("cards")} />
-
-      <Tabs value={tab} onValueChange={switchTab} className="nd-deck-tabs-root mt-8">
+      <Tabs value={tab} onValueChange={switchTab} className="nd-deck-tabs-root">
         <TabsList className="nd-deck-tabs w-full sm:w-auto">
           <TabsTrigger value="overview" className="px-4">Overview</TabsTrigger>
           <TabsTrigger value="cards" className="px-4">Cards</TabsTrigger>
@@ -181,8 +186,9 @@ export function DeckPage({ name }: { name: string }) {
           <TabsTrigger value="manage" className="px-4">Manage</TabsTrigger>
         </TabsList>
 
+        <Header deck={deck} node={node} work={work} tags={tags} breadcrumb={breadcrumb} onRenamed={(to) => navigate(`/deck?name=${enc(to)}`, { replace: true })} />
+
         <TabsContent value="overview" className="mt-6 flex flex-col gap-8">
-          {children.length > 0 && <Subdecks parent={deck.name} decks={children} />}
           {overviewText}
         </TabsContent>
 
@@ -430,7 +436,28 @@ function DeckCards({ deck, hasChildren, active, onChanged }: { deck: string; has
   );
 }
 
-function Header({ deck, node, work, tags, onRenamed, onAddCards, phone }: { deck: DeckFull; node?: DeckNode; work: number; tags: string[]; onRenamed(to: string): void; onAddCards?(): void; phone?: boolean }) {
+function Header({ deck, node, work, tags, breadcrumb, onRenamed, phone }: { deck: DeckFull; node?: DeckNode; work: number; tags: string[]; breadcrumb?: React.ReactNode; onRenamed(to: string): void; phone?: boolean }) {
+  const actionsRef = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const actions = actionsRef.current;
+    const page = actions?.closest("main")?.querySelector(".nd-deck-page");
+    if (!actions || !(page instanceof HTMLElement)) return;
+
+    const updateCenter = () => {
+      const { left, width } = page.getBoundingClientRect();
+      actions.style.setProperty("--nd-deck-actions-center", `${left + width / 2}px`);
+    };
+
+    updateCenter();
+    const observer = new ResizeObserver(updateCenter);
+    observer.observe(page);
+    window.addEventListener("resize", updateCenter);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", updateCenter);
+    };
+  }, []);
+
   // The deck list's ⋯ → Rename lands here with ?rename=1.
   const [editing, setEditing] = useState(() => new URLSearchParams(location.search).has("rename"));
   useEffect(() => {
@@ -490,52 +517,33 @@ function Header({ deck, node, work, tags, onRenamed, onAddCards, phone }: { deck
         </div>
       )}
 
+      {!phone && breadcrumb}
       {phone && !editing && (
-        <PhoneDeckStats deck={deck} node={node} onRename={() => setEditing(true)} />
+        <PhoneDeckRename onRename={() => setEditing(true)} />
       )}
-      <div className={cn("mt-5 flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between", phone && "mt-4")}>
-        <div className={cn("grid grid-cols-4 items-end gap-x-4 sm:flex sm:gap-x-8", phone && "hidden")}>
-          {deck.resolved.mode !== "watch" && (
-            <>
-              <Count label="New" value={node?.new ?? 0} cls="text-new" />
-              <Count label="Learning" value={node?.learning ?? 0} cls="text-learn" />
-              <Count label="Due" value={node?.review ?? 0} cls="text-review" />
-            </>
-          )}
-          <div className={cn(deck.resolved.mode !== "watch" && "border-l pl-4 sm:pl-8")}>
-            <div className="tabular text-3xl leading-none font-semibold">{node?.cards ?? 0}</div>
-            <div className="mt-1.5 text-xs text-muted-foreground">Cards{node?.doneToday ? <span className="hidden sm:inline"> · {node.doneToday} done today</span> : ""}</div>
-          </div>
-        </div>
-        <div className="nd-deck-actions flex gap-2">
-          {deck.archived ? <span className="inline-flex items-center gap-2 py-2 text-sm text-muted-foreground"><Archive className="size-4" />Archived</span> : deck.resolved.mode === "watch" ? (
-            <Button size="lg" className={cn("flex-1 gap-2 px-6 sm:flex-none", phone && "h-[3.25rem] rounded-full text-[16px] pointer-coarse:h-[3.25rem]")} disabled={!node?.cards} title="A tour: each card can show an example answer, and nothing is scheduled" onClick={() => navigate(`/watch?deck=${enc(deck.name)}`)}>
-              <Eye className="size-4" />Watch
-            </Button>
-          ) : (
-            <>
-              <CustomStudy deck={deck.name} tags={tags} disabled={!node?.cards} phone={phone} adaptive={deck.resolved.adaptiveChallenge || deck.resolved.adaptivePace} />
-              {work || !node?.cards ? (
-                <Button size="lg" className={cn("flex-1 gap-2 px-6 sm:flex-none", phone && "h-[3.25rem] rounded-full text-[16px] pointer-coarse:h-[3.25rem]")} disabled={!work} onClick={() => navigate(`/study?deck=${enc(deck.name)}`)}>
-                  <Play className="size-4" />Practice<DueBadge deck={deck.name} />
-                </Button>
-              ) : (
-                <Button size="lg" className={cn("flex-1 gap-2 px-6 sm:flex-none", phone && "h-[3.25rem] rounded-full text-[16px] pointer-coarse:h-[3.25rem]")} title="Nothing due right now: review early. FSRS counts an early review for less." onClick={() => navigate(`/study?deck=${enc(deck.name)}&ahead=1`)}>
-                  <FastForward className="size-4" />Practice ahead<DueBadge deck={deck.name} />
-                </Button>
-              )}
-            </>
-          )}
-        </div>
+      <div ref={actionsRef} className="nd-deck-actions flex gap-2">
+        {deck.archived ? <span className="inline-flex items-center gap-2 py-2 text-sm text-muted-foreground"><Archive className="size-4" />Archived</span> : deck.resolved.mode === "watch" ? (
+          <Button size="lg" className={cn("flex-1 gap-2 px-6 sm:flex-none", phone && "h-[3.25rem] rounded-full text-[16px] pointer-coarse:h-[3.25rem]")} disabled={!node?.cards} title="A tour: each card can show an example answer, and nothing is scheduled" onClick={() => navigate(`/watch?deck=${enc(deck.name)}`)}>
+            <Eye className="size-4" />Watch
+          </Button>
+        ) : (
+          <>
+            <CustomStudy deck={deck.name} tags={tags} disabled={!node?.cards} phone={phone} adaptive={deck.resolved.adaptiveChallenge || deck.resolved.adaptivePace} />
+            {work || !node?.cards ? (
+              <Button size="lg" className={cn("flex-1 gap-2 px-6 sm:flex-none", phone && "h-[3.25rem] rounded-full text-[16px] pointer-coarse:h-[3.25rem]")} disabled={!work} onClick={() => navigate(`/study?deck=${enc(deck.name)}`)}>
+                <Play className="size-4" />Practice<DueBadge deck={deck.name} />
+              </Button>
+            ) : (
+              <Button size="lg" className={cn("flex-1 gap-2 px-6 sm:flex-none", phone && "h-[3.25rem] rounded-full text-[16px] pointer-coarse:h-[3.25rem]")} title="Nothing due right now: review early. FSRS counts an early review for less." onClick={() => navigate(`/study?deck=${enc(deck.name)}&ahead=1`)}>
+                <FastForward className="size-4" />Practice ahead<DueBadge deck={deck.name} />
+              </Button>
+            )}
+          </>
+        )}
       </div>
 
       {!deck.archived && deadline && <Countdown deadline={deadline} margin={deck.resolved.deadlineMargin} />}
       {!deck.archived && deck.resolved.mode !== "watch" && (deck.resolved.adaptiveChallenge || deck.resolved.adaptivePace) && <AdaptiveSummary deck={deck.name} hasNew={(node?.new ?? 0) > 0} />}
-      {node && node.cards === 0 && onAddCards && (
-        <Section className="nd-empty-cards mt-6">
-          <Block title="No cards yet" description="Add cards in the Cards tab, or import a pack from the Decks page." aside={<Button size="sm" onClick={onAddCards}>Add cards</Button>} stackAside />
-        </Section>
-      )}
       {!deck.archived && !work && node && node.cards > 0 && (
         <p className="mt-4 text-sm text-muted-foreground">{node.nextDue ? `Nothing due now. Next card ${relativeShort(node.nextDue)}.` : "Nothing due now."} Custom study works any time.</p>
       )}
@@ -544,31 +552,9 @@ function Header({ deck, node, work, tags, onRenamed, onAddCards, phone }: { deck
 }
 
 /** Phone: the deck's counts as one quiet line with shape marks, and the total plus a rename button. */
-function PhoneDeckStats({ deck, node, onRename }: { deck: DeckFull; node?: DeckNode; onRename(): void }) {
-  const watch = deck.resolved.mode === "watch";
-  const parts = [
-    { v: node?.new ?? 0, label: "new", cls: "text-new", kind: "new" as const },
-    { v: node?.learning ?? 0, label: "learning", cls: "text-learn", kind: "learn" as const },
-    { v: node?.review ?? 0, label: "due", cls: "text-review", kind: "due" as const },
-  ];
+function PhoneDeckRename({ onRename }: { onRename(): void }) {
   return (
-    <div className="flex items-end justify-between gap-3">
-      {watch ? (
-        <div className="text-[15px] text-muted-foreground">A tour of {node?.cards ?? 0} cards. Nothing is scheduled.</div>
-      ) : (
-        <div className="flex gap-5 max-[359px]:gap-3.5">
-          {parts.map((p) => (
-            <div key={p.label}>
-              <div className={cn("inline-flex items-center gap-1.5 text-[1.5rem] leading-none font-medium tabular max-[359px]:text-[1.3rem]", p.v ? p.cls : "text-muted-foreground/45")}><Mark kind={p.kind} className="size-2.5" />{p.v}</div>
-              <div className="mt-1.5 text-[12.5px] text-muted-foreground">{p.label}</div>
-            </div>
-          ))}
-          <div className="border-l pl-5 max-[359px]:pl-3.5">
-            <div className="text-[1.5rem] leading-none font-medium tabular">{node?.cards ?? 0}</div>
-            <div className="mt-1.5 text-[12.5px] text-muted-foreground">cards</div>
-          </div>
-        </div>
-      )}
+    <div className="flex justify-end">
       <button onClick={onRename} aria-label="Rename deck" className="-mr-2 flex size-10 shrink-0 items-center justify-center rounded-full text-muted-foreground active:bg-accent"><Pencil className="size-[18px]" /></button>
     </div>
   );
@@ -581,15 +567,6 @@ function relativeShort(iso: string) {
   const h = Math.round(m / 60);
   if (h < 24) return `in ${h}h`;
   return `in ${Math.round(h / 24)}d`;
-}
-
-function Count({ label, value, cls }: { label: string; value: number; cls: string }) {
-  return (
-    <div>
-      <div className={cn("tabular text-3xl leading-none font-semibold", value ? cls : "text-muted-foreground/40")}>{value}</div>
-      <div className="mt-1.5 text-xs text-muted-foreground">{label}</div>
-    </div>
-  );
 }
 
 function Countdown({ deadline, margin }: { deadline: string; margin: number }) {
@@ -712,33 +689,6 @@ function CustomStudy({ deck, tags, disabled, phone, adaptive }: { deck: string; 
         </DialogContent>
       </Dialog>
     </>
-  );
-}
-
-function Subdecks({ parent, decks }: { parent: string; decks: DeckNode[] }) {
-  const depth0 = parent.split("::").length;
-  return (
-    <Section title="Subdecks" className="nd-deck-subdecks" aside={<span className="hidden tabular sm:inline">New · Learn · Due</span>}>
-      {decks.map((d) => {
-        const depth = d.name.split("::").length - depth0 - 1;
-        return (
-          <button
-            key={d.id}
-            onClick={() => navigate(`/deck?name=${enc(d.name)}`)}
-            className="flex min-h-12 w-full items-stretch gap-2 border-b pr-3 pl-4 text-left transition-colors last:border-b-0 hover:bg-accent/40 sm:pr-4 sm:pl-5"
-          >
-            <TreeGuides depth={depth} />
-            <span className="flex min-w-0 flex-1 items-center py-2.5 text-[0.95rem] leading-snug">{d.name.split("::").pop()}</span>
-            <span className="tabular grid grid-cols-[repeat(3,2rem)] items-center text-right text-sm sm:grid-cols-[repeat(3,3.5rem)]" aria-label={`${d.new} new, ${d.learning} learning, ${d.review} due`}>
-              <span className={d.new ? "text-new" : "text-muted-foreground/40"}>{d.new}</span>
-              <span className={d.learning ? "text-learn" : "text-muted-foreground/40"}>{d.learning}</span>
-              <span className={d.review ? "text-review" : "text-muted-foreground/40"}>{d.review}</span>
-            </span>
-            <ChevronRight className="my-auto size-4 shrink-0 text-muted-foreground" />
-          </button>
-        );
-      })}
-    </Section>
   );
 }
 

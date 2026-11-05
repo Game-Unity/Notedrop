@@ -194,7 +194,7 @@ function DesktopDecks({ archived }: { archived: boolean }) {
     <Page>
       <PageHeader
         title={archived ? "Archived Decks" : "Decks"}
-        crumbs={archived ? [{ label: "Decks", onClick: () => navigate("/") }] : undefined}
+        crumbs={[{ label: archived ? "Archived" : "Decks", onClick: () => navigate(archived ? "/archive" : "/") }]}
         description={archived ? "Cards and review history are kept. Move a deck out of the archive to study it again." : decks ? (due ? `${due} cards to study today` : "Nothing due right now") : "\u00a0"}
         actions={!archived &&
           <>

@@ -8,7 +8,7 @@ import { Donut, ForgettingCurve, Histogram, ProgressChart, RecallRing, SERIF, Sp
 import { api, type DeckNode, type LearnerSummary, type PracticeCard, type StatsScheduler, type Stats } from "@/lib/api";
 import { navigate } from "@/lib/router";
 import { cn } from "@/lib/utils";
-import { PHONE_H1 } from "@/components/page";
+import { Breadcrumb, PHONE_H1 } from "@/components/page";
 import { track } from "@/lib/telemetry";
 
 /** The engine window: ratings, verdicts and the heatmap cover this many weeks. */
@@ -42,10 +42,11 @@ export function StatsPage({ deck }: { deck?: string }) {
   const scope = (v: string) => navigate(v === "__all" ? "/stats" : `/stats?deck=${encodeURIComponent(v)}`, { replace: true });
 
   return (
-    <div className="mx-auto w-full max-w-5xl px-5 py-8 max-md:pt-[calc(1.25rem+env(safe-area-inset-top))] sm:px-8 sm:py-10">
+    <div className="w-full py-8 max-md:pt-[calc(1.25rem+env(safe-area-inset-top))] sm:py-10">
       <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div className="min-w-0">
           <h1 className={cn("text-2xl font-semibold tracking-tight", PHONE_H1)}>Stats</h1>
+          <Breadcrumb items={[{ label: "Stats", onClick: () => navigate("/stats") }]} />
           <p className="mt-1 truncate text-sm text-muted-foreground max-md:hidden">{deck ? deck.replace(/::/g, " › ") : "All decks"}</p>
         </div>
         <Select value={deck ?? "__all"} onValueChange={scope}>

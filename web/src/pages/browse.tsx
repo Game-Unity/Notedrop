@@ -4,9 +4,9 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { BulkBar, CheckBox, groupItems, ItemEditor, ItemRow, NewItemDialog, OrderSelect, SearchHints } from "@/components/item-editor";
 import { api, type SearchRow, type TypeSummary } from "@/lib/api";
-import { appPath, withBase } from "@/lib/router";
+import { appPath, navigate, withBase } from "@/lib/router";
 import { cn } from "@/lib/utils";
-import { EmptyState, PHONE_H1 } from "@/components/page";
+import { Breadcrumb, EmptyState, PHONE_H1 } from "@/components/page";
 import { X } from "lucide-react";
 import { track } from "@/lib/telemetry";
 
@@ -76,11 +76,14 @@ export function BrowsePage({ initialQuery, openItem }: { initialQuery: string; o
   const allChecked = items.length > 0 && items.every((r) => checked.has(r.itemId));
 
   return (
-    <div className="flex h-[calc(100dvh-var(--tabbar-h))] min-w-0">
+    <div className="nd-browse-page flex h-[calc(100dvh-var(--tabbar-h))] min-w-0">
       <section className={cn("min-w-0 flex-col border-r md:flex md:w-[20rem] md:shrink-0 lg:w-[24rem] xl:w-[28rem]", selected ? "hidden" : "flex w-full")}>
         <div className="flex flex-col gap-3 border-b px-4 pt-6 pb-3 max-md:px-5 max-md:pt-[calc(1.25rem+env(safe-area-inset-top))] sm:pt-8 md:px-4 md:pt-6">
           <div className="flex items-center justify-between gap-3">
-            <h1 className={cn("text-2xl font-semibold tracking-tight", PHONE_H1)}>Browse</h1>
+            <div className="min-w-0">
+              <h1 className={cn("text-2xl font-semibold tracking-tight", PHONE_H1)}>Browse</h1>
+              <Breadcrumb items={[{ label: "Browse", onClick: () => navigate("/browse") }]} />
+            </div>
             <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setCreating(true)}><Plus className="size-4" />Add</Button>
           </div>
           <div className="relative">

@@ -104,8 +104,8 @@ export function PhoneTitle({ title, kicker, sub, back, actions, className }: {
           {actions && <div className="-mr-2 flex shrink-0 items-center">{actions}</div>}
         </div>
         <div ref={ref}>
-          {back && kicker && <div className="score-kicker mt-2">{kicker}</div>}
           <h1 className="score-serif score-display mt-1 text-[2.25rem] leading-[1.05] break-words">{title}</h1>
+          {back && kicker && <div className="score-kicker mt-2">{kicker}</div>}
           {sub && <div className="mt-2 text-[15px] text-muted-foreground">{sub}</div>}
         </div>
       </header>

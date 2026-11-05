@@ -8,7 +8,8 @@ import { UpdateSettingsRow } from "@/components/update-bar";
 import { Logo, Wordmark } from "@/components/logo";
 import { cn } from "@/lib/utils";
 import { serverless } from "@/lib/native";
-import { PHONE_H1 } from "@/components/page";
+import { navigate } from "@/lib/router";
+import { Breadcrumb, PHONE_H1 } from "@/components/page";
 import { ONBOARDING_EVENT } from "@/components/onboarding";
 import { AiSection } from "@/components/settings-ai";
 import { AppearanceSection } from "@/components/settings-appearance";
@@ -190,9 +191,39 @@ export function SettingsPage() {
   const shown = dirty ? errors : {};
 
   return (
-    <div className="mx-auto w-full max-w-4xl px-5 py-10 max-md:pt-[calc(1.25rem+env(safe-area-inset-top))] sm:px-8">
+    <div className="w-full py-10 max-md:pt-[calc(1.25rem+env(safe-area-inset-top))]">
+      {saved && draft && (
+        <nav
+          ref={navRef}
+          className="mb-8 flex overflow-x-auto [scrollbar-width:none]"
+          aria-label="Sections"
+        >
+          <div className="mx-auto inline-flex h-9 w-max min-w-max items-center justify-center rounded-lg bg-muted p-[3px] text-muted-foreground">
+            {NAV.map((n) => (
+              <a
+                key={n.id}
+                data-id={n.id}
+                href={`#${n.id}`}
+                aria-current={active === n.id ? "true" : undefined}
+                onClick={(e) => {
+                  e.preventDefault();
+                  jumpTo(n.id);
+                }}
+                className={cn(
+                  "relative inline-flex h-[calc(100%-1px)] shrink-0 items-center justify-center gap-1.5 rounded-md border border-transparent px-4 py-1 text-sm font-medium whitespace-nowrap text-foreground/60 transition-all hover:text-foreground",
+                  active === n.id && "bg-background text-foreground shadow-sm",
+                )}
+              >
+                {n.label}
+              </a>
+            ))}
+          </div>
+        </nav>
+      )}
+
       <div className="mb-6">
         <h1 className={cn("text-2xl font-semibold tracking-tight", PHONE_H1)}>Settings</h1>
+        <Breadcrumb items={[{ label: "Settings", onClick: () => navigate("/settings") }]} />
         <p className="mt-1 text-sm text-muted-foreground">For the whole collection. Scheduling options live on each deck.</p>
       </div>
 
@@ -213,33 +244,6 @@ export function SettingsPage() {
 
       {saved && draft && (
         <>
-          {/* On a phone the section tabs stick below the status bar, and this band keeps the page from scrolling under it. */}
-          <div aria-hidden className="fixed inset-x-0 top-0 z-20 h-[env(safe-area-inset-top)] bg-background md:hidden" />
-          <nav
-            ref={navRef}
-            className="sticky top-0 max-md:top-[env(safe-area-inset-top)] z-10 -mx-5 mb-8 flex gap-1.5 overflow-x-auto border-b bg-background px-5 py-3 [mask-image:linear-gradient(to_right,#000_85%,transparent)] [scrollbar-width:none] sm:-mx-8 sm:px-8 sm:[mask-image:none]"
-            aria-label="Sections"
-          >
-            {NAV.map((n) => (
-              <a
-                key={n.id}
-                data-id={n.id}
-                href={`#${n.id}`}
-                aria-current={active === n.id ? "true" : undefined}
-                onClick={(e) => {
-                  e.preventDefault();
-                  jumpTo(n.id);
-                }}
-                className={cn(
-                  "flex h-10 shrink-0 items-center rounded-full border border-transparent px-4 text-sm text-muted-foreground transition-colors hover:text-foreground md:h-8 md:px-3.5",
-                  active === n.id && "border-border bg-accent text-foreground",
-                )}
-              >
-                {n.label}
-              </a>
-            ))}
-          </nav>
-
           <div className="flex flex-col gap-12">
             <AccountSection />
 
@@ -323,7 +327,7 @@ export function SettingsPage() {
 
           <div
             className={cn(
-              "sticky bottom-[calc(4rem+env(safe-area-inset-bottom))] z-10 -mx-5 mt-10 flex items-center gap-2 border-t bg-background/95 px-5 py-3 backdrop-blur transition-opacity sm:-mx-8 sm:px-8 md:bottom-0",
+              "sticky bottom-[calc(4rem+env(safe-area-inset-bottom))] z-10 mt-10 flex items-center gap-2 border-t bg-background/95 px-5 py-3 backdrop-blur transition-opacity md:bottom-0",
               dirty ? "opacity-100" : "pointer-events-none opacity-0",
             )}
             aria-hidden={!dirty}

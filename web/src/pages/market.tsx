@@ -108,9 +108,10 @@ export function MarketPage() {
   };
 
   return (
-    <Page wide>
+    <Page>
       <PageHeader
         title="Market"
+        crumbs={[{ label: "Market", onClick: () => navigate("/market") }]}
         description={
           <>
             Themes, decks and card types people made and shared.{" "}

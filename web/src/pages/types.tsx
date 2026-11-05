@@ -203,27 +203,27 @@ function TypeLibrary() {
   const title = inBuiltIn ? "Built in" : here ? leaf(here) : "Card types";
 
   return (
-    <div className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-8 sm:py-10">
+    <div className="w-full py-6 sm:py-10">
       {/* header */}
       <header className="mb-6 sm:mb-8">
-        {here && (
-          <nav aria-label="Folder" className="-ml-1.5 mb-1 flex min-w-0 flex-wrap items-center text-sm text-muted-foreground">
-            <Crumb label="Card types" onClick={() => open("")} drop={drop("")} active={dropAt === ""} />
-            {crumbs.slice(0, -1).map((c) => (
-              <span key={c} className="flex min-w-0 items-center">
-                <ChevronRight className="size-3.5 shrink-0 opacity-50" />
-                <Crumb label={leaf(c)} onClick={() => open(c)} drop={drop(c)} active={dropAt === c} />
-              </span>
-            ))}
-            <ChevronRight className="size-3.5 shrink-0 opacity-50" />
-          </nav>
-        )}
         <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-4">
           <div className="min-w-0 flex-1 basis-56">
             <div className="flex min-w-0 items-center gap-1">
               <h1 className={cn("min-w-0 truncate text-2xl font-semibold tracking-tight", PHONE_H1)}>{title}</h1>
               {here && !inBuiltIn && <FolderMenu name={leaf(here)} {...folderActions(here)} className="size-9" />}
             </div>
+            <nav aria-label="Breadcrumb" className="-ml-1.5 mb-1 flex min-w-0 flex-wrap items-center text-sm text-muted-foreground">
+              <Crumb label="Card types" onClick={() => open("")} drop={drop("")} active={dropAt === ""} />
+              {crumbs.slice(0, -1).map((c) => (
+                <span key={c} className="flex min-w-0 items-center">
+                  <ChevronRight className="size-3.5 shrink-0 opacity-50" />
+                  <Crumb label={leaf(c)} onClick={() => open(c)} drop={drop(c)} active={dropAt === c} />
+                </span>
+              ))}
+              {here && (
+                <ChevronRight className="size-3.5 shrink-0 opacity-50" />
+              )}
+            </nav>
             <p className="mt-1 max-w-xl text-sm text-pretty text-muted-foreground">
               {inBuiltIn
                 ? "These ship with Etude. Open one to see how it's made, or duplicate it to start your own."
