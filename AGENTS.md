@@ -42,6 +42,12 @@ npm --prefix desktop run typecheck        # the desktop code needs Electron's ty
 node desktop/build.ts && node desktop/smoke.ts   # installers for this system in desktop/dist/out, then test them
 ```
 
+### Development server
+
+- Start the API with `npm run dev` and the Vite app with `npm run dev:web`. The API uses the isolated `.notedrop-dev` profile on port 4612; Vite runs on port 4611 and proxies API requests there.
+- Do not start the development API with `node src/cli/main.ts serve --dev`: `--dev` enables API-only mode but does not select the dev data profile.
+- Before diagnosing an empty collection, verify `GET http://127.0.0.1:4612/api/settings` reports the `.notedrop-dev` database and check `GET http://127.0.0.1:4612/api/decks`. If port 4612 is already occupied, identify its owner and database before relying on it; do not assume it is the correct dev server.
+
 ## Conventions
 
 - **New operations go in the engine** (`src/core/engine.ts`) and are exposed by the server and the CLI. Anything the UI can do needs a CLI command. Add it to `src/cli/commands/<group>.ts` with a summary, args, flags, examples, `writes`/`dryRun`/`confirm` and an `output` shape, then regenerate `docs/cli.md`. `test/cli-docs.test.ts` fails when the docs are stale.
