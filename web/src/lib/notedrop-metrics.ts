@@ -6,12 +6,15 @@ export interface NoteDropProgress {
   percent: number;
 }
 
+export const LEARNING_SEARCH = "-is:new -prop:stability>21";
+export const MASTERED_SEARCH = "prop:stability>21 -is:new";
+
 export function escapeDeckSearch(value: string) {
   return value.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
 }
 
 export function masterySearch(deck: string) {
-  return `deck:"${escapeDeckSearch(deck)}" prop:stability>21 -is:new`;
+  return `deck:"${escapeDeckSearch(deck)}" ${MASTERED_SEARCH}`;
 }
 
 export function dueSearch(deck: string) {

@@ -19,6 +19,7 @@ import { EtudeImg } from "@/lib/local-url";
 import { navigate } from "@/lib/router";
 import { cn } from "@/lib/utils";
 import { useLongPress, usePhone } from "@/lib/phone";
+import { LEARNING_SEARCH, MASTERED_SEARCH } from "@/lib/notedrop-metrics";
 
 export const STATE_CLS = ["text-new", "text-learn", "text-review", "text-learn"];
 
@@ -68,11 +69,12 @@ export function CheckBox({ checked, onClick, label, className }: { checked: bool
   );
 }
 
-export function ItemRow({ row: r, active, checked, onOpen, onToggle, className, hideDeck, selecting }: { row: ItemRowData; active: boolean; checked: boolean; onOpen(): void; onToggle(): void; className?: string; hideDeck?: boolean; selecting?: boolean }) {
+export function ItemRow({ row: r, active, checked, onOpen, onToggle, className, hideDeck, selecting, variant = "list" }: { row: ItemRowData; active: boolean; checked: boolean; onOpen(): void; onToggle(): void; className?: string; hideDeck?: boolean; selecting?: boolean; variant?: "list" | "tile" }) {
   // Phones: no checkbox column until you press and hold a row; then taps select.
   const phone = usePhone();
   const { handlers, held } = useLongPress(onToggle);
   const showBox = !phone || selecting;
+  const tileStatus = r.state === 0 ? "new" : r.stability > 21 ? "mastered" : "learning";
   return (
     <div
       data-item-row
@@ -83,7 +85,10 @@ export function ItemRow({ row: r, active, checked, onOpen, onToggle, className, 
       }}
       {...(phone ? handlers : {})}
       className={cn(
-        "group flex cursor-pointer items-start gap-3 border-b px-3 py-3 transition-colors hover:bg-accent/40 max-md:min-h-[4.25rem] max-md:select-none max-md:py-3.5 max-md:[-webkit-touch-callout:none]",
+        "group flex cursor-pointer items-start gap-3 transition-colors max-md:select-none max-md:[-webkit-touch-callout:none]",
+        variant === "tile"
+          ? "nd-deck-card-tile relative min-h-24 rounded-xl border bg-card/40 px-4 py-4 hover:border-foreground/20 hover:bg-accent/40"
+          : "border-b px-3 py-3 hover:bg-accent/40 max-md:min-h-[4.25rem] max-md:py-3.5",
         phone && checked && "bg-highlight/[0.07]",
         (r.suspended || r.archived) && "opacity-55",
         className,
@@ -100,18 +105,26 @@ export function ItemRow({ row: r, active, checked, onOpen, onToggle, className, 
           }}
         />
       )}
-      <div className="min-w-0 flex-1">
-        <div className={cn("line-clamp-2 text-sm leading-snug max-md:text-[15px]", active && "font-medium text-highlight")} aria-current={active || undefined}>{r.title || <span className="text-muted-foreground">{r.itemId}</span>}</div>
-        <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
+      <div className={cn("min-w-0 flex-1", variant === "tile" && "pr-12")}>
+        <div className={cn("line-clamp-2 text-sm leading-snug max-md:text-[15px]", variant === "tile" && "nd-deck-card-title", active && "font-medium text-highlight")} aria-current={active || undefined}>{r.title || <span className="text-muted-foreground">{r.itemId}</span>}</div>
+        <div className={cn("mt-1 flex items-center gap-2 text-xs text-muted-foreground", variant === "tile" && "nd-deck-card-meta")}>
           {!hideDeck && <><span className="truncate">{r.deck.split("::").slice(-1)[0]}</span><span>·</span></>}
           <span className="shrink-0">{r.type}</span>
+          {variant === "tile" && r.tags.map((tag, index) => (
+            <span key={`${tag}-${index}`} className="shrink-0">{`· ${tag}`}</span>
+          ))}
           {r.generated && <Dices className="size-3 shrink-0" />}
           {r.faces > 1 && <span className="shrink-0">· {r.faces} cards</span>}
           <div className="flex-1" />
-          <span className={cn("shrink-0", STATE_CLS[r.state])}>{r.suspended ? "suspended" : STATE_NAMES[r.state].toLowerCase()}</span>
+          {variant !== "tile" && (
+            <span className={cn("shrink-0", STATE_CLS[r.state])}>{r.suspended ? "suspended" : STATE_NAMES[r.state].toLowerCase()}</span>
+          )}
           {r.state !== 0 && <span className="tabular shrink-0">{new Date(r.due) <= new Date() ? "due" : humanInterval(r.due)}</span>}
         </div>
       </div>
+      {variant === "tile" && (
+        <span className="nd-deck-card-status absolute top-1/2 right-4 inline-flex h-5 -translate-y-1/2 shrink-0 items-center rounded-full border border-border px-2 text-[11px] leading-none text-muted-foreground">{tileStatus}</span>
+      )}
     </div>
   );
 }
@@ -187,10 +200,19 @@ export function BulkBar({ checked, rows, decks, tags, onClear, onDone, onDeleted
   );
 }
 
-const HINT_LABEL: Record<string, string> = { "is:due": "Due", "is:new": "New", "is:suspended": "Suspended", "prop:lapses>=2": "Often missed", "rated:1:1": "Missed today", "type:free": "Free answer" };
+const HINT_LABEL: Record<string, string> = {
+  "is:due": "Due",
+  "is:new": "New",
+  [LEARNING_SEARCH]: "Learning",
+  [MASTERED_SEARCH]: "Mastered",
+  "is:suspended": "Suspended",
+  "prop:lapses>=2": "Often missed",
+  "rated:1:1": "Missed today",
+  "type:free": "Free answer",
+};
 
 export function SearchHints({ onPick }: { onPick(s: string): void }) {
-  const hints = ["is:due", "is:new", "is:suspended", "prop:lapses>=2", "rated:1:1", "type:free"];
+  const hints = ["is:due", "is:new", LEARNING_SEARCH, MASTERED_SEARCH, "is:suspended", "prop:lapses>=2", "rated:1:1", "type:free"];
   // Phones: plain words in one swipeable row; the query syntax still goes into the search box.
   if (usePhone())
     return (
@@ -203,7 +225,7 @@ export function SearchHints({ onPick }: { onPick(s: string): void }) {
   return (
     <div className="flex flex-wrap gap-1.5">
       {hints.map((h) => (
-        <button key={h} onClick={() => onPick(h)} className="h-7 rounded-md border px-2 font-mono text-xs text-muted-foreground transition-colors hover:border-ring hover:text-foreground pointer-coarse:h-9 pointer-coarse:px-2.5">{h}</button>
+        <button key={h} onClick={() => onPick(h)} className="h-7 rounded-md border px-2 text-xs text-muted-foreground transition-colors hover:border-ring hover:text-foreground pointer-coarse:h-9 pointer-coarse:px-2.5">{HINT_LABEL[h]}</button>
       ))}
     </div>
   );

@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { Etude } from "../src/core/engine.ts";
 import { compile } from "../src/core/query.ts";
-import { masterySearch, partitionProgress } from "../web/src/lib/notedrop-metrics.ts";
+import { LEARNING_SEARCH, MASTERED_SEARCH, masterySearch, partitionProgress } from "../web/src/lib/notedrop-metrics.ts";
 
 const type = {
   id: "metric-card",
@@ -14,6 +14,8 @@ const type = {
 };
 
 test("mastery metric uses a strict 21-day threshold and excludes new cards", () => {
+  assert.equal(MASTERED_SEARCH, "prop:stability>21 -is:new");
+  assert.equal(LEARNING_SEARCH, "-is:new -prop:stability>21");
   const query = masterySearch("Course::Chapter");
   assert.equal(query, 'deck:"Course::Chapter" prop:stability>21 -is:new');
   const compiled = compile(query);
@@ -48,6 +50,9 @@ test("strict mastery boundary partitions cards across a deck and its subdecks", 
   const total = etude.search('deck:"Root"', { limit: 1 }).total;
   const newCards = etude.search('deck:"Root" is:new', { limit: 1 }).total;
   const mastered = etude.search(masterySearch("Root"), { limit: 1 }).total;
+  const learning = etude.search(`deck:"Root" ${LEARNING_SEARCH}`, { limit: 1 }).total;
+  assert.equal(etude.search(`deck:"Root" ${MASTERED_SEARCH}`, { limit: 1 }).total, mastered);
+  assert.equal(learning, 2);
   assert.deepEqual(partitionProgress(total, newCards, mastered), { total: 6, new: 2, learning: 2, mastered: 2, percent: 33 });
   etude.close();
 });

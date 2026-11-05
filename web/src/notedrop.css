@@ -956,3 +956,18 @@ color-mix(in oklab, var(--highlight) 15%, transparent);
 .dark\:bg-input\/30:is(.dark *) {
     background: white;
 }
+
+.nd-deck-card-title {
+    font-weight: var(--font-weight-medium);
+}
+
+
+.nd-deck-card-meta {
+    font-size: 13px;
+}
+
+.nd-deck-card-tile {
+    min-height: 74px;
+    padding-top: 23px;
+    padding-bottom: 23px;
+}

@@ -344,56 +344,61 @@ function DeckCards({ deck, hasChildren, active, onChanged }: { deck: string; has
               </button>
             )}
           </div>
-          <Button variant="outline" className="h-10 gap-1.5 px-3" onClick={() => setCreating(true)} aria-label="Add a card"><Plus className="size-4" /><span className="hidden min-[420px]:inline">Add</span></Button>
+          <Button className="h-10 gap-1.5 px-3" onClick={() => setCreating(true)} aria-label="Add a card"><Plus className="size-4" /><span className="hidden min-[420px]:inline">Add</span></Button>
         </div>
         {!emptyDeck && <SearchHints onPick={(h) => setQuery((q) => (q ? `${q} ${h}` : h))} />}
       </div>
 
       {!emptyDeck && (
-        <Section>
-          <div className="flex min-h-11 items-center gap-2.5 border-b px-3 text-xs text-muted-foreground sm:px-4">
-            <CheckBox checked={allChecked} label="Select all" onClick={() => setChecked(allChecked ? new Set() : new Set(items.map((r) => r.itemId)))} />
-            <span className="tabular min-w-0 truncate">
-              {error ? <span className="text-destructive">{error}</span> : total == null ? "Loading…" : `${total} card${total === 1 ? "" : "s"}${total > rows.length ? `, showing ${rows.length}` : ""}`}
-            </span>
-            <div className="flex-1" />
-            <OrderSelect value={order} onChange={setOrder} />
-          </div>
-          <BulkBar
-            checked={checked}
-            rows={rows}
-            decks={decks}
-            tags={tags}
-            onClear={() => setChecked(new Set())}
-            onDone={changed}
-            onDeleted={(ids) => selected && ids.includes(selected) && open(null)}
-          />
-          {items.map((r) => (
-            <ItemRow
-              key={r.itemId}
-              row={r}
-              active={selected === r.itemId}
-              checked={checked.has(r.itemId)}
-              hideDeck={!hasChildren}
-              className="min-h-14 py-3 last:border-b-0 sm:px-4"
-              onOpen={() => open(r.itemId)}
-              onToggle={() =>
-                setChecked((prev) => {
-                  const n = new Set(prev);
-                  n.has(r.itemId) ? n.delete(r.itemId) : n.add(r.itemId);
-                  return n;
-                })
-              }
+        <Section bare>
+          <div className="flex flex-col gap-3">
+            <div className="nd-deck-cards-toolbar flex min-h-11 items-center gap-2.5 text-xs text-muted-foreground">
+              <CheckBox checked={allChecked} label="Select all" onClick={() => setChecked(allChecked ? new Set() : new Set(items.map((r) => r.itemId)))} />
+              <span className="tabular min-w-0 truncate">
+                {error ? <span className="text-destructive">{error}</span> : total == null ? "Loading…" : `${total} card${total === 1 ? "" : "s"}${total > rows.length ? `, showing ${rows.length}` : ""}`}
+              </span>
+              <div className="flex-1" />
+              <OrderSelect value={order} onChange={setOrder} />
+            </div>
+            <BulkBar
+              checked={checked}
+              rows={rows}
+              decks={decks}
+              tags={tags}
+              className="nd-deck-cards-bulk-actions !border-0 !bg-transparent"
+              onClear={() => setChecked(new Set())}
+              onDone={changed}
+              onDeleted={(ids) => selected && ids.includes(selected) && open(null)}
             />
-          ))}
-          {total != null && !items.length && !error && (
-            <EmptyState inset title="No matches" action={<Button variant="outline" size="sm" onClick={() => setQuery("")}>Clear search</Button>}>No cards in this deck match that search.</EmptyState>
-          )}
-          {total != null && total > rows.length && (
-            <button className="flex h-12 w-full items-center justify-center border-t text-sm text-muted-foreground hover:bg-accent/40 hover:text-foreground" onClick={() => setLimit((l) => Math.min(l + CARDS_PAGE, 1000))}>
-              Show {Math.min(CARDS_PAGE, total - rows.length)} more
-            </button>
-          )}
+            <div className="nd-deck-cards-list grid gap-3">
+              {items.map((r) => (
+                <ItemRow
+                  key={r.itemId}
+                  row={r}
+                  active={selected === r.itemId}
+                  checked={checked.has(r.itemId)}
+                  hideDeck={!hasChildren}
+                  variant="tile"
+                  onOpen={() => open(r.itemId)}
+                  onToggle={() =>
+                    setChecked((prev) => {
+                      const n = new Set(prev);
+                      n.has(r.itemId) ? n.delete(r.itemId) : n.add(r.itemId);
+                      return n;
+                    })
+                  }
+                />
+              ))}
+            </div>
+            {total != null && !items.length && !error && (
+              <EmptyState inset title="No matches" action={<Button variant="outline" size="sm" onClick={() => setQuery("")}>Clear search</Button>}>No cards in this deck match that search.</EmptyState>
+            )}
+            {total != null && total > rows.length && (
+              <button className="flex h-12 w-full items-center justify-center rounded-xl border bg-card/40 text-sm text-muted-foreground hover:bg-accent/40 hover:text-foreground" onClick={() => setLimit((l) => Math.min(l + CARDS_PAGE, 1000))}>
+                Show {Math.min(CARDS_PAGE, total - rows.length)} more
+              </button>
+            )}
+          </div>
         </Section>
       )}
 
