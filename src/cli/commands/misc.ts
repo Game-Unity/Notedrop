@@ -3,6 +3,7 @@ import { existsSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { command, catalog, CliError, KEEP_OPEN, COMMANDS } from "../registry.ts";
+import { noteDropProfilePort } from "../../core/profile.ts";
 import { LIMIT_FLAG, OFFSET_FLAG } from "../common.ts";
 import { VERSION } from "../version.ts";
 
@@ -13,7 +14,7 @@ command({
   summary: "Run the web app and HTTP API.",
   description: "The CLI doesn't need the server: every command opens the database directly, and SQLite's WAL mode lets both run at once.",
   flags: [
-    { name: "port", type: "number", description: "Port. Default $ETUDE_PORT or 4610." },
+    { name: "port", type: "number", description: "Port. Default $ETUDE_PORT or 4613 (Dev: 4612)." },
     { name: "host", type: "string", description: "Interface. Default $ETUDE_HOST or 127.0.0.1. Anything beyond localhost needs --token." },
     { name: "token", type: "string", description: "Require this bearer token on the API. Default $ETUDE_TOKEN." },
     { name: "allow-host", type: "string", multiple: true, description: "Also answer requests for this hostname (repeatable; $ETUDE_ALLOW_HOSTS, comma-separated). localhost, 127.x and *.ts.net are always allowed; other names are refused to stop DNS rebinding, on localhost even with --token.", placeholder: "NAME" },
@@ -24,7 +25,8 @@ command({
   async run(ctx) {
     const { serve } = await import("@hono/node-server");
     const { createApp } = await import("../../server/app.ts");
-    const port = ctx.flags.port ?? Number(process.env.ETUDE_PORT ?? 4610);
+    const defaultPort = noteDropProfilePort(ctx.env.NOTEDROP_PROFILE === "dev" ? "dev" : "stable");
+    const port = ctx.flags.port ?? Number(ctx.env.ETUDE_PORT ?? defaultPort);
     const host = ctx.flags.host ?? process.env.ETUDE_HOST ?? "127.0.0.1";
     const token = ctx.flags.token ?? process.env.ETUDE_TOKEN;
     if (host !== "127.0.0.1" && host !== "localhost" && !token) throw new CliError("refusing to listen beyond localhost without --token");

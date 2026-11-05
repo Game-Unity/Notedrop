@@ -3,7 +3,7 @@ import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import { fileURLToPath } from "node:url";
 
-const api = `http://127.0.0.1:${process.env.ETUDE_PORT ?? 4610}`;
+const api = "http://127.0.0.1:4612";
 
 export default defineConfig({
   root: fileURLToPath(new URL(".", import.meta.url)),
@@ -11,6 +11,7 @@ export default defineConfig({
   resolve: { alias: { "@": fileURLToPath(new URL("./src", import.meta.url)) } },
   server: {
     port: 4611,
+    strictPort: true,
     proxy: { "/api": api, "/frame": api, "/runtime": api, "/media": api },
   },
   build: { outDir: "dist", emptyOutDir: true, chunkSizeWarningLimit: 1500 },

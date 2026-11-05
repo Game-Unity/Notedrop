@@ -158,13 +158,13 @@ The Market also has a Morse code deck, the Showcase, single card types and 22 th
 git clone https://github.com/Zibhelina/etude.git
 cd etude
 npm install
-npm run build        # builds the web app into web/dist
-npm start            # same as: node src/cli/main.ts serve
+npm run build         # builds the web app into web/dist
+npm start             # Stable web server: http://127.0.0.1:4613
 ```
 
-Open http://127.0.0.1:4610. Your collection lives in `~/.etude/etude.db`.
+Stable uses `~/.notedrop/etude.db`. For development, run `npm run dev` and `npm run dev:web` in separate terminals; the backend listens on 4612 with data in `~/.notedrop-dev`, and Vite serves the frontend on http://127.0.0.1:4611.
 
-Paste an image, audio or video file into a card field and Etude copies it into its own media folder, normally `~/.etude/media`. Pasted local file paths and `file://` URLs are copied too; the card uses the copy even after the original is moved or deleted. Settings → Data shows the folder, and `etude media add ./picture.png` imports a file from the terminal. When Etude runs on another computer, paste the file itself; local paths refer to the computer running Etude. Back up the media folder along with the database. Settings → Clean up (or `etude media prune`) deletes media files nothing names any more, and cards on faces their type no longer makes.
+Paste an image, audio or video file into a card field and NoteDrop copies it into its own media folder, normally `~/.notedrop/media` (or `~/.notedrop-dev/media` in development). Pasted local file paths and `file://` URLs are copied too; the card uses the copy even after the original is moved or deleted. Settings → Data shows the folder, and `etude media add ./picture.png` imports a file from the terminal. When NoteDrop runs on another computer, paste the file itself; local paths refer to the computer running NoteDrop. Back up the media folder along with the database. Settings → Clean up (or `etude media prune`) deletes media files nothing names any more, and cards on faces their type no longer makes.
 
 To see what cards can be, import the showcase: one card for each of the 28 card types. It opens in Watch mode, a tour where each card can show an example answer, graded, so you see how it works without answering anything:
 
@@ -180,7 +180,7 @@ node src/cli/main.ts pack import examples/showcase.pack.json
 
 **With your ChatGPT plan.** If you have ChatGPT Plus or Pro, open Settings → AI grading and click **Continue with ChatGPT**. Sign in in the browser and grading uses your plan's included usage, with no API key. You can cap how much Etude may use, or disconnect it, in ChatGPT's settings. Sign in from a browser on the computer that runs Etude (or run `etude settings chatgpt login` there); after that, grading works from any device.
 
-**With an API key.** Paste it in Settings → AI grading → API keys (or on the first-run setup screen). It is saved to `~/.etude/.env`, readable only by you, and used right away. From a terminal, pipe it in so it stays out of your shell history:
+**With an API key.** Paste it in Settings → AI grading → API keys (or on the first-run setup screen). In Stable it is saved to `~/.notedrop/.env` (in Dev, `~/.notedrop-dev/.env`), readable only by you, and used right away. From a terminal, pipe it in so it stays out of your shell history:
 
 ```sh
 printf %s "$OPENROUTER_KEY" | etude settings key set OPENROUTER_API_KEY
@@ -196,16 +196,16 @@ By default the server only listens on your own computer. To reach it from other 
 etude serve --host 0.0.0.0 --token "$(openssl rand -hex 16)"
 ```
 
-Open `http://<your-computer>:4610/?token=<token>` on the phone and add it to the home screen. For access away from home, use a private network such as Tailscale, or a reverse proxy with TLS.
+Open `http://<your-computer>:4613/?token=<token>` on the phone and add it to the home screen. For access away from home, use a private network such as Tailscale, or a reverse proxy with TLS.
 
 ## Configuration
 
 | | |
 |---|---|
-| `~/.etude/.env` | API keys, one per line, e.g. `OPENROUTER_API_KEY=...`. Read at startup, and written by Settings or `etude settings key set`. Keys are never stored in the database or shown in the app. |
-| `--db PATH` or `ETUDE_DB` | Collection file. Default `~/.etude/etude.db`. Pasted media, imports and drawings are saved in a `media/` folder next to it. |
-| `ETUDE_HOME` | Where `.env` and the default database live. Default `~/.etude`. |
-| `--port` or `ETUDE_PORT` | Default 4610. |
+| `~/.notedrop/.env` | Stable API keys, one per line, e.g. `OPENROUTER_API_KEY=...`. Read at startup, and written by Settings or `etude settings key set`. Keys are never stored in the database or shown in the app. |
+| `--db PATH` or `ETUDE_DB` | Collection file. Defaults to `etude.db` in the active profile's data directory. Pasted media, imports and drawings are saved in a `media/` folder next to it. Profile databases must stay inside their own data directory and outside the repository/install directory. |
+| `ETUDE_HOME` | Where `.env` and the default database live. Stable defaults to `~/.notedrop`; Dev defaults to `~/.notedrop-dev`. |
+| `--port` or `ETUDE_PORT` | Stable defaults to 4613; Dev defaults to 4612. |
 | `--host` or `ETUDE_HOST` | Default `127.0.0.1`. Any other address requires a token. |
 | `--token` or `ETUDE_TOKEN` | Every `/api` request must then send `Authorization: Bearer <token>` or `?token=<token>`. |
 

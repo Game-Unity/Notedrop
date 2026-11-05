@@ -3,6 +3,7 @@
 //   node scripts/gen-cli-docs.ts --check  exit 1 if docs/cli.md is out of date
 // Everything above the marker line is hand-written and kept as is.
 import { readFileSync, writeFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { COMMANDS, EXIT_CODES, GLOBAL_FLAGS, GROUPS, flagsOf, type CommandSpec, type FlagSpec } from "../src/cli/registry.ts";
 import "../src/cli/commands/index.ts";
@@ -80,7 +81,7 @@ export function render(current: string): string {
   return head + MARKER + "\n\n" + generate();
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (process.argv[1] && resolve(fileURLToPath(import.meta.url)) === resolve(process.argv[1])) {
   const current = readFileSync(DOC_PATH, "utf8");
   const next = render(current);
   if (process.argv.includes("--check")) {

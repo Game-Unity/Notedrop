@@ -6,6 +6,7 @@ import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { commandState, installCommand, refreshAppImageCommand } from "./command.ts";
 import { Engine } from "./engine.ts";
+import { claimNoteDropProfile, profileEnvironment } from "../src/core/profile.ts";
 import { probe } from "./find.ts";
 import { offerAppMenuEntry, offerApplicationsFolder } from "./integrate.ts";
 import { log, logDir, logEngine } from "./log.ts";
@@ -77,7 +78,10 @@ async function boot(path = "/") {
   try {
     if (!app.isPackaged && !existsSync(join(ROOT, "web", "dist", "index.html")))
       throw new Error(`The web app isn't built yet. Run \`npm run build\` in ${ROOT}, then try again.`);
-    engine = await Engine.start({ root: ROOT, env, log, output: logEngine });
+    const profile = app.isPackaged ? "stable" : "dev";
+    const profileEnv = profileEnvironment(profile, env, ROOT);
+    claimNoteDropProfile(profile, profileEnv.ETUDE_HOME!);
+    engine = await Engine.start({ root: ROOT, env: profileEnv, log, output: logEngine });
     engine.onExit = stopped;
     log(engine.owned ? `engine ${engine.version} ready at ${engine.origin}` : `using the engine already running at ${engine.origin} (${engine.version}) for the same collection`);
     if (!engine.owned) watch(engine);

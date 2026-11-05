@@ -196,7 +196,7 @@ These work on every command, before or after the command words.
 
 | Flag | Type | Description |
 | --- | --- | --- |
-| `--db <PATH>` | string | Database file. Defaults to $ETUDE_DB, then $ETUDE_HOME/etude.db, then ~/.etude/etude.db. |
+| `--db <PATH>` | string | Database file. Defaults to $ETUDE_DB, then $ETUDE_HOME/etude.db, then ~/.notedrop/etude.db. |
 | `--json` | boolean | Use JSON output (also the default). |
 | `--pretty` | boolean | Indent JSON output (the default when stdout is a terminal). |
 | `--compact` | boolean | One-line JSON output (the default when stdout is not a terminal). |
@@ -2589,7 +2589,7 @@ etude type frame [id] [flags]
 | Flag | Type | Description |
 | --- | --- | --- |
 | `--from <DIR\|FILE>` | string | Use an unsaved type from a directory or JSON file. |
-| `--base <VALUE>` | string | Server URL the frame loads its runtime from. Default `"http://127.0.0.1:4610/"`. |
+| `--base <VALUE>` | string | Server URL the frame loads its runtime from. Default `"http://127.0.0.1:4613/"`. |
 | `-o, --out <FILE>` | string | Write the HTML to a file instead of stdout. |
 
 Output: the HTML, or { written } with --out
@@ -5071,7 +5071,7 @@ etude serve [flags]
 
 | Flag | Type | Description |
 | --- | --- | --- |
-| `--port <N>` | number | Port. Default $ETUDE_PORT or 4610. |
+| `--port <N>` | number | Port. Default $ETUDE_PORT or 4613 (Dev: 4612). |
 | `--host <VALUE>` | string | Interface. Default $ETUDE_HOST or 127.0.0.1. Anything beyond localhost needs --token. |
 | `--token <VALUE>` | string | Require this bearer token on the API. Default $ETUDE_TOKEN. |
 | `--allow-host <NAME> (repeatable)` | string | Also answer requests for this hostname (repeatable; $ETUDE_ALLOW_HOSTS, comma-separated). localhost, 127.x and *.ts.net are always allowed; other names are refused to stop DNS rebinding, on localhost even with --token. |

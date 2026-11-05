@@ -57,7 +57,7 @@ export function commandState(env: Record<string, string | undefined>): CommandSt
 /** The AppImage's launcher: it runs the CLI from wherever the AppImage is mounted this time. */
 function appImageScript(appImage: string): string {
   const q = `'${appImage.replaceAll("'", `'\\''`)}'`;
-  return `#!/bin/sh\n# ${MARK}: the etude command from the Etude AppImage.\nELECTRON_RUN_AS_NODE=1 exec ${q} -e 'import(require("node:url").pathToFileURL(process.env.APPDIR + "/resources/app/bin/etude.js"))' etude "$@"\n`;
+  return `#!/bin/sh\n# ${MARK}: the etude command from the Etude AppImage.\nNOTEDROP_PROFILE=stable ELECTRON_RUN_AS_NODE=1 exec ${q} -e 'import(require("node:url").pathToFileURL(process.env.APPDIR + "/resources/app/bin/etude.js"))' etude "$@"\n`;
 }
 
 function run(cmd: string, args: string[]): Promise<void> {

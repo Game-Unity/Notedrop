@@ -1,9 +1,11 @@
 // The command runner: finds the command, parses flags, opens the collection, prints JSON.
 import { existsSync, readSync } from "node:fs";
 import { homedir } from "node:os";
-import { join, resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { parseArgs } from "node:util";
+import { fileURLToPath } from "node:url";
 import { Etude, EtudeError } from "../core/engine.ts";
+import { assertSafeStoragePaths, claimNoteDropProfile, ProfileConfigurationError, resolveNoteDropProfile, type NoteDropProfile } from "../core/profile.ts";
 import { ScriptError } from "../core/sandbox.ts";
 import { AiError } from "../core/ai.ts";
 import { CliError, COMMANDS, Failed, GLOBAL_FLAGS, GROUPS, KEEP_OPEN, flagsOf, type CommandSpec, type Ctx, type FlagSpec } from "./registry.ts";
@@ -13,6 +15,8 @@ import "./commands/index.ts";
 import { VERSION } from "./version.ts";
 
 export { VERSION };
+
+const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
 
 export interface Io {
   stdout(s: string): void;
@@ -183,6 +187,7 @@ export function usageLine(c: CommandSpec): string {
 
 export function errorCode(e: unknown): CliError {
   if (e instanceof CliError) return e;
+  if (e instanceof ProfileConfigurationError) return new CliError(e.message, "validation");
   // The Sync server's 402: not a bug, the account has no active Sync.
   if ((e as { code?: unknown })?.code === "sync_required") {
     const m = (e as Error).message || "Etude Sync isn't active on this account. Your local data is untouched.";
@@ -284,12 +289,39 @@ export async function run(argv: string[], io: Io = defaultIo(), opts: RunOptions
     if (values.compact) pretty = false;
     if (cmd.confirm && !values.yes && !values["dry-run"]) throw new CliError(`\`etude ${cmd.name}\` is destructive; add --yes to confirm (or --dry-run to preview)`);
 
-    const home = shared ? shared.home : resolve(io.env.ETUDE_HOME ?? join(homedir(), ".etude"));
-    const envFile = join(home, ".env");
+    const profileValue = io.env.NOTEDROP_PROFILE;
+    if (profileValue !== undefined && profileValue !== "dev" && profileValue !== "stable") {
+      throw new ProfileConfigurationError(`NOTEDROP_PROFILE must be "dev" or "stable" (got "${profileValue}").`);
+    }
+    const profile = profileValue as NoteDropProfile | undefined;
+    const initialHome = shared
+      ? shared.home
+      : profile
+        ? resolveNoteDropProfile(profile, io.env, ROOT).home
+        : resolve(io.env.ETUDE_HOME ?? join(homedir(), ".notedrop"));
+    const envFile = join(initialHome, ".env");
     if (!shared && existsSync(envFile) && io.env === process.env) process.loadEnvFile(envFile);
-    const dbPath = shared ? shared.path : resolve(values.db ?? io.env.ETUDE_DB ?? join(home, "etude.db"));
+    const finalProfileValue = io.env.NOTEDROP_PROFILE;
+    if (finalProfileValue !== undefined && finalProfileValue !== "dev" && finalProfileValue !== "stable") {
+      throw new ProfileConfigurationError(`NOTEDROP_PROFILE must be "dev" or "stable" (got "${finalProfileValue}").`);
+    }
+    const finalProfile = finalProfileValue as NoteDropProfile | undefined;
+    const resolved = shared
+      ? { home: shared.home, dbPath: shared.path }
+      : finalProfile
+        ? resolveNoteDropProfile(finalProfile, io.env, ROOT, values.db)
+        : (() => {
+            const home = resolve(io.env.ETUDE_HOME ?? join(homedir(), ".notedrop"));
+            const dbPath = resolve(values.db ?? io.env.ETUDE_DB ?? join(home, "etude.db"));
+            assertSafeStoragePaths(home, dbPath, ROOT);
+            return { home, dbPath };
+          })();
+    const { home, dbPath } = resolved;
     if (shared) etude = shared;
-    else if (!cmd.noDb) etude = await Etude.open(dbPath, { home });
+    else if (!cmd.noDb) {
+      if (finalProfile) claimNoteDropProfile(finalProfile, home);
+      etude = await Etude.open(dbPath, { home });
+    }
 
     let stdinUsed = false;
     const ctx: Ctx = {

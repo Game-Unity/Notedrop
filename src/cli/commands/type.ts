@@ -501,7 +501,7 @@ command({
   args: [{ name: "id", description: "Type id (ignored with --from).", required: false }],
   flags: [
     { name: "from", type: "string", description: "Use an unsaved type from a directory or JSON file.", placeholder: "DIR|FILE" },
-    { name: "base", type: "string", description: "Server URL the frame loads its runtime from.", default: "http://127.0.0.1:4610/" },
+    { name: "base", type: "string", description: "Server URL the frame loads its runtime from.", default: "http://127.0.0.1:4613/" },
     { name: "out", type: "string", short: "o", description: "Write the HTML to a file instead of stdout.", placeholder: "FILE" },
   ],
   examples: ["etude type frame numeric -o numeric.html"],
