@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuTrigger } from "@/components/ui/context-menu";
+import { invalidateProgress } from "@/lib/notedrop-progress";
 
 export function useDeckActions(onChanged: () => void) {
   const [deleting, setDeleting] = useState<{ name: string; items: number; cards: number } | null>(null);
@@ -18,6 +19,7 @@ export function useDeckActions(onChanged: () => void) {
     setBusy(true);
     try {
       await api.setDeckArchived(name, archived);
+      invalidateProgress();
       toast.success(`${archived ? "Archived" : "Restored"} ${leafOf(name)}`);
       onChanged();
     } catch (e) {
@@ -29,6 +31,7 @@ export function useDeckActions(onChanged: () => void) {
 
   const remove = async (name: string, items = false) => {
     await api.deleteDeck(name, items);
+    invalidateProgress();
     setDeleting(null);
     toast.success(`Deleted ${leafOf(name)}`);
     onChanged();

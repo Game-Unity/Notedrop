@@ -12,6 +12,6 @@
     root.classList.toggle("dark", t.scheme !== "light");
     root.dataset.theme = t.id;
     document.querySelector('meta[name="color-scheme"]').content = t.scheme === "light" ? "light" : "dark";
-    if (t.bg) document.querySelector('meta[name="theme-color"]').content = t.bg;
+    document.querySelector('meta[name="theme-color"]').content = "#1c1c1c";
   } catch (e) {}
 })();

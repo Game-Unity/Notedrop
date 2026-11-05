@@ -16,6 +16,7 @@ import { usePhone } from "@/lib/phone";
 import { ActionSheet, Tally } from "@/components/phone-shell";
 import { SketchBar, SketchLayer, sketchTransform, useSketch } from "@/components/sketch-pad";
 import { track } from "@/lib/telemetry";
+import { invalidateProgress } from "@/lib/notedrop-progress";
 
 type Phase = "loading" | "answer" | "grading" | "result" | "done";
 
@@ -153,6 +154,7 @@ export function StudyPage({ scope, title, startCard }: { scope: Scope; title: st
     busy.current = true;
     try {
       await api.rate(card.cardId, rating, { attemptId: attemptId ?? undefined, durationMs: Date.now() - shownAt.current, practice });
+      if (rating !== 0) invalidateProgress(scope.deck);
       lastCard.current = card.cardId;
       await load(card.cardId);
     } catch (e) {
@@ -168,6 +170,7 @@ export function StudyPage({ scope, title, startCard }: { scope: Scope; title: st
     try {
       const r = await api.undo();
       if (!r) return toast("Nothing to undo");
+      invalidateProgress(scope.deck);
       const c = await api.card(r.cardId);
       const cnt = await api.counts(scope);
       setCounts(cnt);
@@ -194,6 +197,7 @@ export function StudyPage({ scope, title, startCard }: { scope: Scope; title: st
     busy.current = true;
     try {
       await api.rate(card.cardId, 0, { attemptId: attemptId ?? undefined, durationMs: Date.now() - shownAt.current, practice });
+      invalidateProgress(scope.deck);
       const [c, cnt] = await Promise.all([api.card(card.cardId), api.counts(scope)]);
       setCounts(cnt);
       setCard(c);

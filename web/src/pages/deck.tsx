@@ -22,6 +22,7 @@ import { usePhone } from "@/lib/phone";
 import { DeckList } from "@/components/phone-decks";
 import { Mark, PhoneTitle } from "@/components/phone-shell";
 import { useDeckActions } from "@/components/deck-actions";
+import { dueSearch, invalidateProgress, loadDeckList } from "@/lib/notedrop-progress";
 
 const enc = encodeURIComponent;
 
@@ -50,9 +51,9 @@ export function DeckPage({ name }: { name: string }) {
       .then((r) => setTags([...new Set(r.rows.flatMap((x) => x.tags))].sort()))
       .catch(() => {});
 
-  const reload = async () => {
+  const reload = async (forceDecks = false) => {
     try {
-      const [d, all, p] = await Promise.all([api.deck(name), api.decks(true), api.presets()]);
+      const [d, all, p] = await Promise.all([api.deck(name), loadDeckList(forceDecks), api.presets()]);
       setDeck(d);
       setDecks(all.filter((node) => node.archived === d.archived));
       setPresets(p);
@@ -65,7 +66,7 @@ export function DeckPage({ name }: { name: string }) {
     reload();
     // Only tags used inside this deck are useful for custom study.
     loadTags();
-    const onFocus = () => reload();
+    const onFocus = () => reload(true);
     window.addEventListener("focus", onFocus);
     return () => window.removeEventListener("focus", onFocus);
   }, [name]);
@@ -126,7 +127,7 @@ export function DeckPage({ name }: { name: string }) {
             hasChildren={children.length > 0}
             active={tab === "cards"}
             onChanged={() => {
-              reload();
+              reload(true);
               loadTags();
             }}
           />
@@ -168,12 +169,12 @@ export function DeckPage({ name }: { name: string }) {
     );
 
   return (
-    <Page>
+    <Page className="nd-deck-page">
       <Breadcrumb items={[{ label: deck.archived ? "Archive" : "Decks", onClick: () => navigate(deck.archived ? "/archive" : "/") }, ...parts.slice(0, -1).map((p, i) => ({ label: p, onClick: () => navigate(`/deck?name=${enc(parts.slice(0, i + 1).join("::"))}`) }))]} />
       <Header deck={deck} node={node} work={work} tags={tags} onRenamed={(to) => navigate(`/deck?name=${enc(to)}`, { replace: true })} onAddCards={tab === "cards" ? undefined : () => switchTab("cards")} />
 
-      <Tabs value={tab} onValueChange={switchTab} className="mt-8">
-        <TabsList className="w-full sm:w-auto">
+      <Tabs value={tab} onValueChange={switchTab} className="nd-deck-tabs-root mt-8">
+        <TabsList className="nd-deck-tabs w-full sm:w-auto">
           <TabsTrigger value="overview" className="px-4">Overview</TabsTrigger>
           <TabsTrigger value="cards" className="px-4">Cards</TabsTrigger>
           <TabsTrigger value="options" className="px-4">Options</TabsTrigger>
@@ -198,6 +199,46 @@ export function DeckPage({ name }: { name: string }) {
         </TabsContent>
       </Tabs>
     </Page>
+  );
+}
+
+function DueBadge({ deck }: { deck: string }) {
+  const [due, setDue] = useState<number | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let live = true;
+    let requestId = 0;
+    const refresh = async () => {
+      const id = ++requestId;
+      try {
+        const result = await api.search(dueSearch(deck), { limit: 1 });
+        if (!Number.isInteger(result.total) || result.total < 0) throw new Error("Invalid due card count");
+        if (live && id === requestId) {
+          setDue(result.total);
+          setError(null);
+        }
+      } catch (e) {
+        if (live && id === requestId) setError((e as Error).message);
+      }
+    };
+    const onVisibility = () => document.visibilityState === "visible" && void refresh();
+    void refresh();
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      live = false;
+      window.removeEventListener("focus", refresh);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, [deck]);
+
+  if (due === 0 && !error) return null;
+  if (due == null && !error) return null;
+  return (
+    <span id="nd-due-badge" className="nd-due-badge" role={error ? "status" : undefined} title={error ?? undefined}>
+      {error ? "Due unavailable" : `${due} due`}
+    </span>
   );
 }
 
@@ -408,6 +449,7 @@ function Header({ deck, node, work, tags, onRenamed, onAddCards, phone }: { deck
     const to = t.includes("::") ? t : parent ? `${parent}::${t}` : t;
     try {
       const d = await api.updateDeck(deck.name, { name: to });
+      invalidateProgress(deck.name);
       toast.success(`Renamed to ${d.name.split("::").pop()}`);
       setEditing(false);
       onRenamed(d.name);
@@ -465,7 +507,7 @@ function Header({ deck, node, work, tags, onRenamed, onAddCards, phone }: { deck
             <div className="mt-1.5 text-xs text-muted-foreground">Cards{node?.doneToday ? <span className="hidden sm:inline"> · {node.doneToday} done today</span> : ""}</div>
           </div>
         </div>
-        <div className="flex gap-2">
+        <div className="nd-deck-actions flex gap-2">
           {deck.archived ? <span className="inline-flex items-center gap-2 py-2 text-sm text-muted-foreground"><Archive className="size-4" />Archived</span> : deck.resolved.mode === "watch" ? (
             <Button size="lg" className={cn("flex-1 gap-2 px-6 sm:flex-none", phone && "h-[3.25rem] rounded-full text-[16px] pointer-coarse:h-[3.25rem]")} disabled={!node?.cards} title="A tour: each card can show an example answer, and nothing is scheduled" onClick={() => navigate(`/watch?deck=${enc(deck.name)}`)}>
               <Eye className="size-4" />Watch
@@ -475,11 +517,11 @@ function Header({ deck, node, work, tags, onRenamed, onAddCards, phone }: { deck
               <CustomStudy deck={deck.name} tags={tags} disabled={!node?.cards} phone={phone} adaptive={deck.resolved.adaptiveChallenge || deck.resolved.adaptivePace} />
               {work || !node?.cards ? (
                 <Button size="lg" className={cn("flex-1 gap-2 px-6 sm:flex-none", phone && "h-[3.25rem] rounded-full text-[16px] pointer-coarse:h-[3.25rem]")} disabled={!work} onClick={() => navigate(`/study?deck=${enc(deck.name)}`)}>
-                  <Play className="size-4" />Practice
+                  <Play className="size-4" />Practice<DueBadge deck={deck.name} />
                 </Button>
               ) : (
                 <Button size="lg" className={cn("flex-1 gap-2 px-6 sm:flex-none", phone && "h-[3.25rem] rounded-full text-[16px] pointer-coarse:h-[3.25rem]")} title="Nothing due right now: review early. FSRS counts an early review for less." onClick={() => navigate(`/study?deck=${enc(deck.name)}&ahead=1`)}>
-                  <FastForward className="size-4" />Practice ahead
+                  <FastForward className="size-4" />Practice ahead<DueBadge deck={deck.name} />
                 </Button>
               )}
             </>
@@ -490,7 +532,7 @@ function Header({ deck, node, work, tags, onRenamed, onAddCards, phone }: { deck
       {!deck.archived && deadline && <Countdown deadline={deadline} margin={deck.resolved.deadlineMargin} />}
       {!deck.archived && deck.resolved.mode !== "watch" && (deck.resolved.adaptiveChallenge || deck.resolved.adaptivePace) && <AdaptiveSummary deck={deck.name} hasNew={(node?.new ?? 0) > 0} />}
       {node && node.cards === 0 && onAddCards && (
-        <Section className="mt-6">
+        <Section className="nd-empty-cards mt-6">
           <Block title="No cards yet" description="Add cards in the Cards tab, or import a pack from the Decks page." aside={<Button size="sm" onClick={onAddCards}>Add cards</Button>} stackAside />
         </Section>
       )}
@@ -676,7 +718,7 @@ function CustomStudy({ deck, tags, disabled, phone, adaptive }: { deck: string; 
 function Subdecks({ parent, decks }: { parent: string; decks: DeckNode[] }) {
   const depth0 = parent.split("::").length;
   return (
-    <Section title="Subdecks" aside={<span className="hidden tabular sm:inline">New · Learn · Due</span>}>
+    <Section title="Subdecks" className="nd-deck-subdecks" aside={<span className="hidden tabular sm:inline">New · Learn · Due</span>}>
       {decks.map((d) => {
         const depth = d.name.split("::").length - depth0 - 1;
         return (

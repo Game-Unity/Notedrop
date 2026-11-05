@@ -1,6 +1,6 @@
 import { autoSync } from "@/lib/sync";
 import { Archive, BarChart3, Blocks, Layers, Library, Settings, Store } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import { Toaster } from "@/components/ui/sonner";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { SidebarIcon } from "@/components/sidebar-icon";
@@ -24,6 +24,9 @@ import { MorePage } from "@/pages/more";
 import { usePhone } from "@/lib/phone";
 import { Onboarding, ONBOARDING_EVENT } from "@/components/onboarding";
 import { api } from "@/lib/api";
+import { NoteDropTree } from "@/components/notedrop-tree";
+import { NoteDropSidePanel } from "@/components/notedrop-side-panel";
+import { invalidateProgress } from "@/lib/notedrop-progress";
 
 /** First-run setup: shown when the collection has no decks and setup wasn't finished or skipped, or on request. */
 function useOnboarding(skip: boolean) {
@@ -58,6 +61,19 @@ const COLLAPSED_KEY = "etude.sidebar.collapsed";
 /** Pages that only show the collection, so a sync that brought changes can reload them safely. */
 const RELOAD_ON_SYNC = new Set(["/", "/archive", "/deck", "/stats", "/more"]);
 const toggleKey = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform) ? "⌘B" : "Ctrl+B";
+
+type SidePanelContext = { path: string; deckName: string; dataKey: number };
+const SIDE_PANEL_CONTENTS: {
+  id: string;
+  matches(context: SidePanelContext): boolean;
+  render(context: SidePanelContext): React.ReactNode;
+}[] = [
+  {
+    id: "notedrop-tree",
+    matches: ({ path, deckName }) => path === "/deck" && Boolean(deckName),
+    render: ({ deckName, dataKey }) => <NoteDropTree deckName={deckName} dataKey={dataKey} />,
+  },
+];
 
 function useSidebarCollapsed() {
   const [collapsed, setCollapsed] = useState(() => localStorage.getItem(COLLAPSED_KEY) === "1");
@@ -94,7 +110,10 @@ export function App() {
       const before = received.current;
       received.current = st.received;
       // Changes came in: reload the page's data where nothing is being edited.
-      if (before !== null && st.received > before && RELOAD_ON_SYNC.has(pathRef.current)) setDataKey((k) => k + 1);
+      if (before !== null && st.received > before && RELOAD_ON_SYNC.has(pathRef.current)) {
+        invalidateProgress();
+        setDataKey((k) => k + 1);
+      }
     };
     void run();
     const pull = setInterval(() => void run(), 30_000);
@@ -118,6 +137,10 @@ export function App() {
   // Bumped after the assistant changed something, so the page remounts and reloads its data.
   const [dataKey, setDataKey] = useState(0);
   const [onboarding, setOnboarding] = useOnboarding(path === "/embed");
+  const sidePanelContext = { path, deckName: params.get("name") ?? "", dataKey };
+  const sidePanelContents = SIDE_PANEL_CONTENTS
+    .filter((registration) => registration.matches(sidePanelContext))
+    .map((registration) => <Fragment key={registration.id}>{registration.render(sidePanelContext)}</Fragment>);
   if (path === "/embed") {
     const deck = params.get("deck") ?? undefined;
     const q = params.get("q") ?? undefined;
@@ -156,7 +179,7 @@ export function App() {
         page
       ) : (
         <div
-          className="flex min-h-dvh"
+          className={cn("flex min-h-dvh", path === "/deck" && "nd-app-shell--deck")}
           data-agent-open={agent.open}
           style={{ "--agent-offset": agent.open ? `${agent.width}px` : "0px", } as React.CSSProperties}
         >
@@ -219,7 +242,10 @@ export function App() {
             </div>
           </aside>
           {/* Room under the last row for the corner launcher, so it never sits on it for good. */}
-          <main key={dataKey} className="min-w-0 flex-1 pb-[calc(var(--tabbar-h)+1.5rem)] md:pb-16">{page}</main>
+          <main key={dataKey} className="nd-app-content min-w-0 flex-1 pb-[calc(var(--tabbar-h)+1.5rem)] md:pb-16">{page}</main>
+          <NoteDropSidePanel visible={path === "/deck" && Boolean(sidePanelContext.deckName)}>
+            {sidePanelContents}
+          </NoteDropSidePanel>
           {agent.open ? (
             <AgentPanel
               width={agent.width}
@@ -227,7 +253,10 @@ export function App() {
               onClose={() => agent.setOpen(false)}
               onChanged={(final) => {
                 announceDataChange();
-                if (final) setDataKey((k) => k + 1);
+                if (final) {
+                  invalidateProgress();
+                  setDataKey((k) => k + 1);
+                }
               }}
             />
           ) : phone ? null : (
@@ -240,6 +269,7 @@ export function App() {
         <Onboarding
           onFinish={() => {
             setOnboarding(false);
+            invalidateProgress();
             setDataKey((k) => k + 1);
           }}
         />

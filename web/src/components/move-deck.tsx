@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input";
 import { api, type DeckNode } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { invalidateProgress } from "@/lib/notedrop-progress";
 
 export const parentOf = (name: string) => name.split("::").slice(0, -1).join("::");
 export const leafOf = (name: string) => name.split("::").at(-1)!;
@@ -34,6 +35,7 @@ export async function moveDeck(decks: DeckNode[], name: string, parent: string, 
   const fromIndex = childrenOf(decks, from).indexOf(name);
   try {
     const d = await api.moveDeck(name, parent, index);
+    invalidateProgress();
     after(d.name);
     if (from !== parent) {
       toast.success(parent ? `Moved ${leafOf(name)} into ${leafOf(parent)}` : `${leafOf(name)} is a deck of its own now`, {
@@ -42,6 +44,7 @@ export async function moveDeck(decks: DeckNode[], name: string, parent: string, 
           onClick: async () => {
             try {
               const back = await api.moveDeck(d.name, from, fromIndex < 0 ? undefined : fromIndex);
+              invalidateProgress();
               after(back.name);
             } catch (e) {
               toast.error((e as Error).message);

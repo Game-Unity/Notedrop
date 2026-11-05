@@ -1,6 +1,5 @@
-// Applies themes to the app: a <style id="etude-theme"> with the theme's variables, the `dark` class
-// for shadcn's dark: variants, the browser's color-scheme and theme-color, and a localStorage copy
-// that index.html applies before the first paint.
+// Applies theme variables, shadcn's dark class, the color scheme and a localStorage copy that
+// index.html applies before the first paint. NoteDrop keeps the browser theme-color fixed.
 import { useEffect, useState } from "react";
 import { BUILTIN_THEMES, DEFAULT_THEME, themeCss, type Scheme, type Theme } from "../../../src/core/themes.ts";
 import { api } from "@/lib/api";
@@ -63,7 +62,7 @@ export function applyTheme(t: Theme, opts: { persist?: boolean } = {}) {
   root.dataset.theme = t.id;
   const bg = toHex(t.vars["--background"] ?? "") ?? (t.scheme === "light" ? "#fafafa" : "#0f0f0f");
   setMeta("color-scheme", t.scheme);
-  setMeta("theme-color", bg.slice(0, 7));
+  setMeta("theme-color", "#1c1c1c");
   current = t;
   if (opts.persist !== false) {
     try {

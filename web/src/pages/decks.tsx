@@ -12,6 +12,7 @@ import { childrenOf, clashes, leafOf, moveDeck, MoveDeckDialog, parentOf } from 
 import { usePhone } from "@/lib/phone";
 import { PhoneDecks } from "@/components/phone-decks";
 import { DeckContextMenu, type DeckMenuEntry, useDeckActions } from "@/components/deck-actions";
+import { invalidateProgress } from "@/lib/notedrop-progress";
 
 /** Where a dragged deck would land: between rows (`line`) or inside a deck (`into`). */
 type Drop = { kind: "line" | "into"; parent: string; index: number | undefined; y: number; depth: number };
@@ -30,11 +31,14 @@ function DesktopDecks({ archived }: { archived: boolean }) {
   const [collapsed, setCollapsed] = useState<Set<string>>(() => new Set(JSON.parse(localStorage.getItem("etude.collapsed") ?? "[]")));
   const [creating, setCreating] = useState(false);
 
-  const reload = () => api.decks(archived).then((all) => {
-    const filtered = all.filter((d) => d.archived === archived);
-    const names = new Set(filtered.map((d) => d.name));
-    setDecks(filtered.map((d) => ({ ...d, displayDepth: ancestorsOf(d.name).filter((n) => names.has(n)).length })));
-  }).catch((e) => toast.error(e.message));
+  const reload = () => {
+    invalidateProgress();
+    return api.decks(archived).then((all) => {
+      const filtered = all.filter((d) => d.archived === archived);
+      const names = new Set(filtered.map((d) => d.name));
+      setDecks(filtered.map((d) => ({ ...d, displayDepth: ancestorsOf(d.name).filter((n) => names.has(n)).length })));
+    }).catch((e) => toast.error(e.message));
+  };
   const deckActions = useDeckActions(reload);
   useEffect(() => {
     reload();
