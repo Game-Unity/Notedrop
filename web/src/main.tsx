@@ -1,6 +1,7 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import "./index.css";
+import "./notedrop.css";
 import { App } from "./App";
 import { startThemeSync } from "@/lib/theme";
 import { startStoreKit } from "@/lib/storekit";

@@ -1,0 +1,1157 @@
+@font-face {
+  font-family: "Comfortaa";
+  font-style: normal;
+  font-weight: 300 700;
+  font-display: swap;
+  src: url("./assets/fonts/comfortaa-cyrillic-ext.woff2") format("woff2");
+  unicode-range: U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+}
+@font-face {
+  font-family: "Comfortaa";
+  font-style: normal;
+  font-weight: 300 700;
+  font-display: swap;
+  src: url("./assets/fonts/comfortaa-cyrillic.woff2") format("woff2");
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+@font-face {
+  font-family: "Comfortaa";
+  font-style: normal;
+  font-weight: 300 700;
+  font-display: swap;
+  src: url("./assets/fonts/comfortaa-greek.woff2") format("woff2");
+  unicode-range: U+0370-0377, U+037A-037F, U+0384-038A, U+038C, U+038E-03A1, U+03A3-03FF;
+}
+@font-face {
+  font-family: "Comfortaa";
+  font-style: normal;
+  font-weight: 300 700;
+  font-display: swap;
+  src: url("./assets/fonts/comfortaa-vietnamese.woff2") format("woff2");
+  unicode-range: U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB;
+}
+@font-face {
+  font-family: "Comfortaa";
+  font-style: normal;
+  font-weight: 300 700;
+  font-display: swap;
+  src: url("./assets/fonts/comfortaa-latin-ext.woff2") format("woff2");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: "Comfortaa";
+  font-style: normal;
+  font-weight: 300 700;
+  font-display: swap;
+  src: url("./assets/fonts/comfortaa-latin.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+html:root {
+    --background: white;
+    --background-app: #1c1c1c;
+    --background-app-sidebar: #242424;
+    --color-app: #a7a7b0;
+    --color-main-app: white;
+    --foreground: oklch(0.18 0 0);
+    --card: oklch(1 0 0);
+    --popover: oklch(1 0 0);
+    --primary: oklch(0.2 0 0);
+    --primary-foreground: oklch(0.985 0 0);
+    --secondary: oklch(0.95 0 0);
+    --muted: #f8f8f8;
+    --muted-foreground: #484852;
+    --accent: oklch(0.94 0 0);
+    --destructive: oklch(0.56 0.21 25);
+    --border: oklch(0 0 0 / 10%);
+    --input: oklch(0 0 0 / 15%);
+    --ring: oklch(0.55 0 0);
+    --chart-1: oklch(0.62 0.2 355);
+    --chart-2: oklch(0.58 0.14 250);
+    --chart-3: oklch(0.7 0.15 75);
+    --chart-4: oklch(0.6 0.15 150);
+    --chart-5: oklch(0.65 0 0);
+    --sidebar: oklch(0.97 0 0);
+    --sidebar-accent: oklch(0.925 0 0);
+    --sidebar-border: oklch(0 0 0 / 8%);
+    --highlight: #4e62ff;
+    --success: oklch(0.55 0.15 150);
+    --warning: oklch(0.64 0.15 70);
+    --danger: oklch(0.56 0.2 25);
+    --again: oklch(0.56 0.2 25);
+    --hard: oklch(0.62 0.15 60);
+    --good: oklch(0.55 0.15 150);
+    --easy: oklch(0.54 0.14 245);
+    --new: #4e62ff;
+    --learn: oklch(0.6 0.17 38);
+    --review: oklch(0.55 0.15 150);
+    --card-foreground: oklch(0.18 0 0);
+    --popover-foreground: oklch(0.18 0 0);
+    --secondary-foreground: oklch(0.18 0 0);
+    --accent-foreground: oklch(0.18 0 0);
+    --sidebar-foreground: oklch(0.18 0 0);
+    --sidebar-primary: oklch(0.2 0 0);
+    --sidebar-primary-foreground: oklch(0.985 0 0);
+    --sidebar-accent-foreground: oklch(0.18 0 0);
+    --sidebar-ring: oklch(0.55 0 0);
+    --radius: 0.75rem;
+    --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+    --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", monospace;
+    color-scheme: light;
+}
+
+html,
+body,
+button,
+input,
+textarea,
+select {
+  font-family: "Comfortaa", sans-serif !important;
+}
+
+
+
+.prose-etude p, .prose-etude li,.prose-etude td {
+    color: var(--muted-foreground);
+}
+
+.prose-etude h1, .prose-etude h2, .prose-etude h3, .prose-etude h4, .prose-etude h5, .prose-etude h6 {
+		line-height: var(--tw-leading, var(--text-base--line-height));
+    --tw-tracking: var(--tracking-tight);
+    margin: 29px 0 20px;
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: 0;
+    -webkit-text-stroke: 0.2px currentColor;
+}
+
+h2, h3, h4, h5, h6 {
+    -webkit-text-stroke: 0.2px currentColor;
+}
+
+.prose-etude strong {
+    color: var(--highlight);
+    font-weight: 900;
+    -webkit-text-stroke: 0.2px currentColor;
+    color: var(--foreground);
+}
+
+.prose-etude table {
+    /* border-style: var(--tw-border-style); */
+    /* border-width: 1px; */
+    border-radius: var(--radius);
+    width: 100%;
+    background: var(--muted);
+    border-radius: var(--radius);
+    outline: unset;
+    margin: 20px 0;
+    background: var(--background);
+    border: none !important;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02), -1px 2px 18px rgba(0, 0, 0, 0.06);
+}
+
+.prose-etude td, .prose-etude th {
+    padding: 13px 25px;
+    text-align: left;
+    border-bottom-style: var(--tw-border-style);
+    border-bottom-width: 1px;
+}
+
+.prose-etude tr:last-child td {
+    border: unset;
+}
+
+.prose-etude th {
+    font-weight: 600;
+    -webkit-text-stroke: 0.2px currentColor;
+}
+
+
+/* Etude – moderne Markdown-Listen */
+
+.prose-etude ul,
+.prose-etude ol {
+    margin: 8px 0 14px;
+    padding-left: 22px;
+}
+
+/* Einzelne Listeneinträge */
+.prose-etude li {
+    padding-left: 3px;
+    margin: 5px 0;
+    line-height: 1.65;
+    color: var(--muted-foreground);
+}
+
+/* Hauptmarker */
+.prose-etude li::marker {
+    color: #858585;
+    font-size: 1.0em;
+}
+
+/* Verschachtelte Listen */
+.prose-etude li > ul,
+.prose-etude li > ol {
+    margin: 5px 0 8px;
+    padding-left: 22px;
+}
+
+/* Runde Marker */
+.prose-etude ul {
+    list-style-type: disc;
+}
+
+.prose-etude ul ul {
+    list-style-type: disc;
+}
+
+.prose-etude ul ul ul {
+    list-style-type: disc;
+}
+
+/* Verschachtelte Marker etwas dezenter */
+.prose-etude ul ul li::marker {
+    color: #686868;
+}
+
+/* Absätze innerhalb der Listen */
+.prose-etude li > p {
+    margin: 0;
+}
+
+/* Checkboxen */
+.prose-etude input[type="checkbox"] {
+    accent-color: #ec75ad;
+    width: 15px;
+    height: 15px;
+    margin-right: 7px;
+    vertical-align: middle;
+}
+
+.prose-etude pre {
+    margin: 20px 0;
+    padding: 20px 25px;
+    background: var(--background);
+    border: none !important;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02), -1px 2px 18px rgba(0, 0, 0, 0.06);
+    font-size: 16px;
+}
+
+.prose-etude img {
+    background: var(--muted);
+    border-radius: var(--radius);
+    outline: unset;
+    display: block;
+    max-width: 100%;
+    width: auto;
+    max-height: 420px;
+    height: auto;
+    object-fit: contain;
+    margin: 20px auto;
+}
+
+.katex-display>.katex>.katex-html {
+    margin: 20px 0;
+}
+
+#root {
+    background-color: var(--background-app);
+}
+
+main {
+    background-color: var(--background);
+    scrollbar-color: #d2d2d6 transparent;
+    scrollbar-width: thin;
+    border-radius: 7px;
+    overflow-y: scroll;
+    height: calc(100vH - 6px);
+    margin: 3px;
+    padding: 16px clamp(34px, 7.4vw, 75px) 60px clamp(34px, 7.4vw, 70px);
+}
+
+aside.bg-sidebar {
+    color: var(--color-app);
+}
+
+aside.bg-sidebar button.text-foreground {
+    color: var(--color-main-app);
+}
+
+body {
+    overflow: hidden;
+}
+
+#notedrop-nav {
+    background-color: var(--background-app-sidebar);
+    border-radius: 12px;
+    display: flex;
+    align-items: baseline;
+    flex-direction: column;
+    gap: 16px;
+}
+
+aside.bg-sidebar button {
+    color: var(--color-app);
+    font-size: 14px;
+}
+
+aside.bg-sidebar button svg {
+    width: 19px;
+    height: 19px;
+    stroke-width: 1.6;
+}
+
+aside.bg-sidebar button.text-foreground, aside.bg-sidebar button.text-foreground svg {
+    color: var(--color-main-app);
+}
+
+
+/* NoteDrop Sidebar Dock */
+aside.bg-sidebar {
+  background: var(--background-app) !important;
+  border-radius: 16px !important;
+  gap: 4px !important;
+  min-width: 42px !important;
+  height: fit-content !important;
+  min-height: 0 !important;
+  margin: 13px !important;
+  overflow: visible !important;
+  padding: 0;
+  width: calc(var(--spacing) * 10);
+}
+
+/* Navigationsbuttons */
+aside.bg-sidebar > button[aria-label] {
+  min-width: 30px !important;
+  height: 40px !important;
+  min-height: 40px !important;
+  padding: 0 12px !important;
+  justify-content: left !important;
+  border-radius: 10px !important;
+}
+
+/* Hover */
+aside.bg-sidebar > button[aria-label]:hover, aside.bg-sidebar button.text-foreground {
+  background: #343434 !important;
+  color: white;
+}
+
+
+aside.bg-sidebar.w-52 {
+    width: calc(var(--spacing) * 52);
+}
+
+nav[aria-label="Breadcrumb"] {
+    display: inline-flex;
+    min-height: 30px;
+    align-items: center;
+    padding: 0 25px;
+    border-radius: 18px;
+    color: #303044;
+    background: var(--muted);
+    font-size: 11px;
+    letter-spacing: 0.3px;
+    font-weight: 700;
+    margin-bottom: 18px;
+}
+
+nav[aria-label=Breadcrumb] button {
+    min-height: unset;
+}
+
+h1.text-2xl {
+    font-size: 24px;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+    line-height: 1.4;
+}
+
+div[class~="bg-card/40"] {
+    background: var(--background);
+    border: none !important;
+    box-shadow: 0 1px 2px rgb(0 0 0 / 2%), -1px 2px 18px rgba(0, 0, 0, 0.06);
+}
+
+div[class~="bg-card/40"]:has(.prose-etude), div.bg-card\/40:has(.field-sizing-content), .field-sizing-content {
+  background: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  padding: 4px;
+}
+
+div[class~="bg-card/40"]:has(.prose-etude), div[class~="bg-card/40"]:has(.field-sizing-content), .field-sizing-content, #radix-_r_j_-content-preview .border, .min-h-40.rounded-md.border.px-3.py-2.text-sm:has(.prose-etude) {
+    background: transparent !important;
+    border: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    padding: 4px;
+}
+
+.prose-etude hr {
+    margin: 30px 0;
+}
+
+
+
+
+/* ====================================
+   NoteDrop TreeView
+   ==================================== */
+
+#notedrop-tree {
+    position: fixed;
+    z-index: 30;
+    background: #e9edff;
+    background: 
+color-mix(in oklab, var(--highlight) 25%, transparent);
+    color: var(--accent-foreground);
+    border: none;
+    border-radius: 10px;
+    box-shadow: none;
+    padding: 18px 10px 16px;
+    max-height: calc(100dvh - 130px);
+    overflow-y: auto;
+    overflow-x: hidden;
+    font-family: "Comfortaa", sans-serif;
+    scrollbar-width: thin;
+    scrollbar-color: 
+color-mix(in oklab, var(--highlight) 50%, transparent) transparent;
+}
+
+#notedrop-tree[hidden] {
+  display: none !important;
+}
+
+/* Header */
+
+.nd-tree-header {
+  padding: 0 10px 14px;
+}
+
+.nd-tree-caption {
+    font-size: 12px;
+    font-weight: 900;
+    letter-spacing: 0.05em;
+}
+
+/* Tree */
+
+.nd-tree-content,
+.nd-tree-group,
+.nd-tree-children {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 5px;
+}
+
+.nd-tree-row {
+  display: flex;
+  align-items: center;
+  min-height: 38px;
+  gap: 10px;
+	cursor: pointer;
+  padding-left: calc(var(--depth) * 10px);
+  border-radius: 6px;
+
+  transition: background 120ms ease;
+}
+
+.nd-tree-row:hover {
+  background: rgb(194 201 255);
+}
+
+/* Toggle arrows */
+
+.nd-tree-toggle,
+.nd-tree-spacer {
+  flex: 0 0 18px;
+  width: 18px;
+  height: 26px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.nd-tree-toggle {
+  border: none;
+  background: transparent;
+  color: #7889be;
+
+  cursor: pointer;
+  font-family: sans-serif;
+  font-size: 20px;
+  font-weight: 400;
+}
+
+.nd-tree-toggle:hover {
+  color: #4055ae;
+}
+
+/* Deck links */
+
+.nd-tree-link {
+  display: block;
+  flex: 1;
+  min-width: 0;
+
+  padding: 9px 10px;
+
+  background: transparent;
+  border: none;
+
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.5;
+
+  text-align: left;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+
+/* Active deck */
+
+.nd-tree-row.nd-active {
+    background: #d4ddff;
+    background-color: var(--primary);
+    /* background-color: var(--highlight); */
+    color: var(--color-white);
+}
+
+
+
+/* Focus accessibility */
+
+.nd-tree-link:focus-visible,
+.nd-tree-toggle:focus-visible {
+  outline: 2px solid #5264e9;
+  outline-offset: 1px;
+}
+
+/* Optional: hide below desktop size */
+
+@media (max-width: 1100px) {
+  #notedrop-tree {
+    display: none !important;
+  }
+}
+
+
+/* Content nur verschieben, wenn TreeView sichtbar */
+
+
+
+/* ====================================
+   NoteDrop Responsive Layout
+   ==================================== */
+
+:root {
+  --nd-tree-width: 256px;
+  --nd-tree-gap: 24px;
+  --nd-layout-padding: 24px;
+}
+
+/* Standard: volle Content-Breite */
+#root main > div:first-child {
+  width: 100% !important;
+  max-width: none !important;
+  margin-inline: auto !important;
+  transform: none !important;
+}
+
+/* Breite Fenster: Platz für TreeView */
+
+
+/* NoteDrop Layout */
+
+:root {
+  --nd-tree-width: 256px;
+  --nd-tree-gap: 24px;
+}
+
+/* Content standardmäßig ohne Max-Width */
+#root main > div:first-child {
+  width: 100% !important;
+  max-width: none !important;
+  margin-inline: auto !important;
+  transform: none !important;
+}
+
+/* Breites Fenster */
+@media (min-width: 1200px) {
+
+
+  
+/* NoteDrop Layout */
+
+#root main > div:first-child {
+  max-width: none !important;
+  width: 100% !important;
+  margin-inline: auto !important;
+  transform: none !important;
+}
+
+/* TreeView nur bei breitem Fenster */
+	
+	/* Kleine Fenster */
+	@media (max-width: 1199px) {
+	  #notedrop-tree {
+	    display: none !important;
+	  }
+	}
+
+}
+
+/* Schmales Fenster */
+@media (max-width: 1199px) {
+  #notedrop-tree {
+    display: none !important;
+  }
+}
+
+
+/* No toggle arrows */
+#notedrop-tree .nd-tree-toggle {
+  display: none !important;
+}
+
+/* Slightly smaller indentation */
+#notedrop-tree .nd-tree-row {
+  padding-left: calc(var(--depth) * 12px);
+}
+
+/* Root children start without extra spacer */
+#notedrop-tree .nd-tree-spacer {
+  display: none;
+}
+
+
+/* ====================================
+   NoteDrop TreeView
+   ==================================== */
+
+
+/* ==========================================
+   NoteDrop TreeView – Numbers & Connections
+   ========================================== */
+
+/* Nummern-Badges */
+#notedrop-tree .nd-tree-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    min-width: 24px;
+    height: 24px;
+    padding: 0 5px;
+    background: 
+color-mix(in oklab, var(--highlight) 12%, transparent);
+    /* background: var(--background-app); */
+    color: inherit;
+    /* color: var(--background); */
+    border-radius: 7px;
+    font-size: 10px;
+    font-weight: 900;
+    line-height: 1;
+    margin-left: 10px;
+}
+
+/* Aktives Badge */
+#notedrop-tree .nd-tree-row.is-active .nd-tree-badge {
+  background: rgb(0 0 0 / 8%);
+  color: inherit;
+}
+
+/* Verbindungsbereiche */
+#notedrop-tree .nd-tree-children {
+  position: relative;
+  margin-left: 20px;
+  padding-left: 8px;
+  border-left: none;
+}
+
+#notedrop-tree .nd-tree-children::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: -5px;
+  bottom: 17px;
+  width: 2px;
+  border-radius: 999px;
+  background: color-mix(
+    in oklab,
+    var(--highlight) 25%,
+    transparent
+  );
+  background: #c2c9ff;
+}
+
+/* Horizontale Verbindungslinien */
+#notedrop-tree .nd-tree-children > .nd-tree-group > .nd-tree-row {
+  position: relative;
+}
+
+#notedrop-tree .nd-tree-children > .nd-tree-group > .nd-tree-row::before {
+  content: "";
+  position: absolute;
+  left: -7px;
+  top: 50%;
+
+  width: 17px;
+  height: 2px;
+
+  background: color-mix(
+    in oklab,
+    var(--highlight) 25%,
+    transparent
+  );
+  background: #c2c9ff;
+  pointer-events: none;
+}
+
+#notedrop-tree .nd-tree-children > .nd-tree-group > .nd-tree-row.is-active::before {
+    width: 7px;
+}
+
+/* Aktive Zeile – bestehende Farbe behalten */
+#notedrop-tree .nd-tree-row.is-active {
+  background: var(--primary);
+  color: white;
+}
+
+span.nd-tree-label {
+    font-size: 13px;
+    font-weight: 600;
+    text-overflow: ellipsis;
+    overflow: hidden;
+    padding-right: 10px;
+}
+
+
+.prose-etude code {
+    font-family: var(--font-mono);
+    background: #d3d8ff;
+    background: var(--muted);
+    color: black;
+    border-radius: 6px;
+    padding: .4em 1.0em;
+    /* font-size: .88em; */
+    /* font-family: "Comfortaa", sans-serif !important; */
+    font-weight: 500;
+    -webkit-text-stroke: 0.1px currentColor;
+}
+
+.prose-etude>:first-child {
+    font-weight: 900;
+}
+
+
+/* ============================================
+   NoteDrop - Mastery Donut
+   ============================================ */
+
+#notedrop-tree .nd-progress {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 0 0 24px;
+}
+
+#notedrop-tree .nd-progress-chart {
+    width: 170px;
+    height: 170px;
+    position: relative;
+}
+
+#notedrop-tree .nd-progress-chart svg {
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+
+#notedrop-tree .nd-progress-track,
+#notedrop-tree .nd-progress-fill {
+    fill: none;
+    stroke-width: 4px;
+}
+
+#notedrop-tree .nd-progress-track {
+    stroke: 
+color-mix(in oklab, var(--highlight) 15%, transparent);
+}
+
+#notedrop-tree .nd-progress-fill {
+    stroke: white;
+    stroke-linecap: round;
+    transition: stroke-dasharray 500ms ease;
+}
+
+#notedrop-tree .nd-progress-center {
+    position: absolute;
+    inset: 0;
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+
+    gap: 5px;
+}
+
+#notedrop-tree .nd-progress-value {
+    font-size: 24px;
+    font-weight: 400;
+    line-height: 1;
+    color: #1c1c1c;
+}
+
+#notedrop-tree .nd-progress-label {
+    font-size: 11px;
+    font-weight: 500;
+    color: #a8a8b0;
+}
+
+#notedrop-tree .nd-progress-detail {
+    font-size: 12px;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+    color: 
+color-mix(in oklab, var(--highlight) 70%, transparent);
+}
+
+/* Custom Study + Practice */
+div.flex.gap-2:has(> button[data-slot=dropdown-menu-trigger]):has(> button[data-slot=button]) {
+    position: fixed;
+    bottom: 24px;
+    left: calc(50% + 55px);
+    left: calc(50% - 112px);
+    transform: translateX(-50%);
+    z-index: 100;
+    --tw-shadow: 0 10px 15px -3px var(--tw-shadow-color, #0000001a), 0 4px 6px -4px var(--tw-shadow-color, #0000001a);
+    box-shadow: var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);
+    background-color: white;
+    border-radius: calc(var(--radius) + 4px);
+    border-style: var(--tw-border-style);
+    border-width: 1px;
+    padding: 12px 12px 12px 16px;
+    min-width: calc(100vW - 564px);
+    /* min-width: calc(100vW - 241px); */
+    min-width: unset;
+    justify-content: right;
+}
+
+
+#nd-due-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: #404040;
+    color: white;
+    border-radius: 999px;
+    padding: 4px 10px;
+    margin-left: 4px;
+    font-size: 12px;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+
+/* Tabs oben mittig im Content */
+main {
+    position: relative;
+}
+
+main [role="tablist"][data-slot="tabs-list"] {
+    position: absolute;
+    top: 35px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: max-content;
+    z-index: 10;
+}
+
+/* Platz der ursprünglichen Tabs-Zeile entfernen */
+main [data-slot="tabs"] {
+    margin-top: 0;
+}
+
+
+/* ==========================================
+   NoteDrop - Right AppShell Sidebar TEST
+   ========================================== */
+
+@media (min-width: 1200px) {
+
+    /* Weiße Arbeitsfläche vor der rechten Sidebar beenden */
+    html[data-theme="notedrop"]:has(#notedrop-tree:not([hidden]))
+    #root main {
+        padding-right: 70px !important;
+        margin-right: 280px !important;
+    }
+
+    /* TreeView im schwarzen AppShell-Bereich */
+    #notedrop-tree {
+        position: fixed !important;
+        right: 14px !important;
+        top: 0px !important;
+
+        width: 256px !important;
+        max-height: calc(100dvh - 90px) !important;
+
+        background: transparent !important;
+        color: #e5e5e9 !important;
+
+        border: none !important;
+        border-radius: 0 !important;
+        box-shadow: none !important;
+    }
+
+    /* Mastered-Donut */
+    #notedrop-tree .nd-progress-value {
+        color: #ffffff !important;
+    }
+
+    #notedrop-tree .nd-progress-track {
+        stroke: #444444 !important;
+    }
+
+    /* Kapitel */
+    #notedrop-tree .nd-tree-row {
+        color: #d2d2dc;
+    }
+
+    #notedrop-tree .nd-tree-row:hover {
+        background: #343434 !important;
+    }
+
+    #notedrop-tree .nd-tree-row.is-active {
+        background: white !important;
+        color: var(--primary) !important;
+        -webkit-text-stroke: 0.1px currentColor;
+    }
+
+    #notedrop-tree .nd-tree-badge {
+        background: #36363d;
+        color: #e6e6eb;
+    }
+
+    /* Verbindungslinien */
+    #notedrop-tree .nd-tree-children::before,
+    #notedrop-tree .nd-tree-children
+    > .nd-tree-group > .nd-tree-row::before {
+        background: #484850 !important;
+    }
+}
+
+
+
+
+:root {
+    --nd-tree-width: 256px;
+    --nd-tree-gap: 14px;
+}
+
+@media (min-width: 1200px) {
+    #root > div.flex.min-h-dvh
+    > #notedrop-tree:not([hidden]) {
+        position: relative !important;
+        inset: auto !important;
+        transform: none !important;
+
+        flex: 0 0 var(--nd-tree-width) !important;
+        width: var(--nd-tree-width) !important;
+        min-width: var(--nd-tree-width) !important;
+
+        align-self: flex-start;
+        height: auto;
+        max-height: calc(100dvh - 110px) !important;
+
+        margin: 105px var(--nd-tree-gap) 0 0;
+
+        background: transparent !important;
+        border: 0 !important;
+        border-radius: 0 !important;
+        box-shadow: none !important;
+        color: #e5e5e9;
+    }
+
+    #root > div.flex.min-h-dvh > main {
+        flex: 1 1 0% !important;
+        min-width: 0 !important;
+        margin-right: 3px !important;
+        padding-right: clamp(34px, 7.4vw, 75px) !important;
+    }
+}
+
+@media (max-width: 1199px) {
+    #notedrop-tree {
+        display: none !important;
+    }
+}
+
+
+
+/* ============================================
+   NoteDrop - Progress Metrics
+   ============================================ */
+
+#notedrop-tree .nd-progress {
+    gap: 12px;
+    padding: 16px 0 39px 0;
+    background: rgb(52 52 52 / 63%) !important;
+    border-radius: 6px;
+    margin-bottom: 30px;
+}
+
+/* Drei gleich breite Spalten */
+
+#notedrop-tree .nd-progress-metrics {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+
+    width: 100%;
+    gap: 4px;
+
+    padding: 0 6px;
+    box-sizing: border-box;
+}
+
+/* Einzelne Metrik */
+
+#notedrop-tree .nd-metric {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+
+    gap: 7px;
+    min-width: 0;
+}
+
+/* Zahlen */
+
+#notedrop-tree .nd-metric-value {
+    color: #ffffff;
+
+    font-size: 18px;
+    font-weight: 700;
+    line-height: 1;
+
+    font-variant-numeric: tabular-nums;
+}
+
+/* Beschriftungen */
+
+#notedrop-tree .nd-metric-label {
+    color: #a8a8b0;
+
+    font-size: 11px;
+    font-weight: 500;
+    line-height: 1.2;
+}
+
+/* Alte Detailzeile entfernen */
+
+#notedrop-tree .nd-progress-detail {
+    display: none !important;
+}
+
+
+
+/* ============================================
+   NoteDrop - Root Header
+   ============================================ */
+
+/* Header stays outside the tree */
+
+#notedrop-tree .nd-tree-header {
+    padding: 0 !important;
+    margin: 0 0 4px !important;
+}
+
+/* Same appearance as chapter rows */
+
+#notedrop-tree .nd-tree-root {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    min-height: 38px;
+    padding: 0 10px !important;
+    gap: 10px;
+    background: transparent;
+    border: none;
+    border-radius: 7px;
+    color: #d2d2dc;
+    text-align: left;
+    cursor: pointer;
+    font-family: inherit;
+    transition: background 120ms ease, color 120ms ease;
+}
+
+/* Hover */
+
+#notedrop-tree .nd-tree-root:hover, 
+#notedrop-tree .nd-tree-row:hover{
+    background: rgba(52, 52, 52, 0.63);
+    color: #ffffff;
+}
+
+/* Active root deck */
+
+#notedrop-tree .nd-tree-root.is-active {
+    background: #ffffff !important;
+    color: #1c1c1c !important;
+}
+
+/* Icon badge */
+
+#notedrop-tree .nd-tree-root-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 24px;
+    width: 24px;
+    height: 24px;
+    min-width: 24px;
+    padding: 0;
+    margin-left: -1px;
+    background: #36363d;
+    color: #e6e6eb;
+    border-radius: 7px;
+}
+
+/* Icon */
+
+#notedrop-tree .nd-tree-root-icon svg {
+    display: block;
+    width: 16px;
+    height: 16px;
+}
+
+/* Active icon */
+
+#notedrop-tree .nd-tree-root.is-active
+.nd-tree-root-icon {
+    background: #ececec !important;
+    color: #1c1c1c !important;
+}
+
+/* Title */
+
+#notedrop-tree .nd-tree-root .nd-tree-label {
+    font-size: 13px;
+    font-weight: 700;
+    color: inherit;
+}
+
+/* Prevent tree-specific connection styling
+   from being applied to the header */
+
+#notedrop-tree .nd-tree-header::before,
+#notedrop-tree .nd-tree-root::before {
+    display: none !important;
+}
