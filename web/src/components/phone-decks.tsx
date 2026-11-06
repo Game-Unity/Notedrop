@@ -10,7 +10,8 @@ import { cn } from "@/lib/utils";
 import { useLongPress } from "@/lib/phone";
 import { childrenOf, clashes, leafOf, moveDeck, MoveDeckDialog, parentOf } from "@/components/move-deck";
 import { ActionSheet, Mark, PhoneIconButton, PhoneTitle, Tally, type SheetAction } from "@/components/phone-shell";
-import { NewDeckDialog, useImportPicker } from "@/pages/decks";
+import { useImportPicker } from "@/pages/decks";
+import { NewDeckDialog } from "@/components/new-deck-dialog";
 import { DeckMenu, useDeckActions } from "@/components/deck-actions";
 
 const enc = encodeURIComponent;

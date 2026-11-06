@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { api, type DeckNode } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { invalidateProgress } from "@/lib/notedrop-progress";
+import { canMoveDeckWithinScope, isDeckWithinScope } from "@/lib/deck-tree-scope";
 
 export const parentOf = (name: string) => name.split("::").slice(0, -1).join("::");
 export const leafOf = (name: string) => name.split("::").at(-1)!;
@@ -30,7 +31,12 @@ export function clashes(decks: DeckNode[], name: string, parent: string) {
  * Moves `name` (with its subdecks) under `parent` at `index` and shows a toast with Undo.
  * Returns the deck's new full name, or null when the move failed.
  */
-export async function moveDeck(decks: DeckNode[], name: string, parent: string, index: number | undefined, after: (newName: string) => void) {
+export async function moveDeck(decks: DeckNode[], name: string, parent: string, index: number | undefined, after: (newName: string) => void, scopeRoot?: string) {
+  if (scopeRoot && !canMoveDeckWithinScope(name, parent, scopeRoot)) {
+    toast.error(`Deck moves must stay inside ${leafOf(scopeRoot)}`);
+    after(name);
+    return null;
+  }
   const from = parentOf(name);
   const fromIndex = childrenOf(decks, from).indexOf(name);
   try {
@@ -62,11 +68,12 @@ export async function moveDeck(decks: DeckNode[], name: string, parent: string, 
 }
 
 /** Pick a new parent for a deck, or make a new one on the spot. */
-export function MoveDeckDialog({ deck, decks, onOpenChange, onMoved }: {
+export function MoveDeckDialog({ deck, decks, onOpenChange, onMoved, scopeRoot }: {
   deck: string | null;
   decks: DeckNode[];
   onOpenChange(o: boolean): void;
   onMoved(newName: string): void;
+  scopeRoot?: string;
 }) {
   const [pick, setPick] = useState("");
   const [fresh, setFresh] = useState("");
@@ -80,7 +87,7 @@ export function MoveDeckDialog({ deck, decks, onOpenChange, onMoved }: {
   if (!deck) return null;
 
   const current = parentOf(deck);
-  const options = decks.filter((d) => !inside(d.name, deck));
+  const options = decks.filter((d) => (!scopeRoot || isDeckWithinScope(d.name, scopeRoot)) && !inside(d.name, deck));
   const freshName = fresh.replace(/::/g, " ").trim();
   const dest = freshName ? (pick ? `${pick}::${freshName}` : freshName) : pick;
   const taken = !freshName && dest !== current && clashes(decks, deck, dest);
@@ -97,7 +104,7 @@ export function MoveDeckDialog({ deck, decks, onOpenChange, onMoved }: {
         return setBusy(false);
       }
     }
-    const moved = await moveDeck(decks, deck, dest, undefined, () => {});
+    const moved = await moveDeck(decks, deck, dest, undefined, () => {}, scopeRoot);
     setBusy(false);
     if (moved) {
       onOpenChange(false);
@@ -113,7 +120,7 @@ export function MoveDeckDialog({ deck, decks, onOpenChange, onMoved }: {
           <DialogDescription>Its subdecks, cards and history come along. Pick where it goes.</DialogDescription>
         </DialogHeader>
         <div className="flex max-h-72 flex-col gap-0.5 overflow-y-auto rounded-xl border bg-card/40 p-1.5" role="listbox" aria-label="Decks">
-          {[null, ...options].map((d) => {
+          {(scopeRoot ? options : [null, ...options]).map((d) => {
             const f = d?.name ?? "";
             const chosen = pick === f;
             const blocked = f !== current && clashes(decks, deck, f);

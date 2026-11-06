@@ -1,9 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { DeckNode } from "@/lib/api";
-import { childrenOf, leafOf } from "@/components/move-deck";
+import { FolderInput, GripVertical, Pencil, Plus } from "lucide-react";
+import { api, type DeckNode } from "@/lib/api";
+import { childrenOf, clashes, leafOf, moveDeck, MoveDeckDialog, parentOf } from "@/components/move-deck";
 import { navigate } from "@/lib/router";
-import { cachedDeckList, cachedProgress, loadDeckList, loadProgress, onDeckListUpdated, onProgressInvalidated, relatedDecks, type NoteDropProgress } from "@/lib/notedrop-progress";
+import { cachedDeckList, cachedProgress, invalidateProgress, loadDeckList, loadProgress, onDeckListUpdated, onProgressInvalidated, relatedDecks, type NoteDropProgress } from "@/lib/notedrop-progress";
 import { cn } from "@/lib/utils";
+import { DeckContextMenu, useDeckActions, type DeckMenuEntry } from "@/components/deck-actions";
+import { NewDeckDialog } from "@/components/new-deck-dialog";
+import { useDeckTreeDrag } from "@/components/deck-tree-drag";
 
 const RADIUS = 63;
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
@@ -21,6 +25,8 @@ export function NoteDropTree({ deckName, dataKey }: { deckName: string; dataKey:
   const rootName = deckName.split("::")[0];
   const root = deckByName.get(rootName);
   const activeDeck = deckByName.get(deckName);
+  const activeNameRef = useRef(deckName);
+  activeNameRef.current = deckName;
 
   const refreshDecks = useCallback(async (force = false) => {
     const requestId = ++deckRequestId.current;
@@ -54,6 +60,56 @@ export function NoteDropTree({ deckName, dataKey }: { deckName: string; dataKey:
       document.removeEventListener("visibilitychange", onVisibility);
     };
   }, [refreshDecks, dataKey, deckName]);
+
+  const pendingAction = useRef<string | null>(null);
+  const onActionChanged = useCallback(async () => {
+    const affected = pendingAction.current;
+    pendingAction.current = null;
+    await refreshDecks(true);
+    if (affected && (activeNameRef.current === affected || activeNameRef.current.startsWith(`${affected}::`))) {
+      navigate(`/deck?name=${encodeURIComponent(rootName)}`);
+    }
+  }, [refreshDecks, rootName]);
+  const deckActions = useDeckActions(onActionChanged);
+  const [creating, setCreating] = useState<string | null>(null);
+  const [moving, setMoving] = useState<string | null>(null);
+  const moveSource = useRef<string | null>(null);
+  const rowElements = useRef(new Map<string, HTMLDivElement>());
+
+  const remapActive = (from: string, to: string) => {
+    const active = activeNameRef.current;
+    if (active === from || active.startsWith(`${from}::`)) {
+      navigate(`/deck?name=${encodeURIComponent(`${to}${active.slice(from.length)}`)}`);
+    }
+  };
+  const place = async (name: string, parent: string, index: number | undefined, focus = false) => {
+    let previousName = name;
+    await moveDeck(decks ?? [], name, parent, index, (newName) => {
+      remapActive(previousName, newName);
+      previousName = newName;
+      void refreshDecks(true).then(() => focus && requestAnimationFrame(() => rowElements.current.get(newName)?.querySelector<HTMLElement>("[data-grip]")?.focus()));
+    }, rootName);
+  };
+
+  const treeRows = useMemo(() => {
+    if (!decks || !root) return [];
+    const rows: { name: string; depth: number }[] = [];
+    const visit = (parent: string, depth: number) => {
+      for (const name of childrenOf(decks, parent)) {
+        rows.push({ name, depth });
+        visit(name, depth + 1);
+      }
+    };
+    visit(root.name, 0);
+    return rows;
+  }, [decks, root]);
+  const treeDrag = useDeckTreeDrag({ decks: decks ?? [], rows: treeRows, scopeRoot: rootName, onMove: place });
+  const moveDialogDone = (newName: string) => {
+    const oldName = moveSource.current;
+    moveSource.current = null;
+    if (oldName) remapActive(oldName, newName);
+    void refreshDecks(true);
+  };
 
   const [progress, setProgress] = useState<{ deck: string; value: NoteDropProgress } | null>(null);
   const [progressError, setProgressError] = useState<{ deck: string; message: string } | null>(null);
@@ -120,7 +176,7 @@ export function NoteDropTree({ deckName, dataKey }: { deckName: string; dataKey:
   if (!deckName || (!activeDeck && !deckError && decks)) return null;
 
   return (
-    <nav id="notedrop-tree" className="nd-tree-shell" aria-label="Deck navigation">
+    <nav id="notedrop-tree" ref={treeDrag.setListRef} className="nd-tree-shell" aria-label="Deck navigation">
       {deckError ? (
         <p role="alert" className="nd-tree-error">Deck navigation could not be loaded: {deckError}</p>
       ) : !decks || !root || !activeDeck ? (
@@ -128,7 +184,7 @@ export function NoteDropTree({ deckName, dataKey }: { deckName: string; dataKey:
       ) : (
         <>
           <MasteryProgress progress={progress?.deck === deckName ? progress.value : null} error={progressError?.deck === deckName ? progressError.message : null} />
-          <div className="nd-tree-header">
+          <div className="nd-tree-header nd-tree-header-row">
             <button
               type="button"
               className={cn("nd-tree-row nd-tree-root", activeDeck.name === root.name && "is-active")}
@@ -146,40 +202,175 @@ export function NoteDropTree({ deckName, dataKey }: { deckName: string; dataKey:
               </span>
               <span className="nd-tree-label">Chapters {leafOf(root.name)}</span>
             </button>
+            <button
+              type="button"
+              className="nd-tree-create"
+              aria-label={`Create subdeck in ${leafOf(root.name)}`}
+              title={`Create subdeck in ${leafOf(root.name)}`}
+              onClick={(event) => {
+                event.stopPropagation();
+                setCreating(root.name);
+              }}
+            >
+              <Plus aria-hidden="true" />
+            </button>
           </div>
           <div className="nd-tree-content">
             {childrenOf(decks, root.name).map((name, index) => {
               const child = deckByName.get(name);
-              return child ? <TreeNode key={name} deck={child} decks={decks} activeName={activeDeck.name} path={[index + 1]} /> : null;
+              return child ? (
+                <TreeNode
+                  key={name}
+                  deck={child}
+                  decks={decks}
+                  activeName={activeDeck.name}
+                  path={[index + 1]}
+                  rootName={root.name}
+                  treeDrag={treeDrag}
+                  rowElements={rowElements}
+                  disabled={deckActions.busy}
+                  onCreate={setCreating}
+                  onMove={(target) => { moveSource.current = target; setMoving(target); }}
+                  onArchive={(target) => { pendingAction.current = target; void deckActions.archive(target, true); }}
+                  onDelete={(target) => { pendingAction.current = target; void deckActions.requestDelete(target); }}
+                />
+              ) : null;
             })}
           </div>
+          {treeDrag.drag?.drop && !treeDrag.isNoop(treeDrag.drag.name, treeDrag.drag.drop) && treeDrag.drag.drop.kind === "line" && (
+            <div
+              aria-hidden
+              className={cn("nd-tree-drop-line", treeDrag.blocked(treeDrag.drag.name, treeDrag.drag.drop) && "is-blocked")}
+              style={{ top: treeDrag.dropTop(treeDrag.drag.drop), left: `calc(1.75rem + ${treeDrag.drag.drop.depth * 1.75}rem)` }}
+            >
+              <span />
+            </div>
+          )}
         </>
       )}
+      {treeDrag.drag && (
+        <div aria-hidden className="nd-tree-drag-overlay" style={{ left: treeDrag.drag.x, top: treeDrag.drag.y }}>
+          <GripVertical aria-hidden="true" />
+          <span>{leafOf(treeDrag.drag.name)}</span>
+        </div>
+      )}
+      {treeDrag.drag?.drop && !treeDrag.isNoop(treeDrag.drag.name, treeDrag.drag.drop) && (
+        <div aria-live="polite" className={cn("nd-tree-drag-status", treeDrag.blocked(treeDrag.drag.name, treeDrag.drag.drop) && "is-blocked")}>
+          {treeDrag.blocked(treeDrag.drag.name, treeDrag.drag.drop)
+            ? `${leafOf(treeDrag.drag.drop.parent)} already has a ${leafOf(treeDrag.drag.name)}`
+            : treeDrag.drag.drop.parent === parentOf(treeDrag.drag.name)
+              ? "Reorder"
+              : <>Into <span>{leafOf(treeDrag.drag.drop.parent)}</span></>}
+        </div>
+      )}
+      <MoveDeckDialog
+        deck={moving}
+        decks={decks ?? []}
+        scopeRoot={rootName}
+        onOpenChange={(open) => {
+          if (!open) setMoving(null);
+        }}
+        onMoved={moveDialogDone}
+      />
+      <NewDeckDialog
+        open={creating !== null}
+        parent={creating ?? undefined}
+        onOpenChange={(open) => !open && setCreating(null)}
+        onDone={async (createdName) => {
+          setCreating(null);
+          if (parentOf(createdName) === rootName) {
+            const order = [...childrenOf(decks ?? [], rootName), createdName];
+            await api.reorderDecks(rootName, order);
+          }
+          invalidateProgress();
+          await refreshDecks(true);
+        }}
+      />
+      {deckActions.deleteDialog}
     </nav>
   );
 }
 
-function TreeNode({ deck, decks, activeName, path }: { deck: DeckNode; decks: DeckNode[]; activeName: string; path: number[] }) {
+function TreeNode({ deck, decks, activeName, path, rootName, treeDrag, rowElements, disabled, onCreate, onMove, onArchive, onDelete }: {
+  deck: DeckNode;
+  decks: DeckNode[];
+  activeName: string;
+  path: number[];
+  rootName: string;
+  treeDrag: ReturnType<typeof useDeckTreeDrag>;
+  rowElements: React.RefObject<Map<string, HTMLDivElement>>;
+  disabled: boolean;
+  onCreate(name: string): void;
+  onMove(name: string): void;
+  onArchive(name: string): void;
+  onDelete(name: string): void;
+}) {
   const active = deck.name === activeName;
   const children = childrenOf(decks, deck.name);
   const open = () => navigate(`/deck?name=${encodeURIComponent(deck.name)}`);
+  const dragged = treeDrag.isDragged(deck.name);
+  const target = treeDrag.isTarget(deck.name);
+  const targetBlocked = Boolean(target && treeDrag.drag?.drop && treeDrag.blocked(treeDrag.drag.name, treeDrag.drag.drop));
+  const menu = {
+    name: deck.name,
+    disabled,
+    onArchive: () => onArchive(deck.name),
+    onDelete: () => onDelete(deck.name),
+    extra: [
+      { icon: <Plus />, label: "New subdeck", onSelect: () => onCreate(deck.name) },
+      { icon: <FolderInput />, label: "Move to…", onSelect: () => onMove(deck.name) },
+      { icon: <Pencil />, label: "Rename", onSelect: () => navigate(`/deck?name=${encodeURIComponent(deck.name)}&rename=1&treeRoot=${encodeURIComponent(rootName)}`) },
+    ] satisfies DeckMenuEntry[],
+  };
   return (
     <div className="nd-tree-group">
-      <button
-        type="button"
-        className={cn("nd-tree-row", active && "is-active")}
-        title={deck.name}
-        aria-current={active ? "page" : undefined}
-        onClick={open}
-      >
-        <span className="nd-tree-badge" aria-hidden="true">{path.join(".")}</span>
-        <span className="nd-tree-label">{leafOf(deck.name)}</span>
-      </button>
+      <DeckContextMenu {...menu}>
+        <div
+          ref={(element) => {
+            if (element) rowElements.current.set(deck.name, element);
+            else rowElements.current.delete(deck.name);
+            treeDrag.setRowRef(deck.name, element);
+          }}
+          className={cn("nd-tree-row", active && "is-active", dragged && "is-dragged", target && !targetBlocked && "is-drop-target", targetBlocked && "is-drop-blocked")}
+        >
+          <button type="button" className="nd-tree-row-link" title={deck.name} aria-current={active ? "page" : undefined} onClick={open}>
+            <span className="nd-tree-badge" aria-hidden="true">{path.join(".")}</span>
+            <span className="nd-tree-label">{leafOf(deck.name)}</span>
+          </button>
+          <button
+            type="button"
+            data-grip
+            className={cn("nd-tree-grip", treeDrag.drag?.name === deck.name && "is-grabbing", (treeDrag.drag && treeDrag.drag.name !== deck.name) && "is-hidden")}
+            onPointerDown={(event) => treeDrag.startDrag(deck.name, event)}
+            onKeyDown={(event) => treeDrag.keyMove(deck.name, event)}
+            aria-label={`Move ${leafOf(deck.name)}: drag it onto a chapter or between rows. Arrow keys reorder, Alt+arrows change level.`}
+            title="Drag onto a chapter to put it inside, or between rows to place it"
+          >
+            <GripVertical aria-hidden="true" />
+          </button>
+        </div>
+      </DeckContextMenu>
       {children.length > 0 && (
         <div className="nd-tree-children">
           {children.map((name, index) => {
             const child = decks.find((item) => item.name === name);
-            return child ? <TreeNode key={name} deck={child} decks={decks} activeName={activeName} path={[...path, index + 1]} /> : null;
+            return child ? (
+              <TreeNode
+                key={name}
+                deck={child}
+                decks={decks}
+                activeName={activeName}
+                path={[...path, index + 1]}
+                rootName={rootName}
+                treeDrag={treeDrag}
+                rowElements={rowElements}
+                disabled={disabled}
+                onCreate={onCreate}
+                onMove={onMove}
+                onArchive={onArchive}
+                onDelete={onDelete}
+              />
+            ) : null;
           })}
         </div>
       )}

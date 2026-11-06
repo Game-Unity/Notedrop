@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Archive, ArchiveRestore, ArrowUpToLine, BarChart3, CalendarClock, Check, ChevronDown, Download, Eye, FastForward, FolderInput, Library, Pencil, Play, Plus, Search, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -11,7 +11,7 @@ import { Markdown } from "@/components/markdown";
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
 import { BulkBar, CheckBox, groupItems, ItemEditor, ItemRow, NewItemDialog, OrderSelect, SearchHints } from "@/components/item-editor";
 import { DeckOptions, formatDeadline, type DeckFull } from "@/components/deck-options";
-import { api, type DeckNode, type LearnerSummary, type Preset, type SearchRow, type TypeSummary } from "@/lib/api";
+import { api, type Counts, type DeckNode, type LearnerSummary, type Preset, type SearchRow, type TypeSummary } from "@/lib/api";
 import { etudeDownload } from "@/lib/local-url";
 import { navigate } from "@/lib/router";
 import { cn } from "@/lib/utils";
@@ -20,7 +20,7 @@ import { childrenOf, clashes, leafOf, moveDeck, MoveDeckDialog, parentOf } from 
 import { usePhone } from "@/lib/phone";
 import { PhoneTitle } from "@/components/phone-shell";
 import { useDeckActions } from "@/components/deck-actions";
-import { dueSearch, invalidateProgress, loadDeckList } from "@/lib/notedrop-progress";
+import { dueSearch, invalidateProgress, loadDeckList, onProgressInvalidated, relatedDecks } from "@/lib/notedrop-progress";
 
 const enc = encodeURIComponent;
 
@@ -30,6 +30,8 @@ export function DeckPage({ name }: { name: string }) {
   const [presets, setPresets] = useState<Preset[]>([]);
   const [tags, setTags] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [queueCounts, setQueueCounts] = useState<{ deck: string; counts: Counts } | null>(null);
+  const [queueError, setQueueError] = useState<{ deck: string; message: string } | null>(null);
   const [tab, setTab] = useState(() => new URLSearchParams(location.search).get("tab") ?? "overview");
   const phone = usePhone();
 
@@ -68,6 +70,47 @@ export function DeckPage({ name }: { name: string }) {
     window.addEventListener("focus", onFocus);
     return () => window.removeEventListener("focus", onFocus);
   }, [name]);
+
+  useEffect(() => {
+    if (!deck || deck.archived || deck.resolved.mode === "watch") {
+      setQueueCounts(null);
+      setQueueError(null);
+      return;
+    }
+
+    let live = true;
+    let requestId = 0;
+    const refresh = async () => {
+      const id = ++requestId;
+      try {
+        const counts = await api.counts({ deck: name });
+        if (![counts.new, counts.learning, counts.review].every((count) => Number.isInteger(count) && count >= 0)) {
+          throw new Error("Etude returned invalid study queue counts");
+        }
+        if (live && id === requestId) {
+          setQueueCounts({ deck: name, counts });
+          setQueueError(null);
+        }
+      } catch (e) {
+        if (live && id === requestId) setQueueError({ deck: name, message: (e as Error).message });
+      }
+    };
+    const onInvalidated = (changedDeck?: string) => {
+      if (!changedDeck || relatedDecks(name, changedDeck)) void refresh();
+    };
+    const unsubscribe = onProgressInvalidated(onInvalidated);
+    const onFocus = () => void refresh();
+    const onVisibility = () => document.visibilityState === "visible" && onFocus();
+    void refresh();
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      live = false;
+      unsubscribe();
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, [deck?.archived, deck?.resolved.mode, name]);
 
   const node = decks.find((d) => d.name === deck?.name);
   const children = useMemo(() => (deck ? decks.filter((d) => d.name.startsWith(deck.name + "::")) : []), [decks, deck?.name]);
@@ -154,7 +197,7 @@ export function DeckPage({ name }: { name: string }) {
           className="pb-3"
         />
         <div className="px-5">
-          <Header deck={deck} node={node} work={work} tags={tags} phone onRenamed={(to) => navigate(`/deck?name=${enc(to)}`, { replace: true })} />
+          <Header deck={deck} node={node} work={work} tags={tags} phone renameScope={new URLSearchParams(location.search).get("treeRoot") ?? undefined} onRenamed={(to) => navigate(`/deck?name=${enc(to)}`, { replace: true })} />
         </div>
         <Tabs value={tab} onValueChange={switchTab} className="mt-7">
           <div className="sticky top-[calc(3rem+env(safe-area-inset-top))] z-10 border-b bg-background/95 px-5 backdrop-blur">
@@ -179,14 +222,25 @@ export function DeckPage({ name }: { name: string }) {
   return (
     <Page className="nd-deck-page">
       <Tabs value={tab} onValueChange={switchTab} className="nd-deck-tabs-root">
-        <TabsList className="nd-deck-tabs w-full sm:w-auto">
-          <TabsTrigger value="overview" className="px-4">Overview</TabsTrigger>
-          <TabsTrigger value="cards" className="px-4">Cards</TabsTrigger>
-          <TabsTrigger value="options" className="px-4">Options</TabsTrigger>
-          <TabsTrigger value="manage" className="px-4">Manage</TabsTrigger>
-        </TabsList>
+        <Header deck={deck} node={node} work={work} tags={tags} breadcrumb={breadcrumb} renameScope={new URLSearchParams(location.search).get("treeRoot") ?? undefined} onRenamed={(to) => navigate(`/deck?name=${enc(to)}`, { replace: true })} />
 
-        <Header deck={deck} node={node} work={work} tags={tags} breadcrumb={breadcrumb} onRenamed={(to) => navigate(`/deck?name=${enc(to)}`, { replace: true })} />
+        {!deck.archived && (
+          <DeckStudyActionBar
+            deck={deck}
+            node={node}
+            work={work}
+            tags={tags}
+            queueCounts={queueCounts?.deck === name ? queueCounts.counts : null}
+            queueError={queueError?.deck === name ? queueError.message : null}
+          />
+        )}
+
+        <TabsList variant="line" className="nd-deck-tabs-nav mb-5 h-auto w-full justify-start gap-1.5 rounded-none border-b bg-transparent p-0 pb-3">
+          <TabsTrigger value="overview" className="nd-deck-tab">Overview</TabsTrigger>
+          <TabsTrigger value="cards" className="nd-deck-tab">Cards</TabsTrigger>
+          <TabsTrigger value="options" className="nd-deck-tab">Options</TabsTrigger>
+          <TabsTrigger value="manage" className="nd-deck-tab">Manage</TabsTrigger>
+        </TabsList>
 
         <TabsContent value="overview" className="mt-6 flex flex-col gap-8">
           {overviewText}
@@ -441,34 +495,18 @@ function DeckCards({ deck, hasChildren, active, onChanged }: { deck: string; has
   );
 }
 
-function Header({ deck, node, work, tags, breadcrumb, onRenamed, phone }: { deck: DeckFull; node?: DeckNode; work: number; tags: string[]; breadcrumb?: React.ReactNode; onRenamed(to: string): void; phone?: boolean }) {
-  const actionsRef = useRef<HTMLDivElement>(null);
-  useLayoutEffect(() => {
-    const actions = actionsRef.current;
-    const page = actions?.closest("main")?.querySelector(".nd-deck-page");
-    if (!actions || !(page instanceof HTMLElement)) return;
-
-    const updateCenter = () => {
-      const { left, width } = page.getBoundingClientRect();
-      actions.style.setProperty("--nd-deck-actions-center", `${left + width / 2}px`);
-    };
-
-    updateCenter();
-    const observer = new ResizeObserver(updateCenter);
-    observer.observe(page);
-    window.addEventListener("resize", updateCenter);
-    return () => {
-      observer.disconnect();
-      window.removeEventListener("resize", updateCenter);
-    };
-  }, []);
-
+function Header({ deck, node, work, tags, breadcrumb, onRenamed, phone, renameScope }: { deck: DeckFull; node?: DeckNode; work: number; tags: string[]; breadcrumb?: React.ReactNode; onRenamed(to: string): void; phone?: boolean; renameScope?: string }) {
   // The deck list's ⋯ → Rename lands here with ?rename=1.
-  const [editing, setEditing] = useState(() => new URLSearchParams(location.search).has("rename"));
+  const renameRequested = new URLSearchParams(location.search).has("rename");
+  const [editing, setEditing] = useState(renameRequested);
   useEffect(() => {
     const p = new URLSearchParams(location.search);
-    if (p.has("rename")) { p.delete("rename"); history.replaceState(null, "", `/deck?${p}`); }
-  }, []);
+    if (p.has("rename")) {
+      setEditing(true);
+      p.delete("rename");
+      history.replaceState(null, "", `/deck?${p}`);
+    }
+  }, [deck.name, renameRequested]);
   const leaf = deck.name.split("::").at(-1)!;
   const parent = deck.name.split("::").slice(0, -1).join("::");
   const [text, setText] = useState(leaf);
@@ -477,8 +515,12 @@ function Header({ deck, node, work, tags, breadcrumb, onRenamed, phone }: { deck
   const rename = async () => {
     const t = text.trim();
     if (!t || t === leaf) return setEditing(false);
+    if (renameScope && (deck.name === renameScope || !deck.name.startsWith(`${renameScope}::`) || t.includes("::"))) {
+      toast.error("Rename this chapter with a name inside its current deck");
+      return;
+    }
     // Typing "::" moves the deck; a bare name stays under the same parent.
-    const to = t.includes("::") ? t : parent ? `${parent}::${t}` : t;
+    const to = renameScope ? (parent ? `${parent}::${t}` : t) : t.includes("::") ? t : parent ? `${parent}::${t}` : t;
     try {
       const d = await api.updateDeck(deck.name, { name: to });
       invalidateProgress(deck.name);
@@ -526,26 +568,9 @@ function Header({ deck, node, work, tags, breadcrumb, onRenamed, phone }: { deck
       {phone && !editing && (
         <PhoneDeckRename onRename={() => setEditing(true)} />
       )}
-      <div ref={actionsRef} className="nd-deck-actions flex gap-2">
-        {deck.archived ? <span className="inline-flex items-center gap-2 py-2 text-sm text-muted-foreground"><Archive className="size-4" />Archived</span> : deck.resolved.mode === "watch" ? (
-          <Button size="lg" className={cn("flex-1 gap-2 px-6 sm:flex-none", phone && "h-[3.25rem] rounded-full text-[16px] pointer-coarse:h-[3.25rem]")} disabled={!node?.cards} title="A tour: each card can show an example answer, and nothing is scheduled" onClick={() => navigate(`/watch?deck=${enc(deck.name)}`)}>
-            <Eye className="size-4" />Watch
-          </Button>
-        ) : (
-          <>
-            <CustomStudy deck={deck.name} tags={tags} disabled={!node?.cards} phone={phone} adaptive={deck.resolved.adaptiveChallenge || deck.resolved.adaptivePace} />
-            {work || !node?.cards ? (
-              <Button size="lg" className={cn("flex-1 gap-2 px-6 sm:flex-none", phone && "h-[3.25rem] rounded-full text-[16px] pointer-coarse:h-[3.25rem]")} disabled={!work} onClick={() => navigate(`/study?deck=${enc(deck.name)}`)}>
-                <Play className="size-4" />Practice<DueBadge deck={deck.name} />
-              </Button>
-            ) : (
-              <Button size="lg" className={cn("flex-1 gap-2 px-6 sm:flex-none", phone && "h-[3.25rem] rounded-full text-[16px] pointer-coarse:h-[3.25rem]")} title="Nothing due right now: review early. FSRS counts an early review for less." onClick={() => navigate(`/study?deck=${enc(deck.name)}&ahead=1`)}>
-                <FastForward className="size-4" />Practice ahead<DueBadge deck={deck.name} />
-              </Button>
-            )}
-          </>
-        )}
-      </div>
+      {!phone && deck.archived && <span className="inline-flex items-center gap-2 py-2 text-sm text-muted-foreground"><Archive className="size-4" />Archived</span>}
+      {phone && !deck.archived && <DeckStudyActions deck={deck} node={node} work={work} tags={tags} phone />}
+      {phone && deck.archived && <span className="inline-flex items-center gap-2 py-2 text-sm text-muted-foreground"><Archive className="size-4" />Archived</span>}
 
       {!deck.archived && deadline && <Countdown deadline={deadline} margin={deck.resolved.deadlineMargin} />}
       {!deck.archived && deck.resolved.mode !== "watch" && (deck.resolved.adaptiveChallenge || deck.resolved.adaptivePace) && <AdaptiveSummary deck={deck.name} hasNew={(node?.new ?? 0) > 0} />}
@@ -553,6 +578,59 @@ function Header({ deck, node, work, tags, breadcrumb, onRenamed, phone }: { deck
         <p className="mt-4 text-sm text-muted-foreground">{node.nextDue ? `Nothing due now. Next card ${relativeShort(node.nextDue)}.` : "Nothing due now."} Custom study works any time.</p>
       )}
     </header>
+  );
+}
+
+function DeckStudyActionBar({ deck, node, work, tags, queueCounts, queueError }: {
+  deck: DeckFull;
+  node?: DeckNode;
+  work: number;
+  tags: string[];
+  queueCounts: Counts | null;
+  queueError: string | null;
+}) {
+  const queueWork = queueCounts ? queueCounts.new + queueCounts.learning + queueCounts.review : work;
+  const description = deck.resolved.mode === "watch"
+    ? "Take a tour of this deck."
+    : queueError
+      ? "Study queue unavailable."
+      : !queueCounts
+        ? "Loading today's study queue…"
+        : queueWork === 0
+          ? "You're all caught up for today!"
+          : `You have ${queueWork} card${queueWork === 1 ? "" : "s"} to study today.`;
+  return (
+    <div className="nd-deck-study-bar">
+      <div className="nd-deck-study-copy text-sm text-muted-foreground" role={queueError ? "status" : undefined} title={queueError ?? undefined}>
+        <span>{description}</span>
+      </div>
+      <DeckStudyActions deck={deck} node={node} work={queueCounts ? queueWork : work} tags={tags} />
+    </div>
+  );
+}
+
+function DeckStudyActions({ deck, node, work, tags, phone }: { deck: DeckFull; node?: DeckNode; work: number; tags: string[]; phone?: boolean }) {
+  return (
+    <div className="nd-deck-actions flex gap-2">
+      {deck.resolved.mode === "watch" ? (
+        <Button size="lg" className={cn("flex-1 gap-2 px-6 sm:flex-none", phone && "h-[3.25rem] rounded-full text-[16px] pointer-coarse:h-[3.25rem]")} disabled={!node?.cards} title="A tour: each card can show an example answer, and nothing is scheduled" onClick={() => navigate(`/watch?deck=${enc(deck.name)}`)}>
+          <Eye className="size-4" />Watch
+        </Button>
+      ) : (
+        <>
+          <CustomStudy deck={deck.name} tags={tags} disabled={!node?.cards} phone={phone} adaptive={deck.resolved.adaptiveChallenge || deck.resolved.adaptivePace} />
+          {work || !node?.cards ? (
+            <Button size="lg" className={cn("flex-1 gap-2 px-6 sm:flex-none", phone && "h-[3.25rem] rounded-full text-[16px] pointer-coarse:h-[3.25rem]")} disabled={!work} onClick={() => navigate(`/study?deck=${enc(deck.name)}`)}>
+              <Play className="size-4" />Practice<DueBadge deck={deck.name} />
+            </Button>
+          ) : (
+            <Button size="lg" className={cn("flex-1 gap-2 px-6 sm:flex-none", phone && "h-[3.25rem] rounded-full text-[16px] pointer-coarse:h-[3.25rem]")} title="Nothing due right now: review early. FSRS counts an early review for less." onClick={() => navigate(`/study?deck=${enc(deck.name)}&ahead=1`)}>
+              <FastForward className="size-4" />Practice ahead<DueBadge deck={deck.name} />
+            </Button>
+          )}
+        </>
+      )}
+    </div>
   );
 }
 
