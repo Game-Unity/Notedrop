@@ -48,7 +48,8 @@
 }
 
 html:root {
-    --nd-side-panel-width: 250px;
+    --nd-side-panel-width: 270px;
+    --nd-side-panel-editor-width: 450px;
     --background: white;
     --background-app: #1c1c1c;
     --background-app-sidebar: #242424;
@@ -108,6 +109,7 @@ input,
 textarea,
 select {
   font-family: "Comfortaa", sans-serif !important;
+
 }
 
 
@@ -297,6 +299,7 @@ body {
 aside.bg-sidebar button {
     color: var(--color-app);
     font-size: 14px;
+    height: 42px;
 }
 
 aside.bg-sidebar button svg {
@@ -429,7 +432,7 @@ color-mix(in oklab, var(--highlight) 50%, transparent) transparent;
 
 #notedrop-tree .nd-tree-header {
   padding: 0 !important;
-  margin: 0 0 4px !important;
+  margin: 0 0 9px !important;
 }
 
 #notedrop-tree .nd-tree-header-row {
@@ -446,9 +449,9 @@ color-mix(in oklab, var(--highlight) 50%, transparent) transparent;
 
 .nd-tree-create {
   display: inline-flex;
-  flex: 0 0 37px;
-  width: 37px;
-  height: 30px;
+  flex: 0 0 40px;
+  width: 40px;
+  height: 38px;
   align-items: center;
   justify-content: center;
   border: 0;
@@ -484,7 +487,7 @@ color-mix(in oklab, var(--highlight) 50%, transparent) transparent;
   display: flex;
   flex-direction: column;
   min-width: 0;
-  gap: 5px;
+  gap: 9px;
 }
 
 .nd-tree-row {
@@ -664,8 +667,8 @@ color-mix(in oklab, var(--highlight) 50%, transparent) transparent;
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
-    min-width: 24px;
-    height: 24px;
+    min-width: 25px;
+    height: 25px;
     padding: 0 5px;
     background: 
 color-mix(in oklab, var(--highlight) 12%, transparent);
@@ -685,7 +688,7 @@ color-mix(in oklab, var(--highlight) 12%, transparent);
 /* Verbindungsbereiche */
 #notedrop-tree .nd-tree-children {
   position: relative;
-  margin-left: 20px;
+  margin-left: 22.5px;
   padding-left: 8px;
   border-left: none;
 }
@@ -694,14 +697,26 @@ color-mix(in oklab, var(--highlight) 12%, transparent);
   content: "";
   position: absolute;
   left: 0;
-  top: -12px;
-  bottom: 17px;
-  width: 2px;
+  top: -16px;
+  bottom: 26px;
+  width: 1px;
   border-radius: 999px;
   background: #c2c9ff;
 }
 
-/* Horizontale Verbindungslinien */
+/* Ein einziges Kind: die Linie endet am Kurvenanfang (Zeilenmitte - 10px Radius). */
+#notedrop-tree .nd-tree-children:has(> .nd-tree-group:only-child)::before {
+  bottom: auto;
+  height: 25px;
+}
+
+/* Die Linie endet in der Zeilenmitte des letzten Kindes, auch wenn dieses selbst Kinder hat. */
+#notedrop-tree .nd-tree-children:has(> .nd-tree-group:last-child > .nd-tree-children)::before {
+  bottom: auto;
+  height: calc(100% - 47px - 13px);
+}
+
+/* Horizontale Verbindungslinien: von oben mit 10px-Radius in die Zeile */
 #notedrop-tree .nd-tree-children > .nd-tree-group > .nd-tree-row {
   position: relative;
 }
@@ -709,18 +724,21 @@ color-mix(in oklab, var(--highlight) 12%, transparent);
 #notedrop-tree .nd-tree-children > .nd-tree-group > .nd-tree-row::before {
   content: "";
   position: absolute;
-  left: -7px;
-  top: 50%;
+  left: -8px;
+  top: calc(50% - 10px);
 
-  width: 17px;
-  height: 2px;
+  width: 18px;
+  height: 10px;
 
-  background: #c2c9ff;
+  background: transparent;
+  border-left: 1px solid #c2c9ff;
+  border-bottom: 1px solid #c2c9ff;
+  border-bottom-left-radius: 10px;
   pointer-events: none;
 }
 
 #notedrop-tree .nd-tree-children > .nd-tree-group > .nd-tree-row.is-active::before {
-    width: 7px;
+    width: 8px;
 }
 
 /* Aktive Zeile – bestehende Farbe behalten */
@@ -731,11 +749,12 @@ color-mix(in oklab, var(--highlight) 12%, transparent);
 }
 
 #notedrop-tree .nd-tree-label {
-    font-size: 13px;
-    font-weight: 600;
+    font-size: 14px;
+    font-weight: 400;
     text-overflow: ellipsis;
     overflow: hidden;
     white-space: nowrap;
+    scrollbar-gutter: unset !important;
 }
 
 
@@ -763,7 +782,7 @@ color-mix(in oklab, var(--highlight) 12%, transparent);
     flex-direction: column;
     align-items: center;
     gap: 12px;
-    padding: 16px 0 39px;
+    padding: 5px 0 32px;
     background: rgb(52 52 52 / 63%) !important;
     border-radius: 6px;
     margin-bottom: 30px;
@@ -817,7 +836,7 @@ color-mix(in oklab, var(--highlight) 15%, transparent);
 }
 
 #notedrop-tree .nd-progress-label {
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 500;
     color: #a8a8b0;
 }
@@ -901,7 +920,7 @@ color-mix(in oklab, var(--highlight) 15%, transparent);
     gap: 6px;
     width: 100%;
     height: auto;
-    margin-bottom: 20px;
+    margin-bottom: 12px;
     padding: 0 0 12px;
     border-bottom: 1px solid var(--border);
     border-radius: 0;
@@ -952,68 +971,143 @@ color-mix(in oklab, var(--highlight) 15%, transparent);
     display: none;
 }
 
-@media (min-width: 1200px) {
-    .nd-side-panel:not([hidden]) {
-        display: block;
-        position: relative;
-        flex: 0 0 var(--nd-side-panel-width);
-        width: var(--nd-side-panel-width);
-        min-width: var(--nd-side-panel-width);
-        align-self: flex-start;
-        margin: 21px;
-        color: #e5e5e9;
+.nd-side-panel:not([hidden]) {
+    position: relative;
+    --nd-panel-width: var(--nd-side-panel-width);
+    display: block;
+    flex: 0 0 var(--nd-panel-width);
+    width: var(--nd-panel-width);
+    min-width: var(--nd-panel-width);
+    align-self: flex-start;
+    margin: 19px;
+    padding: 0;
+    color: #e5e5e9;
+    transition: flex-basis 240ms ease, width 240ms ease, min-width 240ms ease;
+}
+
+.nd-side-panel[data-mode="editor"] {
+    --nd-panel-width: var(--nd-side-panel-editor-width);
+}
+
+.nd-side-panel[data-mode="editor"]:not([hidden]) {
+    height: calc(100dvh - 42px);
+}
+
+.nd-item-editor-panel,
+.nd-card-create-panel {
+    height: 100%;
+}
+
+.nd-item-editor-scroll,
+.nd-card-create-form {
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in oklab, var(--color-main-app) 40%, transparent) transparent;
+}
+
+.nd-side-panel:not([hidden]) #notedrop-tree {
+    display: flex;
+    height: calc(100dvh - 42px);
+    max-height: calc(100dvh - 42px);
+    flex-direction: column;
+    overflow: hidden;
+    width: 100%;
+    padding-right: 0 !important;
+    scrollbar-gutter: auto !important;
+    background: transparent;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+}
+
+.nd-side-panel:not([hidden]) #notedrop-tree > .nd-progress,
+.nd-side-panel:not([hidden]) #notedrop-tree > .nd-tree-header {
+    flex: 0 0 auto;
+}
+
+.nd-side-panel:not([hidden]) #notedrop-tree > .nd-tree-content {
+    min-height: 0;
+    flex: 1 1 auto;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in oklab, var(--color-main-app) 10%, transparent) transparent;
+    scrollbar-gutter: stable !important;
+}
+
+.nd-app-shell--deck > .nd-app-content {
+    flex: 1 1 550px !important;
+    min-width: 550px !important;
+    margin-right: 3px;
+}
+
+@media (max-width: 1199px) {
+    .nd-app-shell > aside.nd-primary-sidebar {
+        flex: 0 0 56px !important;
+        width: 56px !important;
+        min-width: 56px !important;
+        height: 100dvh !important;
+        margin: 8px 0 8px 8px !important;
+        padding: 8px 4px !important;
+    }
+
+    .nd-primary-sidebar-header {
+        width: 100%;
+        justify-content: center !important;
+        padding-left: 0 !important;
+    }
+
+    .nd-primary-sidebar-brand,
+    .nd-primary-sidebar-label {
+        display: none !important;
+    }
+
+    .nd-primary-sidebar-nav {
+        width: 100%;
+    }
+
+    .nd-primary-sidebar-nav button {
+        justify-content: center !important;
+        padding-inline: 0 !important;
     }
 
     .nd-side-panel:not([hidden]) #notedrop-tree {
-        width: 100%;
-        max-height: calc(100dvh - 110px);
-        background: transparent;
-        border: 0;
-        border-radius: 0;
-        box-shadow: none;
+        height: calc(100dvh - 16px);
+        max-height: calc(100dvh - 16px);
     }
 
-    .nd-app-shell--deck > .nd-app-content {
-        flex: 1 1 0% !important;
-        min-width: 0 !important;
-        margin-right: 3px;
+    .nd-app-shell--deck[data-panel-mode="editor"] > .nd-app-content {
+        display: none;
     }
 
-    #notedrop-tree .nd-progress-value {
-        color: #ffffff !important;
+    .nd-app-shell--deck[data-panel-mode="editor"] > .nd-side-panel:not([hidden]) {
+        flex: 1 1 0;
+        width: auto;
+        min-width: 0;
+    }
+}
+
+@media (min-width: 1200px) and (max-width: 1249px) {
+    .nd-app-shell--deck[data-sidebar-collapsed="true"][data-panel-mode="editor"] > .nd-app-content {
+        display: none;
     }
 
-    #notedrop-tree .nd-progress-track {
-        stroke: #444444 !important;
+    .nd-app-shell--deck[data-sidebar-collapsed="true"][data-panel-mode="editor"] > .nd-side-panel:not([hidden]) {
+        flex: 1 1 0;
+        width: auto;
+        min-width: 0;
+    }
+}
+
+@media (min-width: 1200px) and (max-width: 1399px) {
+    .nd-app-shell--deck[data-sidebar-collapsed="false"][data-panel-mode="editor"] > .nd-app-content {
+        display: none;
     }
 
-    #notedrop-tree .nd-tree-row {
-        color: #d2d2dc;
-    }
-
-    #notedrop-tree .nd-tree-row:hover {
-        background: #343434 !important;
-    }
-
-    #notedrop-tree .nd-tree-row.is-active {
-        background: white !important;
-        color: var(--primary) !important;
-        -webkit-text-stroke: 0.1px currentColor;
-    }
-
-    #notedrop-tree .nd-tree-badge {
-        background: #36363d;
-        color: #e6e6eb;
-    }
-
-    #notedrop-tree .nd-tree-children::before,
-    #notedrop-tree .nd-tree-children > .nd-tree-group > .nd-tree-row::before {
-        background: #484850 !important;
-    }
-
-    #notedrop-tree .nd-tree-children:has(> .nd-tree-group:only-child)::before {
-        bottom: auto;
-        height: 33px;
+    .nd-app-shell--deck[data-sidebar-collapsed="false"][data-panel-mode="editor"] > .nd-side-panel:not([hidden]) {
+        flex: 1 1 0;
+        width: auto;
+        min-width: 0;
     }
 }
 
@@ -1044,6 +1138,41 @@ color-mix(in oklab, var(--highlight) 15%, transparent);
     height: 190px;
     border-radius: 6px;
     background: rgb(52 52 52 / 45%);
+}
+
+.nd-side-panel #notedrop-tree .nd-progress-value {
+    color: #fff !important;
+}
+
+.nd-side-panel #notedrop-tree .nd-progress-track {
+    stroke: #444 !important;
+}
+
+.nd-side-panel #notedrop-tree .nd-tree-row {
+    color: white;
+}
+
+.nd-side-panel #notedrop-tree .nd-tree-row:hover {
+    background: #343434 !important;
+}
+
+.nd-side-panel #notedrop-tree .nd-tree-row.is-active {
+    background: #fff !important;
+    color: var(--primary) !important;
+    -webkit-text-stroke: 0.1px currentColor;
+}
+
+.nd-side-panel #notedrop-tree .nd-tree-badge {
+    background: #36363d;
+    color: #e6e6eb;
+}
+
+.nd-side-panel #notedrop-tree .nd-tree-children::before {
+    background: #484850 !important;
+}
+
+.nd-side-panel #notedrop-tree .nd-tree-children > .nd-tree-group > .nd-tree-row::before {
+    border-color: #484850 !important;
 }
 
 .nd-due-badge {
@@ -1097,7 +1226,7 @@ color-mix(in oklab, var(--highlight) 15%, transparent);
     color: #ffffff;
 
     font-size: 18px;
-    font-weight: 700;
+    font-weight: 500;
     line-height: 1;
 
     font-variant-numeric: tabular-nums;
@@ -1108,7 +1237,7 @@ color-mix(in oklab, var(--highlight) 15%, transparent);
 #notedrop-tree .nd-metric-label {
     color: #a8a8b0;
 
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 500;
     line-height: 1.2;
 }
@@ -1164,9 +1293,6 @@ color-mix(in oklab, var(--highlight) 15%, transparent);
     align-items: center;
     justify-content: center;
     flex: 0 0 24px;
-    width: 24px;
-    height: 24px;
-    min-width: 24px;
     padding: 0;
     margin-left: -1px;
     background: #36363d;
@@ -1193,8 +1319,6 @@ color-mix(in oklab, var(--highlight) 15%, transparent);
 /* Title */
 
 #notedrop-tree .nd-tree-root .nd-tree-label {
-    font-size: 13px;
-    font-weight: 700;
     color: inherit;
 }
 
@@ -1216,6 +1340,9 @@ color-mix(in oklab, var(--highlight) 15%, transparent);
 
 .nd-deck-card-title {
     font-weight: var(--font-weight-medium);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 
@@ -1223,8 +1350,366 @@ color-mix(in oklab, var(--highlight) 15%, transparent);
     font-size: 13px;
 }
 
+.nd-deck-card-thumb {
+    /* Quadratische Bild-Preview in der Kartenliste */
+}
+
 .nd-deck-card-tile {
     min-height: 74px;
     padding-top: 23px;
     padding-bottom: 23px;
+    width: 100%;
+    overflow: hidden;
+}
+
+.nd-side-panel .nd-tree-content,
+.nd-side-panel .nd-item-editor-scroll,
+.nd-side-panel .nd-card-create-form {
+    scrollbar-color: color-mix(in oklab, var(--color-main-app) 10%, transparent) transparent !important;
+}
+
+.nd-side-panel * {
+    scrollbar-color: color-mix(in oklab, var(--color-main-app) 10%, transparent) transparent !important;
+}
+
+.nd-card-create-form {
+    width: calc(100% + 20px);
+    padding-right: 13px;
+}
+
+.nd-side-panel * {
+    scrollbar-gutter: stable !important;
+}
+
+.nd-tree-content, .nd-card-create-form {
+    width: calc(100% + 17px);
+    padding-right: 8px;
+}
+
+.nd-side-panel:not([hidden]) #notedrop-tree {
+    width: calc(100% + 19px);
+    padding-right: 19px !important;
+}
+
+.nd-side-panel .text-muted-foreground {
+    color: #7b7b81;
+}
+
+p.-mt-1.text-xs.text-muted-foreground {}
+
+.nd-side-panel .e-editor, .nd-side-panel .focus-within\:border-ring:has(input), .nd-side-panel .dark\:bg-input\/30:is(.dark *) {
+    border: 1px solid var(--input);
+    background: unset;
+}
+
+.nd-item-editor-scroll,
+.nd-card-create-form {
+    width: calc(100% + 20px);
+    padding-right: 8px;
+    padding-left: 3px;
+    margin-left: -3px;
+}
+
+.nd-side-panel button.text-primary-foreground {
+    background: var(--primary-foreground);
+    color: var(--primary);
+    font-weight: 600;
+}
+
+.nd-side-panel .nd-card-create-panel,
+.nd-side-panel .nd-item-editor-panel {
+    --background: var(--background-app);
+    --foreground: var(--color-main-app);
+    --card: var(--background-app-sidebar);
+    --card-foreground: var(--color-main-app);
+    --popover: var(--background-app-sidebar);
+    --popover-foreground: var(--color-main-app);
+    --secondary: color-mix(in srgb, var(--background-app-sidebar) 85%, var(--color-main-app));
+    --secondary-foreground: var(--color-main-app);
+    --muted: color-mix(in srgb, var(--background-app-sidebar) 90%, var(--color-main-app));
+    --muted-foreground: var(--color-app);
+    --accent: color-mix(in srgb, var(--background-app-sidebar) 82%, var(--color-main-app));
+    --accent-foreground: var(--color-main-app);
+    --border: color-mix(in srgb, var(--color-main-app) 12%, transparent);
+    --input: color-mix(in srgb, var(--color-main-app) 15%, transparent);
+    --ring: var(--color-app);
+    --highlight: var(--color-main-app);
+    color: var(--foreground);
+    color-scheme: dark;
+}
+
+.nd-side-panel .nd-card-create-title {
+    border-color: var(--border);
+}
+
+.nd-side-panel .nd-card-create-panel .text-muted-foreground,
+.nd-side-panel .nd-item-editor-panel .text-muted-foreground {
+    color: var(--muted-foreground);
+    font-size: 13px;
+    font-weight: 400;
+}
+
+.nd-side-panel .nd-item-editor-tabs-nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+    width: 100%;
+    height: auto;
+    padding: 0 0 12px;
+    border-bottom: 1px solid var(--border);
+    border-radius: 0;
+    background: transparent;
+}
+
+.nd-side-panel .nd-item-editor-tabs-list {
+    display: flex;
+    flex: none;
+    gap: 6px;
+    width: auto;
+    height: auto;
+    padding: 0;
+    background: transparent;
+}
+
+.nd-side-panel .nd-item-editor-tabs-nav .nd-item-editor-tab {
+    display: inline-flex;
+    flex: none;
+    height: 40px;
+    justify-content: center;
+    padding: 0 16px;
+    border: 1px solid transparent;
+    border-radius: 999px;
+    background: transparent;
+    color: var(--muted-foreground);
+    font-size: 0.875rem;
+    box-shadow: none;
+}
+
+.nd-side-panel .nd-item-editor-tabs-nav .nd-item-editor-tab:hover {
+    color: var(--foreground);
+}
+
+.nd-side-panel .nd-item-editor-tabs-nav .nd-item-editor-tab[data-state="active"] {
+    background: var(--muted);
+    color: var(--accent-foreground);
+}
+
+.nd-side-panel .nd-item-editor-tabs-nav .nd-item-editor-tab::after {
+    display: none;
+}
+
+@media (min-width: 768px) {
+    .nd-side-panel .nd-item-editor-tabs-nav .nd-item-editor-tab {
+        height: 32px;
+        padding-inline: 14px;
+    }
+}
+
+.nd-side-panel .nd-card-create-form input[data-slot="input"],
+.nd-side-panel .nd-card-create-form textarea[data-slot="textarea"],
+.nd-side-panel .nd-item-editor-panel input[data-slot="input"],
+.nd-side-panel .nd-item-editor-panel textarea[data-slot="textarea"],
+.nd-side-panel .nd-card-create-form button[data-slot="select-trigger"] {
+    border-color: var(--input);
+    background-color: transparent !important;
+    color: var(--foreground);
+}
+
+.nd-side-panel .nd-card-create-form input,
+.nd-side-panel .nd-card-create-form textarea,
+.nd-side-panel .nd-card-create-form button[data-slot="select-trigger"],
+.nd-side-panel .nd-item-editor-panel input,
+.nd-side-panel .nd-item-editor-panel textarea,
+.nd-side-panel .nd-item-editor-panel button[data-slot="select-trigger"] {
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 300;
+    line-height: 20px;
+}
+
+.nd-side-panel .nd-card-create-form button[data-size="sm"],
+.nd-side-panel .nd-item-editor-panel button[data-size="sm"] {
+    min-height: 36px;
+}
+
+.nd-side-panel .nd-card-create-form div.rounded-md:has(> input[list]),
+.nd-side-panel .nd-item-editor-panel div.rounded-md:has(> input[list]) {
+    min-height: 36px;
+    padding: 4px 12px;
+    border-color: var(--input);
+    background: transparent;
+}
+
+.nd-side-panel .nd-card-create-form div.rounded-md:has(> input[list]):focus-within,
+.nd-side-panel .nd-item-editor-panel div.rounded-md:has(> input[list]):focus-within {
+    border-color: var(--ring);
+}
+
+.nd-side-panel .nd-card-create-form div.rounded-md:has(> input[list]) > span,
+.nd-side-panel .nd-item-editor-panel div.rounded-md:has(> input[list]) > span {
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 16px;
+    padding: 5px 10px 4px 13px;
+    border-radius: 8px;
+    background: rgb(71 71 71 / 65%) !important;
+}
+
+.nd-side-panel .nd-card-create-form div.rounded-md:has(> input[list]) > span > button,
+.nd-side-panel .nd-item-editor-panel div.rounded-md:has(> input[list]) > span > button {
+    display: inline-flex;
+    width: 16px;
+    height: 16px;
+    flex: 0 0 16px;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    color: #fff !important;
+}
+
+.nd-side-panel .nd-card-create-form div.rounded-md:has(> input[list]) > span > button:hover,
+.nd-side-panel .nd-item-editor-panel div.rounded-md:has(> input[list]) > span > button:hover {
+    background: color-mix(in oklab, var(--danger) 14%, transparent);
+    color: var(--danger);
+}
+
+.nd-side-panel .nd-card-create-form div.rounded-md:has(> input[list]) > span > button svg,
+.nd-side-panel .nd-item-editor-panel div.rounded-md:has(> input[list]) > span > button svg {
+    width: 20px;
+    height: 13px;
+    stroke: currentColor !important;
+    stroke-width: 2.5px;
+}
+
+.nd-side-panel .nd-card-create-form .e-editor,
+.nd-side-panel .nd-item-editor-panel .e-editor {
+    border-color: var(--input);
+    border-radius: 10px;
+    padding: 15px 13px;
+    transition: border-color 140ms ease, box-shadow 140ms ease;
+}
+
+.nd-side-panel .nd-card-create-form .e-editor:focus-within,
+.nd-side-panel .nd-item-editor-panel .e-editor:focus-within {
+    border-color: var(--ring);
+    box-shadow: 0 0 0 3px color-mix(in oklab, var(--ring) 50%, transparent);
+}
+
+.nd-side-panel .nd-card-create-form .e-editor .cm-editor,
+.nd-side-panel .nd-item-editor-panel .e-editor .cm-editor,
+.nd-side-panel .nd-card-create-form .e-editor .cm-content,
+.nd-side-panel .nd-item-editor-panel .e-editor .cm-content,
+.nd-side-panel .nd-card-create-form .e-editor .cm-line,
+.nd-side-panel .nd-item-editor-panel .e-editor .cm-line,
+.nd-side-panel .nd-card-create-form .e-editor .cm-placeholder,
+.nd-side-panel .nd-item-editor-panel .e-editor .cm-placeholder,
+.nd-side-panel .nd-card-create-form .e-editor .cm-scroller,
+.nd-side-panel .nd-item-editor-panel .e-editor .cm-scroller {
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 300;
+    line-height: 20px;
+}
+
+.nd-side-panel .nd-card-create-form .e-editor .cm-content,
+.nd-side-panel .nd-item-editor-panel .e-editor .cm-content {
+    padding: 0;
+}
+
+.nd-side-panel input,
+.nd-side-panel textarea,
+.nd-side-panel [contenteditable="true"],
+.nd-side-panel .cm-cursor {
+    caret-color: #fff !important;
+}
+
+.nd-side-panel .cm-cursor {
+    border-left-color: #fff !important;
+}
+
+.nd-side-panel .nd-card-create-form .cm-editor,
+.nd-side-panel .nd-item-editor-panel .cm-editor {
+    background-color: transparent !important;
+    color: var(--foreground);
+}
+
+.nd-side-panel .nd-card-create-form .e-editor .cm-line,
+.nd-side-panel .nd-item-editor-panel .e-editor .cm-line {
+    padding: 0;
+}
+
+.nd-side-panel .nd-card-create-panel [role="switch"][data-state="checked"],
+.nd-side-panel .nd-item-editor-panel [role="switch"][data-state="checked"] {
+    background-color: var(--color-main-app);
+}
+
+.nd-side-panel .nd-card-create-panel [role="switch"] [data-slot="switch-thumb"],
+.nd-side-panel .nd-item-editor-panel [role="switch"] [data-slot="switch-thumb"] {
+    background-color: var(--color-main-app);
+}
+
+.nd-side-panel .nd-card-create-panel [role="switch"][data-state="checked"] [data-slot="switch-thumb"],
+.nd-side-panel .nd-item-editor-panel [role="switch"][data-state="checked"] [data-slot="switch-thumb"] {
+    background-color: var(--background-app);
+}
+
+.nd-item-editor-type-badge {
+    padding: 3px 0 2px 15px !important;
+}
+
+.nd-side-panel .text-sm {
+    font-size: 14px;
+    -webkit-text-stroke: unset;
+    font-weight: 400;
+}
+
+.nd-side-panel  label.text-sm.font-medium {
+    text-transform: capitalize;
+}
+
+.nd-side-panel  .flex.items-baseline.gap-2 {
+    align-content: center;
+    align-items: flex-end;
+}
+
+.nd-side-panel .nd-card-create-panel .text-muted-foreground svg {
+    width: 20px;
+    height: 12px;
+    margin-bottom: 2px;
+}
+
+.nd-side-panel .tok-strong {
+    -webkit-text-stroke: 0.05px currentColor;
+}
+
+.nd-side-panel .nd-item-editor-panel .text-muted-foreground svg {
+    width: 20px;
+    margin-bottom: 2px;
+}
+
+.nd-side-panel .tok-link, .nd-side-panel .tok-url {
+    color: var(--muted-foreground);
+}
+
+.nd-deck-card-thumb svg {
+    color: #d2d2d2;
+}
+
+.nd-deck-cards-toolbar {
+    padding: 0 15px;
+}
+
+.nd-deck-card-thumb {
+    width: 44px;
+    height: 44px;
+}
+
+.nd-side-panel .cm-md-image img {
+    max-width: 100%;
+    max-height: 8rem;
+    border-radius: 6px;
+    display: block;
+    margin: 0 auto;
 }

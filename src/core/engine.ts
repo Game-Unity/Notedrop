@@ -225,6 +225,8 @@ export function plainLabel(text: string): string {
   // Anki imports keep their HTML.
   return stripHtml(text)
     .replace(/```[\s\S]*?```/g, " [code] ")
+    .replace(/!\[[^\]]*\]\([^)]*\)/g, " ")
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
     .replace(/^[ \t]*>+[ \t]?/gm, "")
     .replace(/\{\{([^}|:]+)[^}]*\}\}/g, "[$1]")
     .replace(/\\(?:text|mathrm|mathbf|operatorname|mathit)\{([^}]*)\}/g, "$1")
@@ -271,6 +273,23 @@ export function itemTitle(def: CardTypeDef | null, fields: Record<string, unknow
   return "";
 }
 
+/** The first image a card's fields mention: a markdown image, an HTML img, or a bare media path. */
+function firstImage(fields: Record<string, unknown>): string | null {
+  const MD_IMAGE = /!\[[^\]]*\]\(([^)\s]+)[^)]*\)/;
+  const HTML_IMAGE = /<img[^>]+src=["']([^"']+)["']/i;
+  const IMAGE_PATH = /^(\S+\.(?:png|jpe?g|gif|webp|avif|svg|bmp))(?:[?#]\S*)?$/i;
+  for (const v of Object.values(fields)) {
+    if (typeof v !== "string") continue;
+    const md = MD_IMAGE.exec(v);
+    if (md) return md[1];
+    const html = HTML_IMAGE.exec(v);
+    if (html) return html[1];
+    const t = v.trim();
+    if (IMAGE_PATH.test(t)) return t;
+  }
+  return null;
+}
+
 /**
  * An item's cards on faces its type no longer makes. None when those faces are unknown (`null`, a
  * failing `facesWhen`) or when the item would be left without a card.
@@ -284,7 +303,7 @@ function leftoversOf<T extends { face: string }>(cards: T[], faces: string[] | n
 /** Bump when `itemTitle` or `itemSearchText` change, so collections rebuild the stored columns on open. */
 export { deckParts };
 
-const ITEM_INDEX_VERSION = "1";
+const ITEM_INDEX_VERSION = "2";
 
 
 /** Checks what prepare returned as `retry`. */
@@ -2068,6 +2087,7 @@ export class Etude {
           suspended: !!r.suspended,
           archived: !!r.archived,
           generated: typeof fields.generator === "string",
+          image: firstImage(fields),
           retrievability: this.scriptFor(cfgs.get(key)!) ? null : sched.retrievability(r as CardRow, t, cfgs.get(key)!),
         };
       }),

@@ -198,4 +198,7 @@ test("titles drop HTML tags and keep comparison signs", () => {
   assert.equal(plainLabel("Land > Hauptstadt, and x > 3 when a < b"), "Land > Hauptstadt, and x > 3 when a < b");
   assert.equal(plainLabel("> A quoted *line*"), "A quoted line");
   assert.equal(plainLabel("&lt;limits.h&gt; &amp; &#39;INT_MAX&#39;"), "<limits.h> & 'INT_MAX'");
+  assert.equal(plainLabel("Effektivität und Effizienz?![image.png](/media/files/26630f5b.png)"), "Effektivität und Effizienz?");
+  assert.equal(plainLabel("![image.png](/media/files/26630f5b.png)"), "");
+  assert.equal(plainLabel("See [the docs](https://example.com) first"), "See the docs first");
 });

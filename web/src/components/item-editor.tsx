@@ -1,6 +1,6 @@
 // The card list rows, bulk actions and item editor shared by Browse and the deck page's Cards tab.
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Archive, ArchiveRestore, ArrowLeft, Check, Copy, Dices, FolderInput, Loader2, MoreHorizontal, Pause, Play, RotateCcw, Save, Tag, Trash2, X } from "lucide-react";
+import { Archive, ArchiveRestore, ArrowLeft, Check, Copy, Dices, FolderInput, Image, Loader2, MoreHorizontal, Pause, Play, RotateCcw, Save, Tag, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -97,7 +97,7 @@ export function ItemRow({ row: r, active, checked, onOpen, onToggle, className, 
       {showBox && (
         <CheckBox
           checked={checked}
-          className="mt-0.5"
+          className="self-center"
           label="Select"
           onClick={(e) => {
             e.stopPropagation();
@@ -105,7 +105,12 @@ export function ItemRow({ row: r, active, checked, onOpen, onToggle, className, 
           }}
         />
       )}
-      <div className={cn("min-w-0 flex-1", variant === "tile" && "pr-12")}>
+      {variant === "tile" && (
+        <div className="nd-deck-card-thumb flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-md bg-muted">
+          {r.image ? <EtudeImg src={r.image} alt="" className="size-full object-cover" /> : <Image className="size-5 text-muted-foreground" />}
+        </div>
+      )}
+      <div className={cn("min-w-0 flex-1 self-center", variant === "tile" && "pr-12")}>
         <div className={cn("line-clamp-2 text-sm leading-snug max-md:text-[15px]", variant === "tile" && "nd-deck-card-title", active && "font-medium text-highlight")} aria-current={active || undefined}>{r.title || <span className="text-muted-foreground">{r.itemId}</span>}</div>
         <div className={cn("mt-1 flex items-center gap-2 text-xs text-muted-foreground", variant === "tile" && "nd-deck-card-meta")}>
           {!hideDeck && <><span className="truncate">{r.deck.split("::").slice(-1)[0]}</span><span>·</span></>}
@@ -244,7 +249,7 @@ type Draft = { deck: string; fields: Record<string, unknown>; tags: string[]; so
 const draftOf = (it: ItemDetail): Draft => ({ deck: it.deck, fields: it.fields, tags: it.tags, source: it.source, notes: it.notes });
 
 /** `closeAlways` shows the back control at every size (for editors opened in a sheet); Browse only needs it on phones. */
-export function ItemEditor({ id, decks, tags, onSaved, onDeleted, onDuplicate, onBack, closeAlways }: { id: string; decks: string[]; tags: string[]; onSaved(): void; onDeleted(): void; onDuplicate(id: string): void; onBack(): void; closeAlways?: boolean }) {
+export function ItemEditor({ id, decks, tags, onSaved, onSaveSuccess, onDirtyChange, onDeleted, onDuplicate, onBack, closeAlways }: { id: string; decks: string[]; tags: string[]; onSaved(): void; onSaveSuccess?(): void; onDirtyChange?(dirty: boolean): void; onDeleted(): void; onDuplicate(id: string): void; onBack(): void; closeAlways?: boolean }) {
   const [item, setItem] = useState<ItemDetail | null>(null);
   const [type, setType] = useState<CardType | null>(null);
   const [draft, setDraft] = useState<Draft | null>(null);
@@ -269,6 +274,8 @@ export function ItemEditor({ id, decks, tags, onSaved, onDeleted, onDuplicate, o
 
   const dirty = !!item && !!draft && JSON.stringify(draftOf(item)) !== JSON.stringify(draft);
 
+  useEffect(() => onDirtyChange?.(dirty), [dirty, onDirtyChange]);
+
   const save = useCallback(async () => {
     if (!item || !draft || mediaPending) return;
     const problem = occlusionProblem(type, draft.fields);
@@ -281,12 +288,13 @@ export function ItemEditor({ id, decks, tags, onSaved, onDeleted, onDuplicate, o
       setVersion((v) => v + 1);
       toast.success("Saved");
       onSaved();
+      onSaveSuccess?.();
     } catch (e) {
       toast.error("Couldn't save", { description: (e as Error).message });
     } finally {
       setSaving(false);
     }
-  }, [item, draft, onSaved, mediaPending, type]);
+  }, [item, draft, onSaved, onSaveSuccess, mediaPending, type]);
 
   useEffect(() => {
     const h = (e: KeyboardEvent) => {
@@ -330,49 +338,96 @@ export function ItemEditor({ id, decks, tags, onSaved, onDeleted, onDuplicate, o
     onDeleted();
   };
   const allSuspended = item.cards.every((c) => c.suspended);
+  const saveFooter = dirty || mediaPending ? (
+    <div className={cn(
+      "flex items-center gap-2 border-t bg-background",
+      closeAlways ? "nd-item-editor-footer shrink-0 py-3" : "sticky bottom-0 -mx-4 mt-2 px-4 py-3 sm:-mx-6 sm:px-6 xl:-mx-10 xl:px-10",
+    )}>
+      <span className="text-sm text-muted-foreground">{mediaPending ? "Copying media…" : "Unsaved changes"}</span>
+      <div className="flex-1" />
+      <Button variant="ghost" size="sm" disabled={mediaPending} onClick={() => setDraft(draftOf(item))}>Discard</Button>
+      <Button size="sm" className="gap-1.5" onClick={save} disabled={saving || mediaPending}>{saving ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}Save <kbd className="hidden text-[10px] opacity-60 sm:inline">Ctrl S</kbd></Button>
+    </div>
+  ) : null;
 
   return (
-    <div className="mx-auto flex max-w-4xl flex-col gap-6 px-4 pt-4 sm:px-6 sm:pt-6 xl:px-10">
-      <div className="flex items-start gap-2 sm:gap-3">
-        <Button size="icon" variant="ghost" className={cn("-ml-2 size-9", !closeAlways && "md:hidden")} onClick={onBack} aria-label="Back to list"><ArrowLeft className="size-4" /></Button>
-        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2 pt-1.5 md:pt-0">
-          <Badge variant="outline" className="font-normal">{type.name}</Badge>
-          {item.archived && <Badge variant="outline" className="font-normal text-muted-foreground">archived</Badge>}
-          {allSuspended && <Badge variant="outline" className="font-normal text-muted-foreground">suspended</Badge>}
-          <button className="truncate font-mono text-xs text-muted-foreground hover:text-foreground" title="Copy id" onClick={() => { navigator.clipboard.writeText(item.id); toast("Copied id"); }}>{item.id}</button>
+    <div className={cn(
+      "flex flex-col",
+      closeAlways ? "nd-item-editor-panel h-full min-h-0 gap-0" : "mx-auto max-w-4xl gap-6 px-4 pt-4 sm:px-6 sm:pt-6 xl:px-10",
+    )}>
+    <Tabs value={tab} onValueChange={setTab} className={cn(closeAlways ? "min-h-0 flex-1 gap-0" : "gap-6")}>
+      {closeAlways ? (
+        <div className="nd-item-editor-title nd-item-editor-tabs-nav shrink-0">
+          <TabsList variant="line" className="nd-item-editor-tabs-list">
+            <TabsTrigger value="edit" className="nd-item-editor-tab">Edit</TabsTrigger>
+            <TabsTrigger value="schedule" className="nd-item-editor-tab">Scheduling</TabsTrigger>
+            <TabsTrigger value="history" className="nd-item-editor-tab">History <span className="ml-1 tabular text-muted-foreground">{item.reviews.length + item.attempts.length}</span></TabsTrigger>
+          </TabsList>
+          <div className="flex shrink-0 items-center gap-1">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild><Button size="icon" variant="ghost" className="size-8" aria-label="Card actions"><MoreHorizontal className="size-4" /></Button></DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => navigate(`/study?card=${item.cards[0]?.id}&deck=${encodeURIComponent(item.deck)}`)}><Play />Practice</DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem disabled={mediaPending} onClick={duplicate}><Copy />Duplicate</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate(`/types/${encodeURIComponent(item.type)}`)}><Dices />Edit card type</DropdownMenuItem>
+                <DropdownMenuItem onClick={async () => { await api.bulkCards("reset", item.cards.map((c) => c.id)); load(); onSaved(); }}><RotateCcw />Forget scheduling</DropdownMenuItem>
+                <DropdownMenuItem onClick={async () => { await api.bulkCards(allSuspended ? "unsuspend" : "suspend", item.cards.map((c) => c.id)); load(); onSaved(); }}>
+                  <Pause />{allSuspended ? "Unsuspend" : "Suspend"}
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={archive}>{item.archived ? <ArchiveRestore /> : <Archive />}{item.archived ? "Unarchive" : "Archive"}</DropdownMenuItem>
+                <DropdownMenuItem variant="destructive" onClick={del}><Trash2 />Delete</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <Button size="icon" variant="ghost" className="size-8" onClick={onBack} aria-label="Close card editor"><X className="size-4" /></Button>
+          </div>
         </div>
-        <Button size="sm" variant="ghost" className="gap-1.5" onClick={() => navigate(`/study?card=${item.cards[0]?.id}&deck=${encodeURIComponent(item.deck)}`)}><Play className="size-4" />Practice</Button>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild><Button size="icon" variant="ghost" className="size-8"><MoreHorizontal className="size-4" /></Button></DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem disabled={mediaPending} onClick={duplicate}><Copy />Duplicate</DropdownMenuItem>
-            <DropdownMenuItem onClick={() => navigate(`/types/${encodeURIComponent(item.type)}`)}><Dices />Edit card type</DropdownMenuItem>
-            <DropdownMenuItem onClick={async () => { await api.bulkCards("reset", item.cards.map((c) => c.id)); load(); onSaved(); }}><RotateCcw />Forget scheduling</DropdownMenuItem>
-            <DropdownMenuItem onClick={async () => { await api.bulkCards(allSuspended ? "unsuspend" : "suspend", item.cards.map((c) => c.id)); load(); onSaved(); }}>
-              <Pause />{allSuspended ? "Unsuspend" : "Suspend"}
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={archive}>{item.archived ? <ArchiveRestore /> : <Archive />}{item.archived ? "Unarchive" : "Archive"}</DropdownMenuItem>
-            <DropdownMenuItem variant="destructive" onClick={del}><Trash2 />Delete</DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
+      ) : (
+        <>
+          <div className="flex items-start gap-2 sm:gap-3">
+            <Button size="icon" variant="ghost" className="-ml-2 size-9 md:hidden" onClick={onBack} aria-label="Back to list"><ArrowLeft className="size-4" /></Button>
+            <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2 pt-1.5 md:pt-0">
+              <Badge variant="outline" className="font-normal">{type.name}</Badge>
+              {item.archived && <Badge variant="outline" className="font-normal text-muted-foreground">archived</Badge>}
+              {allSuspended && <Badge variant="outline" className="font-normal text-muted-foreground">suspended</Badge>}
+              <button className="truncate font-mono text-xs text-muted-foreground hover:text-foreground" title="Copy id" onClick={() => { navigator.clipboard.writeText(item.id); toast("Copied id"); }}>{item.id}</button>
+            </div>
+            <Button size="sm" variant="ghost" className="gap-1.5" onClick={() => navigate(`/study?card=${item.cards[0]?.id}&deck=${encodeURIComponent(item.deck)}`)}><Play className="size-4" />Practice</Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild><Button size="icon" variant="ghost" className="size-8"><MoreHorizontal className="size-4" /></Button></DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem disabled={mediaPending} onClick={duplicate}><Copy />Duplicate</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate(`/types/${encodeURIComponent(item.type)}`)}><Dices />Edit card type</DropdownMenuItem>
+                <DropdownMenuItem onClick={async () => { await api.bulkCards("reset", item.cards.map((c) => c.id)); load(); onSaved(); }}><RotateCcw />Forget scheduling</DropdownMenuItem>
+                <DropdownMenuItem onClick={async () => { await api.bulkCards(allSuspended ? "unsuspend" : "suspend", item.cards.map((c) => c.id)); load(); onSaved(); }}>
+                  <Pause />{allSuspended ? "Unsuspend" : "Suspend"}
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={archive}>{item.archived ? <ArchiveRestore /> : <Archive />}{item.archived ? "Unarchive" : "Archive"}</DropdownMenuItem>
+                <DropdownMenuItem variant="destructive" onClick={del}><Trash2 />Delete</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+          <TabsList>
+            <TabsTrigger value="edit">Edit</TabsTrigger>
+            <TabsTrigger value="schedule">Scheduling</TabsTrigger>
+            <TabsTrigger value="history">History <span className="ml-1 tabular text-muted-foreground">{item.reviews.length + item.attempts.length}</span></TabsTrigger>
+          </TabsList>
+        </>
+      )}
 
+      <div className={cn("flex min-h-0 flex-col gap-6", closeAlways && "nd-item-editor-scroll flex-1 overflow-y-auto overscroll-contain pt-4 pb-4")}>
+    {!closeAlways && <>
       <CardPreview
-        src={`/frame/${encodeURIComponent(item.type)}?v=${encodeURIComponent(type.updated ?? "")}`}
-        version={`${item.id}:${version}:${type.updated}`}
-        load={loadPreview}
-        faces={type.facesWhen ? item.cards.map((c) => c.face) : type.faces}
-        generated={typeof item.fields.generator === "string"}
-      />
-      {dirty && <p className="-mt-3 text-xs text-muted-foreground">The preview shows the saved version. Save to see your edits.</p>}
-
-      <Tabs value={tab} onValueChange={setTab}>
-        <TabsList>
-          <TabsTrigger value="edit">Edit</TabsTrigger>
-          <TabsTrigger value="schedule">Scheduling</TabsTrigger>
-          <TabsTrigger value="history">History <span className="ml-1 tabular text-muted-foreground">{item.reviews.length + item.attempts.length}</span></TabsTrigger>
-        </TabsList>
+          src={`/frame/${encodeURIComponent(item.type)}?v=${encodeURIComponent(type.updated ?? "")}`}
+          version={`${item.id}:${version}:${type.updated}`}
+          load={loadPreview}
+          faces={type.facesWhen ? item.cards.map((c) => c.face) : type.faces}
+          generated={typeof item.fields.generator === "string"}
+        />
+        {dirty && <p className="-mt-3 text-xs text-muted-foreground">The preview shows the saved version. Save to see your edits.</p>}
+      </>}
 
         <TabsContent value="edit" className="mt-5 flex flex-col gap-5">
           <div className="grid gap-4 sm:grid-cols-2">
@@ -422,14 +477,11 @@ export function ItemEditor({ id, decks, tags, onSaved, onDeleted, onDuplicate, o
         <TabsContent value="history" className="mt-5">
           <History item={item} />
         </TabsContent>
-      </Tabs>
 
-      <div className={cn("sticky bottom-0 -mx-4 mt-2 flex items-center gap-2 border-t bg-background px-4 py-3 transition-opacity sm:-mx-6 sm:px-6 xl:-mx-10 xl:px-10", dirty || mediaPending ? "opacity-100" : "pointer-events-none opacity-0")}>
-        <span className="text-sm text-muted-foreground">{mediaPending ? "Copying media…" : "Unsaved changes"}</span>
-        <div className="flex-1" />
-        <Button variant="ghost" size="sm" disabled={mediaPending} onClick={() => setDraft(draftOf(item))}>Discard</Button>
-        <Button size="sm" className="gap-1.5" onClick={save} disabled={saving || mediaPending}>{saving ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}Save <kbd className="hidden text-[10px] opacity-60 sm:inline">Ctrl S</kbd></Button>
+      {!closeAlways && saveFooter}
       </div>
+      </Tabs>
+      {closeAlways && saveFooter}
     </div>
   );
 }
@@ -534,7 +586,7 @@ export function TagInput({ value, known, onChange }: { value: string[]; known: s
   );
 }
 
-export function NewItemDialog({ open, onOpenChange, decks, types, onCreated, defaultDeck }: { open: boolean; onOpenChange(o: boolean): void; decks: string[]; types: TypeSummary[]; onCreated(id: string): void; defaultDeck?: string }) {
+export function NewItemDialog({ open, onOpenChange, decks, types, onCreated, defaultDeck, inline = false }: { open: boolean; onOpenChange(o: boolean): void; decks: string[]; types: TypeSummary[]; onCreated(id: string): void; defaultDeck?: string; inline?: boolean }) {
   const [type, setType] = useState("basic");
   const [deck, setDeck] = useState("");
   const [id, setId] = useState("");
@@ -557,19 +609,19 @@ export function NewItemDialog({ open, onOpenChange, decks, types, onCreated, def
     const itemId = id.trim() || `${slug}.${Date.now().toString(36)}`;
     try {
       await api.saveItem(itemId, { type, deck, fields, tags });
-      onOpenChange(false);
+      if (!inline) onOpenChange(false);
       setFields({});
       setId("");
+      setTags([]);
       onCreated(itemId);
       toast.success("Card added");
     } catch (e) {
       toast.error((e as Error).message);
     }
   };
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className={cn("max-h-[90dvh] overflow-y-auto", occlusion ? "sm:max-w-[min(72rem,calc(100vw-2rem))]" : "sm:max-w-2xl")}>
-        <DialogHeader><DialogTitle>Add a card</DialogTitle></DialogHeader>
+  const form = (
+    <>
+      {!inline && <DialogHeader><DialogTitle>Add a card</DialogTitle></DialogHeader>}
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="flex flex-col gap-1.5">
             <label className="text-sm font-medium">Type</label>
@@ -598,14 +650,33 @@ export function NewItemDialog({ open, onOpenChange, decks, types, onCreated, def
             <TagInput value={tags} known={[]} onChange={setTags} />
           </div>
         )}
-        <div className="flex flex-col gap-1.5">
-          <label className="text-sm font-medium">ID <span className="font-normal text-muted-foreground">(optional, keeps the card matched across imports)</span></label>
-          <Input value={id} onChange={(e) => setId(e.target.value)} placeholder="course.topic.slug" className="font-mono text-[13px]" />
-        </div>
-        <DialogFooter className={cn(occlusion && "sticky -bottom-6 -mx-6 -mb-6 border-t bg-background px-6 py-3")}>
-          {occlusion && <span className="mr-auto self-center text-xs text-muted-foreground">{Array.isArray(fields.boxes) && fields.boxes.length ? "Each box or group becomes a card" : "Draw boxes over the image first"}</span>}
-          <Button disabled={mediaPending} onClick={create} className="gap-1.5"><Check className="size-4" />Add card</Button>
-        </DialogFooter>
+        {!inline && (
+          <div className="flex flex-col gap-1.5">
+            <label className="text-sm font-medium">ID <span className="font-normal text-muted-foreground">(optional, keeps the card matched across imports)</span></label>
+            <Input value={id} onChange={(e) => setId(e.target.value)} placeholder="course.topic.slug" className="font-mono text-[13px]" />
+          </div>
+        )}
+    </>
+  );
+  const footer = (
+    <>
+      {occlusion && <span className="mr-auto self-center text-xs text-muted-foreground">{Array.isArray(fields.boxes) && fields.boxes.length ? "Each box or group becomes a card" : "Draw boxes over the image first"}</span>}
+      <Button disabled={mediaPending} onClick={create} className="gap-1.5"><Check className="size-4" />Add card</Button>
+    </>
+  );
+  if (inline) {
+    return (
+      <div className="nd-card-create-inline flex min-h-0 flex-1 flex-col">
+        <div className="nd-card-create-form flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto overscroll-contain pt-4 pb-4">{form}</div>
+        <div className="nd-card-create-footer flex shrink-0 justify-end border-t pt-3">{footer}</div>
+      </div>
+    );
+  }
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className={cn("max-h-[90dvh] overflow-y-auto", occlusion ? "sm:max-w-[min(72rem,calc(100vw-2rem))]" : "sm:max-w-2xl")}>
+        {form}
+        <DialogFooter className={cn(occlusion && "sticky -bottom-6 -mx-6 -mb-6 border-t bg-background px-6 py-3")}>{footer}</DialogFooter>
       </DialogContent>
     </Dialog>
   );

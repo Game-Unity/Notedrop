@@ -302,6 +302,7 @@ export interface SearchRow {
   suspended: boolean;
   archived: boolean;
   generated: boolean;
+  image: string | null;
   retrievability: number | null;
 }
 

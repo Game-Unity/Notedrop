@@ -196,6 +196,28 @@ class RuleWidget extends WidgetType {
   }
 }
 
+class ImageWidget extends WidgetType {
+  constructor(readonly url: string, readonly alt: string) {
+    super();
+  }
+  eq(o: ImageWidget) {
+    return o.url === this.url && o.alt === this.alt;
+  }
+  toDOM() {
+    const el = document.createElement("div");
+    el.className = "cm-md-image";
+    const img = document.createElement("img");
+    img.src = this.url;
+    img.alt = this.alt;
+    img.loading = "lazy";
+    el.appendChild(img);
+    return el;
+  }
+  ignoreEvent() {
+    return false;
+  }
+}
+
 // ---------------------------------------------------------------- decorations
 
 const setFocus = StateEffect.define<boolean>();
@@ -314,6 +336,19 @@ function build(state: EditorState): DecorationSet {
         case "Link":
           out.push(mark("cm-md-link").range(from, to));
           break;
+        case "Image": {
+          // Away from the cursor the image renders below the line and the whole syntax hides.
+          if (!touches(from, to)) {
+            let url = "", alt = "";
+            for (let c = node.node.firstChild; c; c = c.nextSibling) {
+              if (c.name === "URL") url = doc.sliceString(c.from, c.to);
+              if (c.name === "LinkLabel") alt = doc.sliceString(c.from, c.to);
+            }
+            out.push(hide.range(from, to));
+            if (url) out.push(Decoration.widget({ widget: new ImageWidget(url, alt), block: true, side: 1 }).range(to));
+          }
+          break;
+        }
         case "LinkMark":
         case "URL":
         case "LinkTitle":
@@ -396,6 +431,8 @@ const previewTheme = EditorView.theme({
   ".cm-md-math-preview": { margin: "0.15rem 0.8rem 0.35rem", borderRadius: "6px", backgroundColor: "color-mix(in oklab, var(--highlight) 7%, transparent)" },
   ".cm-md-math-src, .cm-md-mathline": { fontFamily: "var(--font-mono)", fontSize: "0.86em", color: "color-mix(in oklab, var(--highlight) 80%, var(--foreground))" },
   ".cm-md-empty": { color: "var(--muted-foreground)" },
+  ".cm-md-image": { margin: "0.3rem 0", maxWidth: "100%" },
+  ".cm-md-image img": { maxWidth: "100%", maxHeight: "20rem", borderRadius: "6px", display: "block" },
 });
 
 /** Mod-B / Mod-I wrap the selection the way most editors do. */

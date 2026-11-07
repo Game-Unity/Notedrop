@@ -8,10 +8,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Markdown } from "@/components/markdown";
-import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
-import { BulkBar, CheckBox, groupItems, ItemEditor, ItemRow, NewItemDialog, OrderSelect, SearchHints } from "@/components/item-editor";
+import { BulkBar, CheckBox, groupItems, ItemRow, OrderSelect, SearchHints } from "@/components/item-editor";
 import { DeckOptions, formatDeadline, type DeckFull } from "@/components/deck-options";
-import { api, type Counts, type DeckNode, type LearnerSummary, type Preset, type SearchRow, type TypeSummary } from "@/lib/api";
+import { api, type Counts, type DeckNode, type LearnerSummary, type Preset, type SearchRow } from "@/lib/api";
 import { etudeDownload } from "@/lib/local-url";
 import { navigate } from "@/lib/router";
 import { cn } from "@/lib/utils";
@@ -24,7 +23,7 @@ import { dueSearch, invalidateProgress, loadDeckList, onProgressInvalidated, rel
 
 const enc = encodeURIComponent;
 
-export function DeckPage({ name }: { name: string }) {
+export function DeckPage({ name, dataKey, activeItemId, onOpenCard, onCreateCard, onClosePanel }: { name: string; dataKey: number; activeItemId: string | null; onOpenCard(id: string): void; onCreateCard(): void; onClosePanel(discard?: boolean): void }) {
   const [deck, setDeck] = useState<DeckFull | null>(null);
   const [decks, setDecks] = useState<DeckNode[]>([]);
   const [presets, setPresets] = useState<Preset[]>([]);
@@ -45,13 +44,13 @@ export function DeckPage({ name }: { name: string }) {
     history.replaceState(null, "", `/deck?${p}`);
   };
 
-  const loadTags = () =>
+  const loadTags = useCallback(() =>
     api
       .search(`deck:"${name}"`, { limit: 1000 })
       .then((r) => setTags([...new Set(r.rows.flatMap((x) => x.tags))].sort()))
-      .catch(() => {});
+      .catch(() => {}), [name]);
 
-  const reload = async (forceDecks = false) => {
+  const reload = useCallback(async (forceDecks = false) => {
     try {
       const [d, all, p] = await Promise.all([api.deck(name), loadDeckList(forceDecks), api.presets()]);
       setDeck(d);
@@ -61,7 +60,7 @@ export function DeckPage({ name }: { name: string }) {
     } catch (e) {
       setError((e as Error).message);
     }
-  };
+  }, [name]);
   useEffect(() => {
     reload();
     // Only tags used inside this deck are useful for custom study.
@@ -69,7 +68,15 @@ export function DeckPage({ name }: { name: string }) {
     const onFocus = () => reload(true);
     window.addEventListener("focus", onFocus);
     return () => window.removeEventListener("focus", onFocus);
-  }, [name]);
+  }, [loadTags, name, reload]);
+
+  const lastDataKey = useRef(dataKey);
+  useEffect(() => {
+    if (lastDataKey.current === dataKey) return;
+    lastDataKey.current = dataKey;
+    void reload(true);
+    void loadTags();
+  }, [dataKey, loadTags, reload]);
 
   useEffect(() => {
     if (!deck || deck.archived || deck.resolved.mode === "watch") {
@@ -165,8 +172,13 @@ export function DeckPage({ name }: { name: string }) {
   const cardsTab = (
           <DeckCards
             deck={deck.name}
+            dataKey={dataKey}
             hasChildren={children.length > 0}
             active={tab === "cards"}
+            selected={activeItemId}
+            onOpenCard={onOpenCard}
+            onCreateCard={onCreateCard}
+            onClosePanel={onClosePanel}
             onChanged={() => {
               reload(true);
               loadTags();
@@ -305,19 +317,16 @@ function DueBadge({ deck }: { deck: string }) {
 const CARDS_PAGE = 200;
 
 /** Every card in the deck and its subdecks, with the same rows, filters and editor as Browse. */
-function DeckCards({ deck, hasChildren, active, onChanged }: { deck: string; hasChildren: boolean; active: boolean; onChanged(): void }) {
+function DeckCards({ deck, dataKey, hasChildren, active, selected, onOpenCard, onCreateCard, onClosePanel, onChanged }: { deck: string; dataKey: number; hasChildren: boolean; active: boolean; selected: string | null; onOpenCard(id: string): void; onCreateCard(): void; onClosePanel(discard?: boolean): void; onChanged(): void }) {
   const [query, setQuery] = useState("");
   const [order, setOrder] = useState("relevance");
   const [limit, setLimit] = useState(CARDS_PAGE);
   const [rows, setRows] = useState<SearchRow[]>([]);
   const [total, setTotal] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [selected, setSelected] = useState<string | null>(() => new URLSearchParams(location.search).get("item"));
   const [checked, setChecked] = useState<Set<string>>(new Set());
-  const [creating, setCreating] = useState(false);
   const [decks, setDecks] = useState<string[]>([]);
   const [tags, setTags] = useState<string[]>([]);
-  const [types, setTypes] = useState<TypeSummary[]>([]);
   const searchRef = useRef<HTMLInputElement>(null);
 
   const scoped = query.trim() ? `deck:"${deck}" (${query.trim()})` : `deck:"${deck}"`;
@@ -340,20 +349,21 @@ function DeckCards({ deck, hasChildren, active, onChanged }: { deck: string; has
   // A selection made under another search would act on cards that are no longer listed.
   useEffect(() => setChecked(new Set()), [query]);
 
-  const reloadMeta = () => {
+  const reloadMeta = useCallback(() => {
     api.decks().then((d) => setDecks(d.map((x) => x.name)));
     api.tags().then((t) => setTags(t.map((x) => x.tag)));
-    api.types().then(setTypes);
-  };
+  }, []);
   useEffect(reloadMeta, []);
 
-  const open = (id: string | null) => {
-    setSelected(id);
-    const p = new URLSearchParams(location.search);
-    if (id) p.set("item", id);
-    else p.delete("item");
-    history.replaceState(null, "", `/deck?${p}`);
-  };
+  const lastDataKey = useRef(dataKey);
+  useEffect(() => {
+    if (lastDataKey.current === dataKey) return;
+    lastDataKey.current = dataKey;
+    void run();
+    reloadMeta();
+  }, [dataKey, reloadMeta, run]);
+
+  const open = (id: string | null) => id ? onOpenCard(id) : onClosePanel();
 
   useEffect(() => {
     if (!active) return;
@@ -398,7 +408,7 @@ function DeckCards({ deck, hasChildren, active, onChanged }: { deck: string; has
               </button>
             )}
           </div>
-          <Button className="h-10 gap-1.5 px-3" onClick={() => setCreating(true)} aria-label="Add a card"><Plus className="size-4" /><span className="hidden min-[420px]:inline">Add</span></Button>
+          <Button className="h-10 gap-1.5 px-3" onClick={onCreateCard} aria-label="Add a card"><Plus className="size-4" /><span className="hidden min-[420px]:inline">Add</span></Button>
         </div>
         {!emptyDeck && <SearchHints onPick={(h) => setQuery((q) => (q ? `${q} ${h}` : h))} />}
       </div>
@@ -422,7 +432,7 @@ function DeckCards({ deck, hasChildren, active, onChanged }: { deck: string; has
               className="nd-deck-cards-bulk-actions !border-0 !bg-transparent"
               onClear={() => setChecked(new Set())}
               onDone={changed}
-              onDeleted={(ids) => selected && ids.includes(selected) && open(null)}
+              onDeleted={(ids) => selected && ids.includes(selected) && onClosePanel(true)}
             />
             <div className="nd-deck-cards-list grid gap-3">
               {items.map((r) => (
@@ -457,40 +467,11 @@ function DeckCards({ deck, hasChildren, active, onChanged }: { deck: string; has
       )}
 
       {emptyDeck && (
-        <EmptyState title="No cards in this deck yet" action={<Button size="sm" className="gap-1.5" onClick={() => setCreating(true)}><Plus className="size-4" />Add a card</Button>}>
+        <EmptyState title="No cards in this deck yet" action={<Button size="sm" className="gap-1.5" onClick={onCreateCard}><Plus className="size-4" />Add a card</Button>}>
           Add one here, or import a pack from the Decks page.
         </EmptyState>
       )}
 
-      <Sheet open={!!selected} onOpenChange={(o) => !o && open(null)}>
-        <SheetContent side="right" showCloseButton={false} className="w-full gap-0 overflow-y-auto p-0 sm:max-w-none lg:w-[min(56rem,calc(100vw-8rem))]">
-          <SheetTitle className="sr-only">Edit card</SheetTitle>
-          <SheetDescription className="sr-only">Preview, edit and reschedule this card.</SheetDescription>
-          {selected && (
-            <div className="pb-[env(safe-area-inset-bottom)]">
-              <ItemEditor
-                key={selected}
-                id={selected}
-                closeAlways
-                onBack={() => open(null)}
-                decks={decks}
-                tags={tags}
-                onSaved={changed}
-                onDeleted={() => {
-                  open(null);
-                  changed();
-                }}
-                onDuplicate={(newId) => {
-                  open(newId);
-                  changed();
-                }}
-              />
-            </div>
-          )}
-        </SheetContent>
-      </Sheet>
-
-      <NewItemDialog open={creating} onOpenChange={setCreating} decks={decks} types={types} defaultDeck={deck} onCreated={(id) => { open(id); changed(); }} />
     </div>
   );
 }

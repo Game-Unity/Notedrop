@@ -68,7 +68,7 @@ export function FieldEditor({ fields: specs, value, onChange, onMediaPendingChan
           </FieldRow>
         ),
       )}
-      <FieldRow spec={{ name: "generator", kind: "code", label: "Generator", description: "Optional. The body of a function that receives rng and returns field overrides, so each review shows a new variant." }}>
+      <FieldRow spec={{ name: "generator", kind: "code", label: "Generator", description: "Optional. The body of a function that receives rng and returns field overrides, so each review shows a new variant." }} containerGap="gap-4">
         {generator || value.generator !== undefined ? (
           <div className="flex flex-col gap-2">
             <CodeEditor lang="js" value={String(value.generator ?? "")} onChange={(v) => set("generator", v)} minHeight={140} />
@@ -84,9 +84,9 @@ export function FieldEditor({ fields: specs, value, onChange, onMediaPendingChan
   );
 }
 
-function FieldRow({ spec, children }: { spec: FieldSpec; children: React.ReactNode }) {
+function FieldRow({ spec, children, containerGap }: { spec: FieldSpec; children: React.ReactNode; containerGap?: string }) {
   return (
-    <div className="flex flex-col gap-1.5">
+    <div className={cn("flex flex-col", containerGap ?? "gap-1.5")}>
       <div className="flex items-baseline gap-2">
         <label className="text-sm font-medium">{spec.label ?? spec.name}</label>
         {spec.required && <span className="text-xs text-muted-foreground">required</span>}
