@@ -11,6 +11,7 @@ import { languages } from "@codemirror/language-data";
 import { classHighlighter } from "@lezer/highlight";
 import type { BlockContext, InlineContext, Line, MarkdownConfig } from "@lezer/markdown";
 import { editorTheme, leaveModEnter, type EditorHandle } from "./code-editor";
+import { highlight } from "./highlight";
 
 /** The parts of KaTeX the editor needs; passed in so card frames can share the copy they already load. */
 export interface Katex {
@@ -206,12 +207,114 @@ class ImageWidget extends WidgetType {
   toDOM() {
     const el = document.createElement("div");
     el.className = "cm-md-image";
+    // The vertical gap lives on this inner wrapper: margins or padding on the widget root
+    // or the <img> itself break CodeMirror's selection measurement.
+    const pad = document.createElement("div");
+    pad.className = "cm-md-image-pad";
     const img = document.createElement("img");
     img.src = this.url;
     img.alt = this.alt;
     img.loading = "lazy";
-    el.appendChild(img);
+    pad.appendChild(img);
+    el.appendChild(pad);
     return el;
+  }
+  ignoreEvent() {
+    return false;
+  }
+}
+
+/** A fenced code block rendered as one box while the cursor is elsewhere. */
+class CodeBlockWidget extends WidgetType {
+  constructor(readonly source: string, readonly info: string) {
+    super();
+  }
+  eq(o: CodeBlockWidget) {
+    return o.source === this.source && o.info === this.info;
+  }
+  toDOM() {
+    const wrap = document.createElement("div");
+    wrap.className = "cm-md-cb-widget";
+    const inner = document.createElement("div");
+    inner.className = "cm-md-cb-widget-inner";
+    if (this.info) {
+      const label = document.createElement("div");
+      label.className = "cm-md-cb-widget-label";
+      label.textContent = this.info;
+      inner.appendChild(label);
+    }
+    const pre = document.createElement("pre");
+    pre.className = "cm-md-cb-widget-pre";
+    // Highlight asynchronously; the widget re-renders when the language is loaded.
+    void highlight(this.source, this.info).then((html) => {
+      pre.innerHTML = html;
+    });
+    inner.appendChild(pre);
+    wrap.appendChild(inner);
+    return wrap;
+  }
+  ignoreEvent() {
+    return false;
+  }
+}
+
+/** A markdown table rendered as a real table while the cursor is elsewhere, like the image widget. */
+class TableWidget extends WidgetType {
+  constructor(readonly source: string) {
+    super();
+  }
+  eq(o: TableWidget) {
+    return o.source === this.source;
+  }
+  toDOM() {
+    const wrap = document.createElement("div");
+    wrap.className = "cm-md-table-widget";
+    const rows = this.source.split("\n").map((l) => l.trim()).filter(Boolean);
+    const cells = (row: string) => row.replace(/^\||\|$/g, "").split("|").map((c) => c.trim());
+    const isDivider = (row: string) => /^[\s:|-]+$/.test(row.replace(/\|/g, "").trim()) && row.includes("-");
+    const alignOf = (divider: string) => (divider.startsWith(":") && divider.endsWith(":") ? "center" : divider.endsWith(":") ? "right" : "");
+    const table = document.createElement("table");
+    let aligns: string[] = [];
+    rows.forEach((row, i) => {
+      if (isDivider(row)) {
+        aligns = cells(row).map(alignOf);
+        return;
+      }
+      const tr = document.createElement("tr");
+      const head = i === 0;
+      cells(row).forEach((text, j) => {
+        const cell = document.createElement(head ? "th" : "td");
+        // Minimal inline markdown: $math$, **strong**, *em*, `code` — enough for table cells.
+        let rest = text;
+        const re = /(\$(?:\\.|[^$\n\\])+?\$)|(\*\*([^*]+)\*\*)|(\*([^*]+)\*)|(`([^`]+)`)/g;
+        let m;
+        while ((m = re.exec(rest))) {
+          if (m.index > 0) cell.appendChild(document.createTextNode(rest.slice(0, m.index)));
+          if (m[1]) {
+            const span = document.createElement("span");
+            span.className = "cm-md-math";
+            try {
+              katexImpl?.render(m[1].slice(1, -1).trim(), span, { displayMode: false, throwOnError: false, strict: "ignore", output: "html" });
+            } catch {
+              span.textContent = m[1];
+            }
+            cell.appendChild(span);
+          } else {
+            const el = document.createElement(m[2] ? "strong" : m[4] ? "em" : "code");
+            el.textContent = m[3] ?? m[5] ?? m[7] ?? "";
+            cell.appendChild(el);
+          }
+          rest = rest.slice(m.index + m[0].length);
+          re.lastIndex = 0;
+        }
+        if (rest) cell.appendChild(document.createTextNode(rest));
+        if (aligns[j]) cell.style.textAlign = aligns[j];
+        tr.appendChild(cell);
+      });
+      table.appendChild(tr);
+    });
+    wrap.appendChild(table);
+    return wrap;
   }
   ignoreEvent() {
     return false;
@@ -296,18 +399,18 @@ function build(state: EditorState): DecorationSet {
           let info = "";
           for (let c = node.node.firstChild; c; c = c.nextSibling) if (c.name === "CodeInfo") info = doc.sliceString(c.from, c.to);
           const closed = last.number > first.number && /^\s*(`{3,}|~{3,})\s*$/.test(last.text);
-          for (let n = first.number; n <= last.number; n++) {
-            const l = doc.line(n);
-            const cls = ["cm-md-cb"];
-            if (n === first.number) cls.push("cm-md-cb-first");
-            if (n === last.number) cls.push("cm-md-cb-last");
-            if ((n === first.number || (n === last.number && closed)) && !active) cls.push("cm-md-cb-fence");
-            out.push(lineDeco(cls.join(" ")).range(l.from));
-          }
           if (!active) {
-            if (first.to > first.from) out.push(Decoration.replace({ widget: new TextWidget(info, "cm-md-cb-label") }).range(first.from, first.to));
-            if (closed && last.to > last.from) out.push(hide.range(last.from, last.to));
+            // Render the whole block as one widget: box styling without breaking line metrics.
+            const body = doc.sliceString(first.to + 1, closed ? last.from : last.to).replace(/\n$/, "");
+            out.push(Decoration.replace({ widget: new CodeBlockWidget(body, info), block: true }).range(first.from, closed ? last.to : last.to));
           } else {
+            for (let n = first.number; n <= last.number; n++) {
+              const l = doc.line(n);
+              const cls = ["cm-md-cb"];
+              if (n === first.number) cls.push("cm-md-cb-first");
+              if (n === last.number) cls.push("cm-md-cb-last");
+              out.push(lineDeco(cls.join(" ")).range(l.from));
+            }
             out.push(mark("cm-md-mark").range(first.from, first.to));
             if (closed) out.push(mark("cm-md-mark").range(last.from, last.to));
           }
@@ -326,8 +429,14 @@ function build(state: EditorState): DecorationSet {
           break;
         case "ListMark": {
           const list = parent?.parent;
-          if (list?.name === "BulletList" && !lineActive(from)) out.push(Decoration.replace({ widget: new TextWidget("•", "cm-md-bullet") }).range(from, to));
-          else out.push(mark("cm-md-listmark").range(from, to));
+          if (!lineActive(from)) {
+            if (list?.name === "BulletList") out.push(Decoration.replace({ widget: new TextWidget("•", "cm-md-bullet") }).range(from, to));
+            else if (list?.name === "OrderedList") {
+              const num = doc.sliceString(from, to).replace(/[.)]/, "");
+              out.push(Decoration.replace({ widget: new TextWidget(num + ".", "cm-md-bullet cm-md-ol") }).range(from, to));
+            }
+            else out.push(mark("cm-md-listmark").range(from, to));
+          } else out.push(mark("cm-md-listmark").range(from, to));
           break;
         }
         case "TaskMarker":
@@ -361,8 +470,12 @@ function build(state: EditorState): DecorationSet {
           if (!lineActive(from)) out.push(Decoration.replace({ widget: new RuleWidget() }).range(from, to));
           break;
         case "Table": {
-          const a = doc.lineAt(from).number, b = doc.lineAt(to).number;
-          for (let n = a; n <= b; n++) out.push(lineDeco("cm-md-table").range(doc.line(n).from));
+          const first = doc.lineAt(from), last = doc.lineAt(to);
+          if (!touches(first.from, last.to)) {
+            out.push(Decoration.replace({ widget: new TableWidget(doc.sliceString(from, to)), block: true }).range(first.from, last.to));
+          } else {
+            for (let n = first.number; n <= last.number; n++) out.push(lineDeco("cm-md-table").range(doc.line(n).from));
+          }
           return false;
         }
         case "InlineMath": {
@@ -414,7 +527,7 @@ const previewTheme = EditorView.theme({
   ".cm-md-strong": { fontWeight: "650" },
   ".cm-md-strike": { textDecoration: "line-through", color: "var(--muted-foreground)" },
   ".cm-md-code": { fontFamily: "var(--font-mono)", fontSize: "0.86em", backgroundColor: "color-mix(in oklab, var(--foreground) 8%, transparent)", borderRadius: "4px", padding: "0.1em 0.3em" },
-  ".cm-md-cb": { fontFamily: "var(--font-mono)", fontSize: "0.86em", lineHeight: "1.6", backgroundColor: "color-mix(in oklab, var(--foreground) 5%, transparent)", paddingLeft: "1.1rem !important" },
+  ".cm-md-cb": { fontFamily: "var(--font-mono)", fontSize: "0.86em", lineHeight: "1.6", backgroundColor: "transparent", paddingLeft: "1.1rem !important" },
   ".cm-md-cb-first": { borderTopLeftRadius: "6px", borderTopRightRadius: "6px", paddingTop: "0.15rem" },
   ".cm-md-cb-last": { borderBottomLeftRadius: "6px", borderBottomRightRadius: "6px", paddingBottom: "0.15rem" },
   ".cm-md-cb-fence": { fontSize: "0.7em", lineHeight: "1.5" },
@@ -425,6 +538,11 @@ const previewTheme = EditorView.theme({
   ".cm-md-link": { color: "var(--highlight)", textDecoration: "underline", textUnderlineOffset: "2px", textDecorationColor: "color-mix(in oklab, var(--highlight) 45%, transparent)" },
   ".cm-md-hr": { display: "inline-block", width: "100%", verticalAlign: "middle", borderTop: "1px solid var(--border)" },
   ".cm-md-table": { fontFamily: "var(--font-mono)", fontSize: "0.86em" },
+  ".cm-md-table-widget": { margin: "0.5rem 0", overflowX: "auto" },
+  ".cm-md-table-widget table": { width: "100%", borderCollapse: "collapse", fontSize: "0.86em" },
+  ".cm-md-table-widget th, .cm-md-table-widget td": { padding: "0.35rem 0.7rem", textAlign: "left", borderBottom: "1px solid var(--border)" },
+  ".cm-md-table-widget tr:last-child td": { borderBottom: "none" },
+  ".cm-md-table-widget th": { fontWeight: "650", color: "var(--foreground)" },
   ".cm-md-math": { padding: "0 0.05em", cursor: "text" },
   ".cm-md-math-block": { textAlign: "center", padding: "0.3rem 0", overflowX: "auto", overflowY: "hidden", cursor: "text" },
   ".cm-md-math-block .katex-display": { margin: "0" },

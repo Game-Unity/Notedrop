@@ -1,6 +1,6 @@
 @font-face {
   font-family: "Comfortaa";
-  font-style: normal;
+  font-style: normal italic;
   font-weight: 300 700;
   font-display: swap;
   src: url("./assets/fonts/comfortaa-cyrillic-ext.woff2") format("woff2");
@@ -8,7 +8,7 @@
 }
 @font-face {
   font-family: "Comfortaa";
-  font-style: normal;
+  font-style: normal italic;
   font-weight: 300 700;
   font-display: swap;
   src: url("./assets/fonts/comfortaa-cyrillic.woff2") format("woff2");
@@ -16,7 +16,7 @@
 }
 @font-face {
   font-family: "Comfortaa";
-  font-style: normal;
+  font-style: normal italic;
   font-weight: 300 700;
   font-display: swap;
   src: url("./assets/fonts/comfortaa-greek.woff2") format("woff2");
@@ -24,7 +24,7 @@
 }
 @font-face {
   font-family: "Comfortaa";
-  font-style: normal;
+  font-style: normal italic;
   font-weight: 300 700;
   font-display: swap;
   src: url("./assets/fonts/comfortaa-vietnamese.woff2") format("woff2");
@@ -32,7 +32,7 @@
 }
 @font-face {
   font-family: "Comfortaa";
-  font-style: normal;
+  font-style: normal italic;
   font-weight: 300 700;
   font-display: swap;
   src: url("./assets/fonts/comfortaa-latin-ext.woff2") format("woff2");
@@ -40,7 +40,7 @@
 }
 @font-face {
   font-family: "Comfortaa";
-  font-style: normal;
+  font-style: normal italic;
   font-weight: 300 700;
   font-display: swap;
   src: url("./assets/fonts/comfortaa-latin.woff2") format("woff2");
@@ -114,19 +114,40 @@ select {
 
 
 
+/* Description typography — single source for the rendered description (.prose-etude)
+   and the live editor when it carries the same class (.live-md.prose-etude). */
+.prose-etude {
+    --nd-prose-text-color: var(--muted-foreground);
+    --nd-prose-text-weight: 500;
+    --nd-prose-heading-size: 15px;
+    --nd-prose-heading-weight: 600;
+    --nd-prose-heading-leading: var(--tw-leading, var(--text-base--line-height));
+    --nd-prose-stroke: 0.2px currentColor;
+    --nd-prose-strong-weight: 900;
+    --nd-prose-code-bg: var(--muted);
+    --nd-prose-code-color: black;
+    --nd-prose-code-radius: 6px;
+    --nd-prose-code-padding: .4em 1.0em;
+    --nd-prose-pre-bg: var(--background);
+    --nd-prose-pre-padding-inline: 25px;
+    --nd-prose-pre-size: 14px;
+    --nd-prose-img-max: 420px;
+    --nd-prose-marker: #858585;
+}
+
 .prose-etude p, .prose-etude li,.prose-etude td {
-    color: var(--muted-foreground);
-    font-weight: 500;
+    color: var(--nd-prose-text-color);
+    font-weight: var(--nd-prose-text-weight);
 }
 
 .prose-etude h1, .prose-etude h2, .prose-etude h3, .prose-etude h4, .prose-etude h5, .prose-etude h6 {
-	line-height: var(--tw-leading, var(--text-base--line-height));
+	line-height: var(--nd-prose-heading-leading);
     --tw-tracking: var(--tracking-tight);
     margin: 29px 0 20px;
-    font-size: 15px;
-    font-weight: 600;
+    font-size: var(--nd-prose-heading-size);
+    font-weight: var(--nd-prose-heading-weight);
     letter-spacing: 0;
-    -webkit-text-stroke: 0.2px currentColor;
+    -webkit-text-stroke: var(--nd-prose-stroke);
 }
 
 h2, h3, h4, h5, h6 {
@@ -140,8 +161,8 @@ h2, h3, h4, h5, h6 {
 }
 
 .prose-etude strong {
-    font-weight: 900;
-    -webkit-text-stroke: 0.2px currentColor;
+    font-weight: var(--nd-prose-strong-weight);
+    -webkit-text-stroke: var(--nd-prose-stroke);
     color: var(--foreground);
 }
 
@@ -156,7 +177,7 @@ h2, h3, h4, h5, h6 {
 }
 
 .prose-etude td, .prose-etude th {
-    padding: 17px 25px;
+    padding: 14px 25px;
     text-align: left;
     border-bottom-style: var(--tw-border-style);
     border-bottom-width: 1px;
@@ -185,12 +206,12 @@ h2, h3, h4, h5, h6 {
     padding-left: 3px;
     margin: 5px 0;
     line-height: 1.65;
-    color: var(--muted-foreground);
+    color: var(--nd-prose-text-color);
 }
 
 /* Hauptmarker */
 .prose-etude li::marker {
-    color: #858585;
+    color: var(--nd-prose-marker);
     font-size: 1.0em;
 }
 
@@ -235,11 +256,12 @@ h2, h3, h4, h5, h6 {
 
 .prose-etude pre {
     margin: 20px 0;
-    padding: 20px 25px;
-    background: var(--background);
+    padding: 20px var(--nd-prose-pre-padding-inline);
+    background: var(--nd-prose-pre-bg);
     border: none !important;
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02), -1px 2px 18px rgba(0, 0, 0, 0.06);
-    font-size: 16px;
+    font-size: var(--nd-prose-pre-size);
+    font-weight: 500;
 }
 
 .prose-etude img {
@@ -249,7 +271,7 @@ h2, h3, h4, h5, h6 {
     display: block;
     max-width: 100%;
     width: auto;
-    max-height: 420px;
+    max-height: var(--nd-prose-img-max);
     height: auto;
     object-fit: contain;
     margin: 20px auto;
@@ -760,16 +782,227 @@ color-mix(in oklab, var(--highlight) 12%, transparent);
 
 .prose-etude code {
     font-family: var(--font-mono);
-    background: var(--muted);
-    color: black;
-    border-radius: 6px;
-    padding: .4em 1.0em;
-    font-weight: 500;
+    background: var(--nd-prose-code-bg);
+    color: var(--nd-prose-code-color);
+    border-radius: var(--nd-prose-code-radius);
+    padding: var(--nd-prose-code-padding);
+    font-weight: var(--nd-prose-text-weight);
     -webkit-text-stroke: 0.1px currentColor;
 }
 
 .prose-etude>:first-child {
-    font-weight: 900;
+    font-weight: var(--nd-prose-strong-weight);
+}
+
+/* Live markdown editor as description editor (.live-md.prose-etude): the same editor
+   the card fields use, styled from the description source above so editing matches
+   reading. Scoped to this class pair — card editors keep their own look. */
+.live-md.prose-etude {
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    /* Let table shadows and other decorations extend past the editor box. */
+    overflow: visible;
+}
+
+.live-md.prose-etude .cm-scroller {
+    overflow: visible;
+}
+
+/* Comfortaa where it has the glyph, KaTeX fonts for the rest (math symbols, fractions).
+   font-size-adjust matches Comfortaa's larger x-height to KaTeX_Main so both blend. */
+.katex {
+    font-family: "Comfortaa", KaTeX_Main, math, "Times New Roman", serif;
+    font-size-adjust: 0.5 !important;
+}
+
+.katex .mathnormal,
+.katex .mord,
+.katex .mord .mathnormal {
+    font-family: "Comfortaa", KaTeX_Math, KaTeX_Main, math, serif !important;
+}
+
+.live-md.prose-etude .cm-content {
+    font-family: "Comfortaa", sans-serif;
+    color: var(--nd-prose-text-color);
+    font-weight: var(--nd-prose-text-weight);
+    line-height: 1.6;
+    padding: 0;
+}
+
+/* Empty source lines act as paragraph spacing; the rendered description collapses
+   them into the paragraph margin (7px), so they stay shorter than a text line. */
+.live-md.prose-etude .cm-line:has(> br) {
+    line-height: 0.45;
+}
+
+/* The rendered description bolds its first paragraph as an intro (.prose-etude>:first-child).
+   In the editor that selector would hit the whole .cm-editor, so it is neutralized there
+   and mapped onto the first content line instead. */
+.live-md.prose-etude > .cm-editor:first-child {
+    font-weight: inherit;
+}
+
+.live-md.prose-etude .cm-content > .cm-line:first-child {
+    font-weight: var(--nd-prose-strong-weight);
+}
+
+.live-md.prose-etude .cm-md-h {
+    font-size: var(--nd-prose-heading-size);
+    font-weight: var(--nd-prose-heading-weight);
+    line-height: var(--nd-prose-heading-leading);
+    letter-spacing: 0;
+    -webkit-text-stroke: var(--nd-prose-stroke);
+    color: var(--foreground);
+}
+
+.live-md.prose-etude .cm-md-strong {
+    font-weight: var(--nd-prose-strong-weight);
+    -webkit-text-stroke: var(--nd-prose-stroke);
+    color: var(--foreground);
+}
+
+.live-md.prose-etude .cm-md-code {
+    background: var(--nd-prose-code-bg);
+    color: var(--nd-prose-code-color);
+    border-radius: var(--nd-prose-code-radius);
+    padding: var(--nd-prose-code-padding);
+    font-weight: var(--nd-prose-text-weight);
+    -webkit-text-stroke: 0.1px currentColor;
+}
+
+.live-md.prose-etude .cm-md-cb {
+    /* No opaque background: it would cover the selection layer drawSelection() paints behind the text. */
+    background: transparent;
+    font-size: var(--nd-prose-pre-size);
+    padding-left: var(--nd-prose-pre-padding-inline) !important;
+    font-family: "Comfortaa", sans-serif;
+    letter-spacing: 0.02em;
+    font-feature-settings: "tnum";
+}
+
+/* Code block widget: outer wrapper carries the spacing, inner box carries the look. */
+.live-md.prose-etude .cm-md-cb-widget {
+    padding: 20px 0;
+}
+
+.live-md.prose-etude .cm-md-cb-widget-inner {
+    padding: 20px var(--nd-prose-pre-padding-inline);
+    background: var(--nd-prose-pre-bg);
+    border-radius: var(--radius);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02), -1px 2px 18px rgba(0, 0, 0, 0.06);
+    font-size: var(--nd-prose-pre-size);
+    overflow-x: auto;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.live-md.prose-etude .cm-md-cb-widget-label {
+    font-family: "Comfortaa", sans-serif;
+    font-size: 0.75em;
+    color: var(--nd-prose-text-color);
+    margin-bottom: 8px;
+    letter-spacing: 0.02em;
+}
+
+.live-md.prose-etude .cm-md-cb-widget-pre {
+    margin: 0;
+    padding: 0;
+    background: none;
+    box-shadow: none;
+    font-family: "Comfortaa", sans-serif;
+    font-size: inherit;
+    line-height: 1.6;
+    white-space: pre;
+    /* Approximate monospace: Comfortaa is proportional, so we add fixed spacing. */
+    letter-spacing: 0.02em;
+    font-feature-settings: "tnum";
+}
+
+.live-md.prose-etude .cm-md-cb-first {
+    padding-top: 12px;
+}
+
+.live-md.prose-etude .cm-md-cb-last {
+    padding-bottom: 12px;
+}
+
+/* Links and quotes are unstyled in the rendered description. */
+.live-md.prose-etude .cm-md-link {
+    color: inherit;
+    text-decoration: none;
+}
+
+.live-md.prose-etude .cm-md-quote {
+    border-left: 1px solid var(--border);
+    padding-left: 0.8rem !important;
+    font-style: italic;
+    color: var(--nd-prose-text-color);
+    margin-left: 7px;
+}
+
+.live-md.prose-etude .cm-md-ol {
+    min-width: 1.4em;
+    text-align: right;
+    padding-right: 0.01em;
+    font-weight: 700;
+    -webkit-text-stroke: var(--nd-prose-stroke);
+}
+
+.live-md.prose-etude .cm-md-table {
+    font-family: "Comfortaa", sans-serif;
+    font-size: inherit;
+}
+
+/* Rendered table widget matches the finished description table. */
+
+.live-md.prose-etude .cm-md-table-widget table {
+    font-family: "Comfortaa", sans-serif;
+    font-size: inherit;
+}
+
+.live-md.prose-etude .cm-md-table-widget td,
+.live-md.prose-etude .cm-md-table-widget th {
+    padding: 14px 25px;
+    border-bottom: 1px solid var(--border);
+    color: var(--nd-prose-text-color);
+    font-weight: var(--nd-prose-text-weight);
+}
+
+.live-md.prose-etude .cm-md-table-widget th {
+    font-weight: 600;
+    -webkit-text-stroke: var(--nd-prose-stroke);
+    color: var(--foreground);
+}
+
+/* Images already pick up .prose-etude img; the editor theme's overrides yield to it here.
+   CodeMirror's per-line widget buffers are <img> too — they must not get the image margins. */
+.live-md.prose-etude img.cm-widgetBuffer {
+    margin: 0;
+    max-height: none;
+    background: none;
+    border-radius: 0;
+}
+
+.cm-md-image {
+    margin: 0 !important; 
+}
+
+.live-md.prose-etude .cm-md-image-pad {
+    padding: 0 0 20px 0;
+}
+
+.live-md.prose-etude .cm-md-image img {
+    background: var(--muted);
+    border-radius: var(--radius);
+    display: block;
+    max-width: 100%;
+    width: auto;
+    max-height: var(--nd-prose-img-max);
+    height: auto;
+    object-fit: contain;
+    margin: 0 auto;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02), -1px 2px 18px rgba(0, 0, 0, 0.06);
 }
 
 
@@ -1370,6 +1603,7 @@ color-mix(in oklab, var(--highlight) 15%, transparent);
 
 .nd-side-panel * {
     scrollbar-color: color-mix(in oklab, var(--color-main-app) 10%, transparent) transparent !important;
+    scrollbar-width: thin !important;
 }
 
 .nd-card-create-form {
@@ -1434,6 +1668,18 @@ p.-mt-1.text-xs.text-muted-foreground {}
     --input: color-mix(in srgb, var(--color-main-app) 15%, transparent);
     --ring: var(--color-app);
     --highlight: var(--color-main-app);
+    /* Dark-mode syntax colors: the defaults are tuned for light backgrounds. */
+    --success: oklch(0.78 0.16 150);
+    --warning: oklch(0.84 0.15 85);
+    --hard: oklch(0.82 0.13 70);
+    --easy: oklch(0.74 0.12 240);
+    --code-keyword: var(--foreground);
+    --code-string: var(--success);
+    --code-number: var(--warning);
+    --code-function: var(--easy);
+    --code-type: var(--hard);
+    --code-comment: color-mix(in oklab, var(--muted-foreground) 85%, transparent);
+    --code-punct: color-mix(in oklab, var(--foreground) 62%, transparent);
     color: var(--foreground);
     color-scheme: dark;
 }
@@ -1712,4 +1958,116 @@ p.-mt-1.text-xs.text-muted-foreground {}
     border-radius: 6px;
     display: block;
     margin: 0 auto;
+}
+
+/* Table widget in the side panel: compact, dark, matching the editor inputs. */
+
+.live-md.prose-etude .cm-md-table-widget {
+    margin: 0;
+    overflow: visible;
+    padding: 20px 0;
+}
+
+.nd-side-panel .cm-md-table-widget {
+    margin: 8px 0;
+    border: 1px solid var(--input);
+    border-radius: 8px;
+    overflow: hidden;
+    scrollbar-gutter: auto !important;
+    width: 100%;
+}
+
+.nd-side-panel .cm-md-table-widget table {
+    font-size: 12.5px;
+    line-height: 1.5;
+}
+
+.nd-side-panel .cm-md-table-widget th,
+.nd-side-panel .cm-md-table-widget td {
+    padding: 6px 10px;
+    border-bottom: 1px solid color-mix(in oklab, var(--color-main-app) 8%, transparent);
+}
+
+.nd-side-panel .cm-md-table-widget tr:last-child td {
+    border-bottom: none;
+}
+
+.nd-side-panel .cm-md-table-widget th {
+    font-weight: 700;
+    color: var(--color-main-app);
+    background: color-mix(in oklab, var(--color-main-app) 5%, transparent);
+}
+
+/* Quotes in the side panel: subtle marker line, italic, muted text. */
+.nd-side-panel .cm-md-quote {
+    border-left: 1px solid color-mix(in oklab, var(--color-main-app) 25%, transparent);
+    padding-left: 0.8rem !important;
+    font-style: italic;
+    margin-left: 7px;
+}
+
+/* Code block widget in the side panel: compact, dark, matching the editor inputs. */
+.nd-side-panel .cm-md-cb-widget {
+    padding: 8px 0;
+}
+
+.nd-side-panel .cm-md-cb-widget-inner {
+    padding: 10px 12px;
+    background: transparent;
+    border: 1px solid var(--input);
+    border-radius: 8px;
+    font-size: 12.5px;
+    overflow-x: auto;
+    scrollbar-gutter: auto !important;
+}
+
+.nd-side-panel .cm-md-cb-widget-label {
+    font-family: "Comfortaa", sans-serif;
+    font-size: 11px;
+    color: color-mix(in oklab, var(--color-main-app) 55%, transparent);
+    margin-bottom: 6px;
+    letter-spacing: 0.02em;
+}
+
+.nd-side-panel .cm-md-cb-widget-pre {
+    margin: 0;
+    padding: 0;
+    background: none;
+    font-family: "Comfortaa", sans-serif;
+    font-size: inherit;
+    line-height: 1.5;
+    white-space: pre;
+    /* Approximate monospace: Comfortaa is proportional, so we add fixed spacing. */
+    letter-spacing: 0.02em;
+    font-feature-settings: "tnum";
+}
+
+/* Edit-mode code lines match the widget so toggling between them doesn't jump. */
+.nd-side-panel .live-md .cm-md-cb {
+    font-size: 12.5px !important;
+    letter-spacing: 0.02em;
+    font-feature-settings: "tnum";
+}
+
+.live-md.prose-etude .cm-content > .cm-line {
+    padding: 0;
+}
+
+.live-md.prose-etude .cm-content > .cm-line {
+    padding: 0;
+    line-height: 1.8;
+}
+
+.prose-etude .cm-line:has(.cm-md-bullet, .cm-md-listmark) {
+    padding-left: 3px;
+    line-height: 1.85 !important;
+    color: var(--nd-prose-text-color);
+}
+
+.live-md.prose-etude .cm-md-table-widget table {
+    margin: 0;  /* kein Margin auf der table selbst */
+}
+
+.nd-side-panel .nd-item-editor-panel .e-editor .cm-scroller, .nd-side-panel .nd-item-editor-panel .e-editor {
+    scrollbar-gutter: auto !important;
 }

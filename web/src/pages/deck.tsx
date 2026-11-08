@@ -7,7 +7,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Markdown } from "@/components/markdown";
+import { LiveMarkdown } from "@/components/live-editor";
+import { MediaPasteProvider } from "@/components/media-paste";
 import { BulkBar, CheckBox, groupItems, ItemRow, OrderSelect, SearchHints } from "@/components/item-editor";
 import { DeckOptions, formatDeadline, type DeckFull } from "@/components/deck-options";
 import { api, type Counts, type DeckNode, type LearnerSummary, type Preset, type SearchRow } from "@/lib/api";
@@ -759,7 +760,6 @@ function CustomStudy({ deck, tags, disabled, phone, adaptive }: { deck: string; 
 function TextSection({ title, help, empty, value, markdown, mono, onSave }: { title: string; help?: React.ReactNode; empty: string; value: string; markdown?: boolean; mono?: boolean; onSave(v: string): Promise<void> }) {
   const [editing, setEditing] = useState(false);
   const [text, setText] = useState(value);
-  const [tab, setTab] = useState("write");
   const [busy, setBusy] = useState(false);
   useEffect(() => {
     if (!editing) setText(value);
@@ -776,6 +776,7 @@ function TextSection({ title, help, empty, value, markdown, mono, onSave }: { ti
       setBusy(false);
     }
   };
+  if (markdown) return <LiveTextSection title={title} help={help} value={value} empty={empty} onSave={onSave} />;
   return (
     <Section
       bare
@@ -783,7 +784,7 @@ function TextSection({ title, help, empty, value, markdown, mono, onSave }: { ti
       description={help}
       aside={
         !editing && (
-          <Button variant="ghost" size="sm" className="-my-1.5 -mr-2 gap-1.5 text-muted-foreground" onClick={() => { setEditing(true); setTab("write"); }}>
+          <Button variant="ghost" size="sm" className="-my-1.5 -mr-2 gap-1.5 text-muted-foreground" onClick={() => setEditing(true)}>
             <Pencil className="size-3.5" />Edit
           </Button>
         )
@@ -791,34 +792,102 @@ function TextSection({ title, help, empty, value, markdown, mono, onSave }: { ti
     >
       {editing ? (
         <div className="rounded-xl border bg-card/40 p-3">
-          {markdown ? (
-            <Tabs value={tab} onValueChange={setTab}>
-              <TabsList className="mb-3">
-                <TabsTrigger value="write" className="px-3">Write</TabsTrigger>
-                <TabsTrigger value="preview" className="px-3">Preview</TabsTrigger>
-              </TabsList>
-              <TabsContent value="write">
-                <Textarea autoFocus value={text} onChange={(e) => setText(e.target.value)} className="min-h-40" placeholder="Markdown and $math$ work here." />
-              </TabsContent>
-              <TabsContent value="preview">
-                <div className="min-h-40 rounded-md border px-3 py-2 text-sm">{text.trim() ? <Markdown>{text}</Markdown> : <span className="text-muted-foreground">Nothing to preview.</span>}</div>
-              </TabsContent>
-            </Tabs>
-          ) : (
-            <Textarea autoFocus value={text} onChange={(e) => setText(e.target.value)} className={cn("min-h-32", mono && "font-mono text-[13px]")} />
-          )}
+          <Textarea autoFocus value={text} onChange={(e) => setText(e.target.value)} className={cn("min-h-32", mono && "font-mono text-[13px]")} />
           <div className="mt-3 flex justify-end gap-2">
             <Button variant="ghost" className="h-10" onClick={() => { setText(value); setEditing(false); }}>Cancel</Button>
             <Button className="h-10" disabled={busy || text === value} onClick={save}>Save</Button>
           </div>
         </div>
       ) : value.trim() ? (
-        <div className={cn("rounded-xl border bg-card/40 px-4 py-3 text-sm", mono && "font-mono text-[13px] whitespace-pre-wrap")}>{markdown ? <Markdown>{value}</Markdown> : value}</div>
+        <div className={cn("rounded-xl border bg-card/40 px-4 py-3 text-sm", mono && "font-mono text-[13px] whitespace-pre-wrap")}>{value}</div>
       ) : (
         <button className="w-full rounded-xl border border-dashed px-4 py-4 text-left text-sm text-muted-foreground transition-colors hover:bg-accent/30 hover:text-foreground" onClick={() => setEditing(true)}>
           {empty}
         </button>
       )}
+    </Section>
+  );
+}
+
+/** Markdown text that is always editable: the live editor renders like the read view, and edits save on their own. */
+function LiveTextSection({ title, help, value, empty, onSave }: { title: string; help?: React.ReactNode; value: string; empty: string; onSave(v: string): Promise<void> }) {
+  const [text, setText] = useState(value);
+  const [saved, setSaved] = useState(value);
+  const [state, setState] = useState<"clean" | "dirty" | "saving">("clean");
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pending = useRef<string | null>(null);
+  const saving = useRef(false);
+
+  // Outside changes (deck switch, sync) replace the text unless the user is mid-edit.
+  useEffect(() => {
+    setSaved(value);
+    if (state === "clean") setText(value);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value]);
+
+  const runSave = useCallback(async (v: string) => {
+    saving.current = true;
+    setState("saving");
+    try {
+      await onSave(v);
+      setSaved(v);
+      setState(pending.current !== null && pending.current !== v ? "dirty" : "clean");
+    } catch (e) {
+      toast.error("Couldn't save", { description: (e as Error).message });
+      setState("dirty");
+    } finally {
+      saving.current = false;
+      if (pending.current !== null && pending.current !== v) {
+        const next = pending.current;
+        pending.current = null;
+        void runSave(next);
+      } else {
+        pending.current = null;
+      }
+    }
+  }, [onSave]);
+
+  const schedule = useCallback((v: string) => {
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = setTimeout(() => {
+      timer.current = null;
+      if (saving.current) pending.current = v;
+      else void runSave(v);
+    }, 800);
+  }, [runSave]);
+
+  // Flush on unmount so a quick navigation doesn't lose the last keystrokes.
+  useEffect(() => () => {
+    if (timer.current) clearTimeout(timer.current);
+  }, []);
+
+  const change = (v: string) => {
+    setText(v);
+    if (v === saved) {
+      if (timer.current) clearTimeout(timer.current);
+      setState("clean");
+      return;
+    }
+    setState("dirty");
+    schedule(v);
+  };
+
+  return (
+    <Section
+      bare
+      title={title}
+      description={help}
+      aside={
+        <span className={cn("transition-opacity", state === "clean" ? "opacity-0" : "opacity-100")}>
+          {state === "saving" ? "Saving…" : "Unsaved changes"}
+        </span>
+      }
+    >
+      <div className="rounded-xl border bg-card/40 p-3">
+        <MediaPasteProvider>
+          <LiveMarkdown className="prose-etude" value={text} onChange={change} minLines={3} placeholder={empty} />
+        </MediaPasteProvider>
+      </div>
     </Section>
   );
 }
