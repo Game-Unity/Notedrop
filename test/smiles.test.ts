@@ -55,6 +55,36 @@ test("renderSmiles widens the viewBox to cover measured ink", async () => {
   }
 });
 
+test("renderSmiles uses real super/subscript positioning instead of Unicode glyphs", async () => {
+  const el = window.document.createElement("div");
+  window.document.body.appendChild(el);
+  const svg = await renderSmiles("[NH4+]", el);
+  const tspans = [...svg.querySelectorAll("tspan")];
+  const unicodeScripts = /[⁰-⁹⁺⁻₀-₉]/;
+  assert.ok(tspans.length > 0);
+  assert.ok(tspans.every((t) => !unicodeScripts.test(t.textContent ?? "")), "no Unicode script characters left");
+  const sup = tspans.find((t) => t.getAttribute("baseline-shift") === "super");
+  assert.ok(sup, "charge becomes a superscript tspan");
+  assert.equal(sup!.textContent, "+");
+  assert.equal(sup!.getAttribute("font-size"), "0.7em");
+  const sub = tspans.find((t) => t.getAttribute("baseline-shift") === "sub");
+  assert.ok(sub, "hydrogen count becomes a subscript tspan");
+  assert.equal(sub!.textContent, "4");
+  const plain = tspans.filter((t) => !t.hasAttribute("baseline-shift")).map((t) => t.textContent);
+  assert.deepEqual(plain.sort(), ["H", "N"], "element and hydrogen stay plain text");
+});
+
+test("renderSmiles keeps position attributes on the first fragment", async () => {
+  const el = window.document.createElement("div");
+  window.document.body.appendChild(el);
+  const svg = await renderSmiles("[OH-]", el);
+  const tspans = [...svg.querySelectorAll("tspan")];
+  const sup = tspans.find((t) => t.getAttribute("baseline-shift") === "super");
+  assert.ok(sup);
+  assert.equal(sup!.textContent, "-");
+  assert.equal(sup!.getAttribute("fill"), tspans[0].getAttribute("fill"), "script fragment keeps the element color");
+});
+
 test("inlineSmiles extracts the source", () => {
   assert.equal(inlineSmiles("smiles:CCO"), "CCO");
   assert.equal(inlineSmiles("  smiles: c1ccccc1 "), "c1ccccc1");

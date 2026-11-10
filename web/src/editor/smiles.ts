@@ -63,6 +63,48 @@ function parse(SD: SmilesDrawerLib, smiles: string): unknown {
   return tree;
 }
 
+/** Unicode super/subscript characters smiles-drawer puts into labels, mapped back to ASCII. */
+const SUPERSCRIPT = new Map([..."⁰¹²³⁴⁵⁶⁷⁸⁹"].map((ch, i) => [ch, String(i)] as const));
+SUPERSCRIPT.set("⁺", "+").set("⁻", "-");
+const SUBSCRIPT = new Map([..."₀₁₂₃₄₅₆₇₈₉"].map((ch, i) => [ch, String(i)] as const));
+
+/**
+ * smiles-drawer writes charges, isotopes and atom counts as Unicode super/subscript characters
+ * (⁻, ⁺, ₂, …) into the label text. Fonts without those glyphs fall back to a system font, which
+ * looks mixed next to the rest. Split affected tspans into fragments that use real SVG script
+ * positioning (baseline-shift plus a smaller font-size) with plain ASCII text.
+ */
+function fixScripts(svg: SVGSVGElement): void {
+  for (const tspan of svg.querySelectorAll("tspan")) {
+    const text = tspan.textContent ?? "";
+    const runs: { shift: "super" | "sub" | null; text: string }[] = [];
+    for (const ch of text) {
+      const shift = SUPERSCRIPT.has(ch) ? ("super" as const) : SUBSCRIPT.has(ch) ? ("sub" as const) : null;
+      const ascii = shift === "super" ? SUPERSCRIPT.get(ch)! : shift === "sub" ? SUBSCRIPT.get(ch)! : ch;
+      const last = runs[runs.length - 1];
+      if (last && last.shift === shift) last.text += ascii;
+      else runs.push({ shift, text: ascii });
+    }
+    if (runs.length === 1 && runs[0].shift === null) continue;
+    const frag = document.createDocumentFragment();
+    runs.forEach((run, i) => {
+      const el = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+      // The first fragment keeps the position; the rest flow on inline from there.
+      for (const attr of i === 0 ? ["fill", "x", "y"] : ["fill"]) {
+        const v = tspan.getAttribute(attr);
+        if (v !== null) el.setAttribute(attr, v);
+      }
+      if (run.shift) {
+        el.setAttribute("baseline-shift", run.shift);
+        el.setAttribute("font-size", "0.7em");
+      }
+      el.textContent = run.text;
+      frag.appendChild(el);
+    });
+    tspan.replaceWith(frag);
+  }
+}
+
 /**
  * smiles-drawer fits the viewBox to atom centers plus a fixed padding, never to the rendered
  * labels, so wide terminal labels (NH₃⁺, COOH, …) overflow the box and get clipped. Measure the
@@ -112,6 +154,7 @@ export async function renderSmiles(smiles: string, el: HTMLElement, opts: Smiles
   });
   const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
   drawer.draw(tree, svg, "etude");
+  fixScripts(svg);
   fitLabels(svg);
   // The viewBox is fitted to the molecule; sizing by it keeps bond lengths consistent across structures.
   const box = (svg.getAttribute("viewBox") ?? "").split(/\s+/).map(Number);

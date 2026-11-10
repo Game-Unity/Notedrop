@@ -249,7 +249,7 @@ type Draft = { deck: string; fields: Record<string, unknown>; tags: string[]; so
 const draftOf = (it: ItemDetail): Draft => ({ deck: it.deck, fields: it.fields, tags: it.tags, source: it.source, notes: it.notes });
 
 /** `closeAlways` shows the back control at every size (for editors opened in a sheet); Browse only needs it on phones. */
-export function ItemEditor({ id, decks, tags, onSaved, onSaveSuccess, onDirtyChange, onDeleted, onDuplicate, onBack, closeAlways }: { id: string; decks: string[]; tags: string[]; onSaved(): void; onSaveSuccess?(): void; onDirtyChange?(dirty: boolean): void; onDeleted(): void; onDuplicate(id: string): void; onBack(): void; closeAlways?: boolean }) {
+export function ItemEditor({ id, decks, tags, onSaved, onSaveSuccess, onDirtyChange, onDeleted, onDuplicate, onBack, closeAlways, saveRef }: { id: string; decks: string[]; tags: string[]; onSaved(): void; onSaveSuccess?(): void; onDirtyChange?(dirty: boolean): void; onDeleted(): void; onDuplicate(id: string): void; onBack(): void; closeAlways?: boolean; saveRef?: { current: (() => Promise<boolean>) | null } }) {
   const [item, setItem] = useState<ItemDetail | null>(null);
   const [type, setType] = useState<CardType | null>(null);
   const [draft, setDraft] = useState<Draft | null>(null);
@@ -276,10 +276,14 @@ export function ItemEditor({ id, decks, tags, onSaved, onSaveSuccess, onDirtyCha
 
   useEffect(() => onDirtyChange?.(dirty), [dirty, onDirtyChange]);
 
-  const save = useCallback(async () => {
-    if (!item || !draft || mediaPending) return;
+  // `stay` keeps the editor open after saving (the caller navigates instead of onSaveSuccess).
+  const save = useCallback(async (stay?: boolean): Promise<boolean> => {
+    if (!item || !draft || mediaPending) return false;
     const problem = occlusionProblem(type, draft.fields);
-    if (problem) return void toast.error(problem);
+    if (problem) {
+      toast.error(problem);
+      return false;
+    }
     setSaving(true);
     try {
       const r = await api.saveItem(item.id, { type: item.type, ...draft, archived: item.archived });
@@ -288,13 +292,23 @@ export function ItemEditor({ id, decks, tags, onSaved, onSaveSuccess, onDirtyCha
       setVersion((v) => v + 1);
       toast.success("Saved");
       onSaved();
-      onSaveSuccess?.();
+      if (!stay) onSaveSuccess?.();
+      return true;
     } catch (e) {
       toast.error("Couldn't save", { description: (e as Error).message });
+      return false;
     } finally {
       setSaving(false);
     }
   }, [item, draft, onSaved, onSaveSuccess, mediaPending, type]);
+
+  useEffect(() => {
+    if (!saveRef) return;
+    saveRef.current = () => save(true);
+    return () => {
+      saveRef.current = null;
+    };
+  }, [save, saveRef]);
 
   useEffect(() => {
     const h = (e: KeyboardEvent) => {
@@ -346,7 +360,7 @@ export function ItemEditor({ id, decks, tags, onSaved, onSaveSuccess, onDirtyCha
       <span className="text-sm text-muted-foreground">{mediaPending ? "Copying media…" : "Unsaved changes"}</span>
       <div className="flex-1" />
       <Button variant="ghost" size="sm" disabled={mediaPending} onClick={() => setDraft(draftOf(item))}>Discard</Button>
-      <Button size="sm" className="gap-1.5" onClick={save} disabled={saving || mediaPending}>{saving ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}Save <kbd className="hidden text-[10px] opacity-60 sm:inline">Ctrl S</kbd></Button>
+      <Button size="sm" className="gap-1.5" onClick={() => save()} disabled={saving || mediaPending}>{saving ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}Save <kbd className="hidden text-[10px] opacity-60 sm:inline">Ctrl S</kbd></Button>
     </div>
   ) : null;
 

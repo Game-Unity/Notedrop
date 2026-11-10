@@ -69,18 +69,23 @@ const RELOAD_ON_SYNC = new Set(["/", "/archive", "/deck", "/stats", "/more"]);
 const toggleKey = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform) ? "⌘B" : "Ctrl+B";
 
 type DeckPanelMode = "overview" | "create" | "edit";
-type PanelDestination = { mode: "overview" | "create" } | { mode: "edit"; itemId: string };
+type PanelDestination = { mode: "overview" | "create" } | { mode: "edit"; itemId: string } | { mode: "chat" };
 type SidePanelContext = {
   path: string;
   deckName: string;
   dataKey: number;
   mode: DeckPanelMode;
   itemId: string | null;
+  chatOpen: boolean;
+  phone: boolean;
+  saveRef: { current: (() => Promise<boolean>) | null };
   onChanged(): void;
   onClose(): void;
   onOpenCard(itemId: string): void;
   onSavedEdit(): void;
   onDirtyChange(dirty: boolean): void;
+  onCloseChat(): void;
+  onAgentChanged(final: boolean): void;
 };
 const SIDE_PANEL_CONTENTS: {
   id: string;
@@ -88,18 +93,24 @@ const SIDE_PANEL_CONTENTS: {
   render(context: SidePanelContext): React.ReactNode;
 }[] = [
   {
+    // The chat is global: it overlays whatever the panel would show, on every screen.
+    id: "agent-chat",
+    matches: ({ chatOpen }) => chatOpen,
+    render: ({ onCloseChat, onAgentChanged }) => <AgentPanel embedded onClose={onCloseChat} onChanged={onAgentChanged} />,
+  },
+  {
     id: "notedrop-tree",
-    matches: ({ path, deckName, mode }) => path === "/deck" && Boolean(deckName) && mode === "overview",
+    matches: ({ path, deckName, mode, chatOpen }) => !chatOpen && path === "/deck" && Boolean(deckName) && mode === "overview",
     render: ({ deckName, dataKey }) => <NoteDropTree deckName={deckName} dataKey={dataKey} />,
   },
   {
     id: "deck-card-editor",
-    matches: ({ path, deckName, mode }) => path === "/deck" && Boolean(deckName) && mode !== "overview",
+    matches: ({ path, deckName, mode, chatOpen }) => !chatOpen && path === "/deck" && Boolean(deckName) && mode !== "overview",
     render: (context) => <DeckCardPanel {...context} />,
   },
 ];
 
-function DeckCardPanel({ deckName, mode, itemId, onChanged, onClose, onOpenCard, onSavedEdit, onDirtyChange }: SidePanelContext) {
+function DeckCardPanel({ deckName, mode, itemId, saveRef, onChanged, onClose, onOpenCard, onSavedEdit, onDirtyChange }: SidePanelContext) {
   const [decks, setDecks] = useState<string[]>([]);
   const [tags, setTags] = useState<string[]>([]);
   const [types, setTypes] = useState<TypeSummary[]>([]);
@@ -137,6 +148,7 @@ function DeckCardPanel({ deckName, mode, itemId, onChanged, onClose, onOpenCard,
       decks={decks}
       tags={tags}
       closeAlways
+      saveRef={saveRef}
       onBack={onClose}
       onSaved={onChanged}
       onSaveSuccess={onSavedEdit}
@@ -215,8 +227,11 @@ export function App() {
     itemId: path === "/deck" ? params.get("item") : null,
   }));
   const [panelDirty, setPanelDirty] = useState(false);
-  const [confirmPanelChange, setConfirmPanelChange] = useState(false);
+  const [confirmDiscard, setConfirmDiscard] = useState(false);
+  const [confirmSaveContinue, setConfirmSaveContinue] = useState(false);
+  const [savingContinue, setSavingContinue] = useState(false);
   const [pendingPanel, setPendingPanel] = useState<PanelDestination | null>(null);
+  const panelSaveRef = useRef<(() => Promise<boolean>) | null>(null);
   const panelRoute = path === "/deck" ? `${path}:${deckName}` : path;
   const previousPanelRoute = useRef(panelRoute);
   useEffect(() => {
@@ -225,7 +240,8 @@ export function App() {
     const itemId = path === "/deck" ? params.get("item") : null;
     setPanel({ mode: itemId ? "edit" : "overview", itemId });
     setPanelDirty(false);
-    setConfirmPanelChange(false);
+    setConfirmDiscard(false);
+    setConfirmSaveContinue(false);
     setPendingPanel(null);
   }, [panelRoute, path, params]);
 
@@ -237,40 +253,96 @@ export function App() {
     history.replaceState(null, "", `${location.pathname}${query.size ? `?${query}` : ""}`);
   };
   const applyPanelDestination = (destination: PanelDestination) => {
+    // The chat overlays the panel; the deck panel state underneath stays untouched, so closing
+    // the chat brings back the exact previous view.
+    if (destination.mode === "chat") {
+      agent.setOpen(true);
+      return;
+    }
+    agent.setOpen(false);
     const itemId = destination.mode === "edit" ? destination.itemId : null;
     setPanel({ mode: destination.mode, itemId });
     setPanelDirty(false);
     updatePanelUrl(itemId);
   };
   const requestPanelDestination = (destination: PanelDestination) => {
-    if (destination.mode === panel.mode && (destination.mode !== "edit" || destination.itemId === panel.itemId)) return;
+    if (destination.mode === "chat") {
+      if (agent.open) return;
+    } else if (destination.mode === panel.mode && (destination.mode !== "edit" || destination.itemId === panel.itemId)) return;
     if (panel.mode === "edit" && panelDirty) {
       setPendingPanel(destination);
-      setConfirmPanelChange(true);
+      // Switching between cards keeps the discard flow; leaving the editor offers saving first.
+      if (destination.mode === "edit") setConfirmDiscard(true);
+      else setConfirmSaveContinue(true);
       return;
     }
     applyPanelDestination(destination);
+  };
+  const saveAndContinue = async () => {
+    const save = panelSaveRef.current;
+    const destination = pendingPanel;
+    if (!save || !destination) {
+      setConfirmSaveContinue(false);
+      setPendingPanel(null);
+      return;
+    }
+    setSavingContinue(true);
+    const saved = await save();
+    setSavingContinue(false);
+    setConfirmSaveContinue(false);
+    setPendingPanel(null);
+    // A failed save keeps the editor open with all input intact; the action is dropped.
+    if (saved) applyPanelDestination(destination);
   };
   const openPanelCard = (itemId: string) => requestPanelDestination({ mode: "edit", itemId });
   const closePanel = (discard = false) => discard
     ? applyPanelDestination({ mode: "overview" })
     : requestPanelDestination({ mode: "overview" });
   const closePanelAfterSave = () => applyPanelDestination({ mode: "overview" });
+  const toggleChat = () => {
+    if (agent.open) agent.setOpen(false);
+    else requestPanelDestination({ mode: "chat" });
+  };
+  useEffect(() => {
+    const h = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.key.toLowerCase() === "j") {
+        e.preventDefault();
+        toggleChat();
+      }
+    };
+    window.addEventListener("keydown", h);
+    return () => window.removeEventListener("keydown", h);
+  });
+  const onAgentChanged = (final: boolean) => {
+    announceDataChange();
+    if (final) {
+      invalidateProgress();
+      setDataKey((k) => k + 1);
+    }
+  };
   const sidePanelContext: SidePanelContext = {
     path,
     deckName,
     dataKey,
     mode: panel.mode,
     itemId: panel.itemId,
+    chatOpen: agent.open,
+    phone,
+    saveRef: panelSaveRef,
     onChanged: () => {
       invalidateProgress();
       setDataKey((key) => key + 1);
     },
-    onClose: closePanel,
+    // Zero-arg wrapper: the editor's close button is an onClick handler, and a MouseEvent
+    // must not be read as closePanel(discard).
+    onClose: () => closePanel(),
     onOpenCard: openPanelCard,
     onSavedEdit: closePanelAfterSave,
     onDirtyChange: setPanelDirty,
+    onCloseChat: () => agent.setOpen(false),
+    onAgentChanged,
   };
+  const chatVisible = agent.open;
   const sidePanelContents = SIDE_PANEL_CONTENTS
     .filter((registration) => registration.matches(sidePanelContext))
     .map((registration) => <Fragment key={registration.id}>{registration.render(sidePanelContext)}</Fragment>);
@@ -346,7 +418,7 @@ export function App() {
   const askEtudeItem = (() => {
     const btn = (
       <button
-        onClick={() => agent.setOpen(!agent.open)}
+        onClick={toggleChat}
         aria-label="Ask Etude"
         data-agent-launcher
         className={cn(
@@ -376,10 +448,8 @@ export function App() {
       ) : (
         <div
           className={cn("nd-app-shell flex min-h-dvh", path === "/deck" && "nd-app-shell--deck")}
-          data-panel-mode={panel.mode === "overview" ? "overview" : "editor"}
+          data-panel-mode={chatVisible ? "chat" : panel.mode === "overview" ? "overview" : "editor"}
           data-sidebar-collapsed={collapsed}
-          data-agent-open={agent.open}
-          style={{ "--agent-offset": agent.open ? `${agent.width}px` : "0px", } as React.CSSProperties}
         >
           <aside
             className={cn(
@@ -419,31 +489,17 @@ export function App() {
             </div>
           </aside>
           <main key={path === "/deck" ? `deck:${deckName}` : dataKey} className="nd-app-content min-w-0 flex-1 pb-16">{page}</main>
-          <NoteDropSidePanel visible={path === "/deck" && Boolean(sidePanelContext.deckName)} mode={panel.mode === "overview" ? "overview" : "editor"}>
+          <NoteDropSidePanel visible={chatVisible || (path === "/deck" && Boolean(sidePanelContext.deckName))} mode={chatVisible ? "chat" : panel.mode === "overview" ? "overview" : "editor"}>
             {sidePanelContents}
           </NoteDropSidePanel>
-          {agent.open && (
-            <AgentPanel
-              width={agent.width}
-              setWidth={agent.setWidth}
-              onClose={() => agent.setOpen(false)}
-              onChanged={(final) => {
-                announceDataChange();
-                if (final) {
-                  invalidateProgress();
-                  setDataKey((k) => k + 1);
-                }
-              }}
-            />
-          )}
           {!phone && <PhoneTabBar path={path} updateDot={updateDot} onAsk={() => agent.setOpen(true)} />}
         </div>
       )}
       <AlertDialog
-        open={confirmPanelChange}
+        open={confirmDiscard}
         onOpenChange={(open) => {
           if (!open) {
-            setConfirmPanelChange(false);
+            setConfirmDiscard(false);
             setPendingPanel(null);
           }
         }}
@@ -454,12 +510,38 @@ export function App() {
             <AlertDialogDescription>Your changes to this card haven't been saved. Continue and discard them?</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => { setConfirmPanelChange(false); setPendingPanel(null); }}>Keep editing</AlertDialogCancel>
+            <AlertDialogCancel onClick={() => { setConfirmDiscard(false); setPendingPanel(null); }}>Keep editing</AlertDialogCancel>
             <AlertDialogAction variant="destructive" onClick={() => {
               if (pendingPanel) applyPanelDestination(pendingPanel);
               setPendingPanel(null);
-              setConfirmPanelChange(false);
+              setConfirmDiscard(false);
             }}>Discard changes</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      <AlertDialog
+        open={confirmSaveContinue}
+        onOpenChange={(open) => {
+          if (!open && !savingContinue) {
+            setConfirmSaveContinue(false);
+            setPendingPanel(null);
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Unsaved changes</AlertDialogTitle>
+            <AlertDialogDescription>You have unsaved changes in the editor. Would you like to save them before continuing?</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={savingContinue} onClick={() => { setConfirmSaveContinue(false); setPendingPanel(null); }}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={savingContinue}
+              onClick={(e) => {
+                e.preventDefault();
+                void saveAndContinue();
+              }}
+            >{savingContinue ? "Saving…" : "Save and continue"}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

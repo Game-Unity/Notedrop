@@ -1,6 +1,6 @@
 // "Ask Etude": the assistant's side panel. The panel pushes the page on desktop and is a full-screen sheet on phones; the launcher lives in the sidebar dock.
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { ArrowUp, Ban, CalendarCheck, Check, ChevronDown, ChevronLeft, ChevronRight, ChevronsRight, CornerDownRight, Ellipsis, FileText, FileUp, FolderTree, ImageIcon, Loader2, Package, Palette, Pencil, Plus, RotateCcw, Settings2, Square, SquarePen, Trash2, X } from "lucide-react";
+import { ArrowUp, Ban, CalendarCheck, Check, ChevronDown, ChevronLeft, ChevronRight, CornerDownRight, Ellipsis, FileText, FileUp, FolderTree, ImageIcon, Loader2, Package, Palette, Pencil, Plus, RotateCcw, Settings2, Square, SquarePen, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -39,7 +39,7 @@ const usePhone = () => {
   return phone;
 };
 
-/** Open state and width, shared by the launcher, the panel and the layout. */
+/** Open state and width, shared by the launcher, the panel and the layout. The Ctrl+J shortcut lives in App, where opening goes through the unsaved-changes guard. */
 export function useAgentPanel() {
   const [open, setOpen] = useState(() => localStorage.getItem(OPEN_KEY) === "1");
   const [width, setWidth] = useState(() => {
@@ -52,16 +52,6 @@ export function useAgentPanel() {
     if (open) track("ask.open");
   }, [open]);
   useEffect(() => localStorage.setItem(WIDTH_KEY, String(width)), [width]);
-  useEffect(() => {
-    const h = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.key.toLowerCase() === "j") {
-        e.preventDefault();
-        setOpen((o) => !o);
-      }
-    };
-    window.addEventListener("keydown", h);
-    return () => window.removeEventListener("keydown", h);
-  }, []);
   return { open, setOpen, width, setWidth };
 }
 
@@ -114,7 +104,7 @@ function HeaderButton({ label, tip, onClick, disabled, children, ...rest }: { la
       disabled={disabled}
       onClick={onClick}
       {...rest}
-      className="flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors outline-ring hover:bg-accent/70 hover:text-foreground focus-visible:outline-2 disabled:pointer-events-none disabled:opacity-40 pointer-coarse:size-9 [&_svg]:size-4"
+      className="flex size-8 shrink-0 items-center justify-center rounded-md text-foreground transition-colors outline-ring hover:bg-accent/70 focus-visible:outline-2 disabled:pointer-events-none disabled:opacity-40 pointer-coarse:size-10 [&_svg]:size-4"
     >
       {children}
     </button>
@@ -160,7 +150,8 @@ async function refreshPage(onChanged: (final: boolean) => void, final: boolean) 
   onChanged(final);
 }
 
-export function AgentPanel({ width, setWidth, onClose, onChanged }: { width: number; setWidth(w: number): void; onClose(): void; onChanged(final: boolean): void }) {
+export function AgentPanel({ width, setWidth, onClose, onChanged, embedded }: { width?: number; setWidth?(w: number): void; onClose(): void; onChanged(final: boolean): void; embedded?: boolean }) {
+  const preview = import.meta.env.DEV && new URLSearchParams(location.search).has("chat-preview");
   const phone = usePhone();
   const [convs, setConvs] = useState<Conversation[]>([]);
   const [conv, setConv] = useState<(Conversation & { messages: Message[] }) | null>(null);
@@ -438,8 +429,8 @@ export function AgentPanel({ width, setWidth, onClose, onChanged }: { width: num
   const startResize = (e: React.PointerEvent) => {
     e.preventDefault();
     const x0 = e.clientX;
-    const w0 = width;
-    const move = (ev: PointerEvent) => setWidth(Math.min(720, Math.max(340, w0 + (x0 - ev.clientX))));
+    const w0 = width ?? 428;
+    const move = (ev: PointerEvent) => setWidth?.(Math.min(720, Math.max(340, w0 + (x0 - ev.clientX))));
     const up = () => {
       window.removeEventListener("pointermove", move);
       window.removeEventListener("pointerup", up);
@@ -480,10 +471,14 @@ export function AgentPanel({ width, setWidth, onClose, onChanged }: { width: num
       data-agent-panel
       className={cn(
         "flex flex-col bg-background text-foreground",
-        phone ? "agent-sheet-in fixed inset-x-0 top-0 z-50 h-dvh pt-[env(safe-area-inset-top)]" : "agent-panel-in sticky top-0 h-dvh shrink-0 border-l",
+        embedded
+          ? "nd-agent-embedded h-full min-h-0"
+          : phone
+            ? "agent-sheet-in fixed inset-x-0 top-0 z-50 h-dvh pt-[env(safe-area-inset-top)]"
+            : "agent-panel-in sticky top-0 h-dvh shrink-0 border-l",
         dragging && "outline-2 -outline-offset-2 outline-ring/60",
       )}
-      style={phone ? (vv ? { height: vv.h, top: vv.top } : undefined) : { width }}
+      style={embedded ? undefined : phone ? (vv ? { height: vv.h, top: vv.top } : undefined) : { width }}
       onDragOver={(e) => {
         if (e.dataTransfer.types.includes("Files")) {
           e.preventDefault();
@@ -499,8 +494,8 @@ export function AgentPanel({ width, setWidth, onClose, onChanged }: { width: num
         addFiles([...e.dataTransfer.files]);
       }}
     >
-      {!phone && <div onPointerDown={startResize} className="absolute inset-y-0 -left-1 z-10 w-2 cursor-col-resize" aria-hidden />}
-      <header className="mt-2.5 flex h-11 shrink-0 items-center gap-0.5 pr-2.5 pl-4 max-sm:mt-0 max-sm:pl-2 pointer-coarse:h-12">
+      {!phone && !embedded && <div onPointerDown={startResize} className="absolute inset-y-0 -left-1 z-10 w-2 cursor-col-resize" aria-hidden />}
+      <header className="flex h-11 shrink-0 items-center gap-1 border-b border-border pb-3 pointer-coarse:h-12">
         {phone && (
           <HeaderButton label="Close" tip="Close" onClick={onClose}>
             <ChevronLeft />
@@ -522,7 +517,7 @@ export function AgentPanel({ width, setWidth, onClose, onChanged }: { width: num
                 <button
                   type="button"
                   aria-label="More"
-                  className="flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors outline-ring hover:bg-accent/70 hover:text-foreground focus-visible:outline-2 data-[state=open]:bg-accent/70 data-[state=open]:text-foreground pointer-coarse:size-9 [&_svg]:size-4"
+                  className="flex size-8 shrink-0 items-center justify-center rounded-md text-foreground transition-colors outline-ring hover:bg-accent/70 focus-visible:outline-2 data-[state=open]:bg-accent/70 pointer-coarse:size-10 [&_svg]:size-4"
                 >
                   <Ellipsis />
                 </button>
@@ -548,7 +543,7 @@ export function AgentPanel({ width, setWidth, onClose, onChanged }: { width: num
         </DropdownMenu>
         {!phone && (
           <HeaderButton label="Close" tip={<>Close <span className="opacity-60">Esc</span></>} onClick={onClose}>
-            <ChevronsRight />
+            <X />
           </HeaderButton>
         )}
       </header>
@@ -558,14 +553,16 @@ export function AgentPanel({ width, setWidth, onClose, onChanged }: { width: num
         <div
           ref={scroller}
           data-agent-scroll
-          className="flex h-full flex-col overflow-y-auto px-4 pt-2 pb-4"
+          className="flex h-full flex-col overflow-y-auto"
           onScroll={(e) => {
             const el = e.currentTarget;
             stick.current = el.scrollHeight - el.scrollTop - el.clientHeight < 40;
             setScrolled(el.scrollTop > 4);
           }}
         >
-          {notConfigured ? (
+          {preview ? (
+            <ChatStylePreview />
+          ) : notConfigured ? (
             <div className="mt-auto flex flex-col items-start gap-3 pb-2">
               <Logo className="size-11" />
               <p className="text-[17px] font-semibold tracking-tight">Set up an AI provider first</p>
@@ -592,7 +589,7 @@ export function AgentPanel({ width, setWidth, onClose, onChanged }: { width: num
         </div>
       </div>
 
-      <div className="shrink-0 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] max-sm:px-3 max-sm:pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+      <div className="shrink-0">
         <div
           data-agent-composer
           className="rounded-[14px] border bg-[color-mix(in_oklab,var(--background),white_65%)] shadow-[0_1px_2px_rgb(0_0_0/0.04)] transition-colors focus-within:border-foreground/25 dark:bg-[color-mix(in_oklab,var(--background),var(--foreground)_4.5%)] dark:shadow-none"
@@ -658,7 +655,7 @@ export function AgentPanel({ width, setWidth, onClose, onChanged }: { width: num
                 aria-label="Send"
                 disabled={!canSend}
                 onClick={send}
-                style={canSend ? { color: sendText } : undefined}
+                style={!embedded && canSend ? { color: sendText } : undefined}
                 className={cn(
                   "flex size-7 items-center justify-center rounded-full transition-colors outline-ring focus-visible:outline-2 pointer-coarse:size-9",
                   canSend ? "bg-highlight hover:opacity-90" : "border border-foreground/20 bg-transparent text-muted-foreground/70",
@@ -720,7 +717,6 @@ const SUGGESTIONS: { icon: typeof FileUp; label: string; file?: boolean }[] = [
 function EmptyState({ onPick, onFile }: { onPick(t: string): void; onFile(): void }) {
   return (
     <div className="agent-rise mt-auto flex flex-col pb-3" data-agent-empty>
-      <Logo className="-ml-1.5 size-12" />
       <p className="mt-3.5 mb-3.5 text-[17px] leading-snug font-semibold tracking-tight">What are we practicing today?</p>
       <ul className="-mx-2 flex flex-col">
         {SUGGESTIONS.map(({ icon: Icon, label, file }) => (
@@ -741,17 +737,83 @@ function EmptyState({ onPick, onFile }: { onPick(t: string): void; onFile(): voi
   );
 }
 
+function ChatStylePreview() {
+  const [undone, setUndone] = useState(false);
+  const [confirmation, setConfirmation] = useState<string | null>(null);
+  const base = {
+    conversationId: "style-preview",
+    created: "2026-01-01T00:00:00Z",
+    snapshot: null,
+    undone: false,
+    canUndo: false,
+  };
+  const user: Message = {
+    ...base,
+    id: -1,
+    role: "user",
+    content: {
+      text: "Erstelle mir Karten aus diesen Notizen.",
+      attachments: [{ id: "preview-pdf", name: "Lernnotizen.pdf", kind: "pdf", mime: "application/pdf", bytes: 42000, pages: 3 }],
+    },
+  };
+  const assistant: Message = {
+    ...base,
+    id: -2,
+    role: "assistant",
+    undone,
+    canUndo: true,
+    content: {
+      text: "",
+      model: "Design-Testmodell",
+      ms: 1200,
+      changed: true,
+      changes: ["created 3 cards"],
+      items: [
+        { type: "text", text: "### Dein Lernplan\n\nHeute stehen **12 Karten** an. Beginne mit den Grundlagen.\n\n- Begriffe wiederholen\n- Beispiele üben\n\n1. Definition lesen\n2. Antwort formulieren\n\n> Kurze, regelmäßige Einheiten helfen.\n\nBeispiel mit `deck:Grundlagen`, *kursiv* und ~~durchgestrichen~~.\n\n```json\n{ \"deck\": \"Grundlagen\", \"cards\": 12 }\n```\n\n| Deck | Karten |\n| --- | --- |\n| Grundlagen | 12 |\n| Beispiele | 6 |\n\nFormel: $a^2 + b^2 = c^2$" },
+        { type: "tool", id: "preview-read", tool: "read_attachment", label: "read Lernnotizen.pdf", status: "done", output: "3 Seiten gelesen." },
+        { type: "tool", id: "preview-list", tool: "etude_run", label: "etude card list", status: "done", output: '{ "cards": 12 }' },
+        { type: "tool", id: "preview-error", tool: "etude_run", label: "etude card add", status: "error", output: "Beispiel: Ein Pflichtfeld fehlt." },
+      ],
+    },
+  };
+  return (
+    <div data-chat-style-preview className="flex flex-col gap-6">
+      <p data-agent-meta>Design-Vorschau mit echten Komponenten. Aktionen ändern keine Daten.</p>
+      <MessageView m={user} conv="style-preview" />
+      <MessageView m={assistant} conv="style-preview" last onUndo={() => setUndone(true)} />
+      <LiveView live={{ turnId: null, user: null, items: [], changed: false, error: null }} onAnswer={() => setConfirmation("Demo: bestätigt")} />
+      <LiveView
+        live={{ turnId: null, user: null, changed: false, error: null, items: [{ type: "tool", id: "preview-running", tool: "etude_run", label: "etude card list", status: "running" }] }}
+        onAnswer={() => setConfirmation("Demo: bestätigt")}
+      />
+      <LiveView
+        live={{
+          turnId: null, user: null, changed: false, error: null,
+          items: [{ type: "tool", id: "preview-confirm", tool: "etude_run", label: "etude card delete beispiel-1 beispiel-2 beispiel-3", status: "waiting", writes: true, summary: "3 Karten in Grundlagen löschen?", target: "Grundlagen", action: "Delete", preview: "Nur Testdaten, keine echte Aktion." }],
+        }}
+        onAnswer={(_, allow) => setConfirmation(allow ? "Demo: bestätigt" : "Demo: abgebrochen")}
+      />
+      {confirmation && <p data-agent-meta>{confirmation}</p>}
+      <MessageView
+        m={{ ...base, id: -3, role: "assistant", content: { text: "", items: [], model: "Design-Testmodell", ms: 300, changed: false, error: "Beispiel: Anbieter vorübergehend nicht erreichbar.", stopped: true } }}
+        conv="style-preview"
+        last
+      />
+    </div>
+  );
+}
+
 function AttachmentChip({ a, conv, onRemove }: { a: Attachment | { uploading: string; key: string }; conv?: string; onRemove?(): void }) {
   if ("uploading" in a)
     return (
-      <span className="flex h-7 max-w-full items-center gap-1.5 rounded-lg border bg-background px-2 text-xs text-muted-foreground">
+      <span data-agent-attachment className="flex h-7 max-w-full items-center gap-1.5 rounded-lg border bg-background px-2 text-xs text-muted-foreground">
         <Loader2 className="size-3 animate-spin" />
         <span className="truncate">{a.uploading}</span>
       </span>
     );
   const Icon = a.kind === "image" ? ImageIcon : a.kind === "anki" ? Package : FileText;
   return (
-    <span className="flex h-7 max-w-full items-center gap-1.5 rounded-lg border bg-background pr-1 pl-2 text-xs" title={a.name}>
+    <span data-agent-attachment className="flex h-7 max-w-full items-center gap-1.5 rounded-lg border bg-background pr-1 pl-2 text-xs" title={a.name}>
       {a.kind === "image" && conv ? <EtudeImg src={agentApi.attachmentUrl(conv, a.id)} alt="" className="size-4 rounded-sm object-cover" /> : <Icon className="size-3.5 text-muted-foreground" />}
       <span className="max-w-40 truncate">{a.name}</span>
       <span className="text-muted-foreground">{a.pages ? `${a.pages} p` : fmtBytes(a.bytes)}</span>
@@ -790,9 +852,10 @@ function MessageView({ m, conv, last, groups, onUndo }: { m: Message; conv: stri
     <div className="group/reply agent-rise flex flex-col gap-1.5" data-agent-reply>
       <Items items={c.items} />
       {c.error && <div className="rounded-[10px] border border-destructive/40 px-3 py-2 text-[13px] text-destructive">{c.error}</div>}
-      {c.stopped && <div className="text-[13px] text-muted-foreground">Stopped.</div>}
+      {c.stopped && <div data-agent-meta className="text-[13px] text-muted-foreground">Stopped.</div>}
       {(undo || (c.changed && m.undone) || meta) && (
         <div
+          data-agent-meta-row
           className={cn(
             "-ml-1.5 flex min-h-6 min-w-0 flex-wrap items-center gap-x-1 text-xs text-muted-foreground transition-opacity",
             // Hover-only on desktop, except the last reply's undo stays visible; always shown on touch.
@@ -823,11 +886,11 @@ function LiveView({ live, onAnswer }: { live: Live; onAnswer(item: ToolItem, all
   const running = live.items.some((i) => i.type === "tool" && i.status === "running" && !i.lookup);
   const lastIsText = live.items[live.items.length - 1]?.type === "text";
   return (
-    <div className="agent-rise flex flex-col gap-1.5">
+    <div data-agent-live className="agent-rise flex flex-col gap-1.5">
       <Items items={live.items} onAnswer={onAnswer} live />
       {live.error && <div className="rounded-[10px] border border-destructive/40 px-3 py-2 text-[13px] text-destructive">{live.error}</div>}
       {!waiting && !running && !lastIsText && (
-        <div className="flex h-7 items-center gap-2 text-[13px] text-muted-foreground">
+        <div data-agent-meta className="flex h-7 items-center gap-2 text-[13px] text-muted-foreground">
           <Loader2 className="size-3.5 animate-spin" />
           {live.items.some((i) => i.type !== "text") ? "Working…" : "Thinking…"}
         </div>
@@ -912,11 +975,11 @@ function RowShell({ icon, children, trailing, onClick, expanded }: { icon: React
   );
   const cls = "-ml-1.5 flex h-7 w-[calc(100%+0.375rem)] min-w-0 items-center gap-2 rounded-md px-1.5 text-left text-[13px] text-muted-foreground";
   return onClick ? (
-    <button type="button" onClick={onClick} aria-expanded={expanded} className={cn(cls, "transition-colors hover:bg-accent/60 hover:text-foreground")}>
+    <button data-agent-step type="button" onClick={onClick} aria-expanded={expanded} className={cn(cls, "transition-colors hover:bg-accent/60 hover:text-foreground")}>
       {inner}
     </button>
   ) : (
-    <div className={cls}>{inner}</div>
+    <div data-agent-step className={cls}>{inner}</div>
   );
 }
 
@@ -1056,7 +1119,7 @@ function ConfirmCard({ item, onAnswer }: { item: ToolItem; onAnswer(item: ToolIt
   const summary = item.summary ?? `Runs etude ${label}.`;
   const affected = previewList(item.preview);
   return (
-    <div className="agent-rise rounded-[14px] border border-foreground/20 bg-[color-mix(in_oklab,var(--background),var(--foreground)_3.5%)] p-3.5" role="alertdialog" aria-label="Confirm" aria-describedby={`cf-${item.id}`}>
+    <div data-agent-confirm className="agent-rise rounded-[14px] border border-foreground/20 bg-[color-mix(in_oklab,var(--background),var(--foreground)_3.5%)] p-3.5" role="alertdialog" aria-label="Confirm" aria-describedby={`cf-${item.id}`}>
       <p id={`cf-${item.id}`} className="text-sm leading-snug text-pretty text-foreground">
         {emphasize(summary.replace(/(\d) /g, "$1\u00a0").replace(/, (\d)/g, ",\u00a0$1"), item.target)}
       </p>
@@ -1106,7 +1169,7 @@ function HistoryMenu({ convs, active, title, onPick, onDelete }: { convs: Conver
           type="button"
           aria-label="History"
           data-agent-title
-          className="-ml-1.5 flex h-7 min-w-0 items-center gap-1 rounded-md px-1.5 text-sm font-medium transition-colors outline-ring hover:bg-accent/70 focus-visible:outline-2 data-[state=open]:bg-accent/70 pointer-coarse:h-9"
+          className="flex h-8 min-w-0 items-center gap-1 rounded-md px-2 text-sm font-medium transition-colors outline-ring hover:bg-accent/70 focus-visible:outline-2 data-[state=open]:bg-accent/70 pointer-coarse:h-9"
         >
           <span className="truncate">{title}</span>
           <ChevronDown className="size-3.5 shrink-0 text-muted-foreground" />

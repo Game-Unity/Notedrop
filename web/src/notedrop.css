@@ -50,14 +50,15 @@
 html:root {
     --nd-side-panel-width: 270px;
     --nd-side-panel-editor-width: 450px;
+    --nd-side-panel-chat-width: 370px;
     --background: white;
     --background-app: #1c1c1c;
     --background-app-sidebar: #242424;
     --color-app: #a7a7b0;
     --color-main-app: white;
     --foreground: oklch(0.18 0 0);
-    --card: oklch(1 0 0);
-    --popover: oklch(1 0 0);
+    --card: white;
+    --popover: white;
     --primary: oklch(0.2 0 0);
     --primary-foreground: oklch(0.985 0 0);
     --secondary: oklch(0.95 0 0);
@@ -958,20 +959,24 @@ color-mix(in oklab, var(--highlight) 12%, transparent);
 
 /* Rendered table widget matches the finished description table. */
 
-.live-md.prose-etude .cm-md-table-widget table {
+.live-md.prose-etude .cm-md-table-widget table,
+.nd-side-panel .nd-agent-embedded .agent-prose table {
     font-family: "Comfortaa", sans-serif;
     font-size: inherit;
 }
 
 .live-md.prose-etude .cm-md-table-widget td,
-.live-md.prose-etude .cm-md-table-widget th {
+.live-md.prose-etude .cm-md-table-widget th,
+.nd-side-panel .nd-agent-embedded .agent-prose td,
+.nd-side-panel .nd-agent-embedded .agent-prose th {
     padding: 14px 25px;
     border-bottom: 1px solid var(--border);
     color: var(--nd-prose-text-color);
     font-weight: var(--nd-prose-text-weight);
 }
 
-.live-md.prose-etude .cm-md-table-widget th {
+.live-md.prose-etude .cm-md-table-widget th,
+.nd-side-panel .nd-agent-embedded .agent-prose th {
     font-weight: 600;
     -webkit-text-stroke: var(--nd-prose-stroke);
     color: var(--foreground);
@@ -1224,7 +1229,12 @@ color-mix(in oklab, var(--highlight) 15%, transparent);
     --nd-panel-width: var(--nd-side-panel-editor-width);
 }
 
-.nd-side-panel[data-mode="editor"]:not([hidden]) {
+.nd-side-panel[data-mode="chat"] {
+    --nd-panel-width: var(--nd-side-panel-chat-width);
+}
+
+.nd-side-panel[data-mode="editor"]:not([hidden]),
+.nd-side-panel[data-mode="chat"]:not([hidden]) {
     height: calc(100dvh - 42px);
 }
 
@@ -1309,6 +1319,11 @@ color-mix(in oklab, var(--highlight) 15%, transparent);
     .nd-side-panel:not([hidden]) #notedrop-tree {
         height: calc(100dvh - 16px);
         max-height: calc(100dvh - 16px);
+    }
+
+    .nd-app-shell--deck[data-panel-mode="overview"] > .nd-side-panel,
+    .nd-app-shell--deck[data-panel-mode="chat"] > .nd-side-panel {
+        display: none;
     }
 
     .nd-app-shell--deck[data-panel-mode="editor"] > .nd-app-content {
@@ -1639,7 +1654,8 @@ p.-mt-1.text-xs.text-muted-foreground {}
 }
 
 .nd-item-editor-scroll,
-.nd-card-create-form {
+.nd-card-create-form,
+.nd-side-panel .nd-agent-embedded [data-agent-scroll]{
     width: calc(100% + 20px);
     padding-right: 8px;
     padding-left: 3px;
@@ -1653,7 +1669,8 @@ p.-mt-1.text-xs.text-muted-foreground {}
 }
 
 .nd-side-panel .nd-card-create-panel,
-.nd-side-panel .nd-item-editor-panel {
+.nd-side-panel .nd-item-editor-panel,
+.nd-side-panel .nd-agent-embedded {
     --background: var(--background-app);
     --foreground: var(--color-main-app);
     --card: var(--background-app-sidebar);
@@ -1688,6 +1705,290 @@ p.-mt-1.text-xs.text-muted-foreground {}
 
 .nd-side-panel .nd-card-create-title {
     border-color: var(--border);
+}
+
+/* Embedded chat: the composer's light-theme tint classes don't apply here, so give it the
+   same dark treatment as the editor's input fields. */
+.nd-side-panel .nd-agent-embedded [data-agent-composer] {
+    background: transparent;
+    border-color: var(--input);
+    border-radius: 10px;
+    box-shadow: none;
+    transition: border-color 140ms ease, box-shadow 140ms ease;
+}
+
+.nd-side-panel .nd-agent-embedded [data-agent-composer]:focus-within {
+    border-color: var(--ring);
+    box-shadow: 0 0 0 3px color-mix(in oklab, var(--ring) 50%, transparent);
+}
+
+.nd-side-panel .nd-agent-embedded [data-agent-composer] textarea {
+    font-size: 14px;
+    font-weight: 300;
+    line-height: 20px;
+    color: var(--foreground);
+}
+
+.nd-side-panel .nd-agent-embedded [data-agent-composer] textarea::placeholder {
+    color: var(--muted-foreground);
+}
+
+.nd-side-panel .nd-agent-embedded [data-agent-composer] button[aria-label="Attach files"] {
+    border-color: var(--input);
+}
+
+.nd-side-panel .nd-agent-embedded [data-agent-composer] button[aria-label="Send"]:not(:disabled) {
+    background-color: var(--foreground);
+    color: var(--background);
+}
+
+.nd-side-panel .nd-agent-embedded :is([data-agent-meta], [data-agent-meta-row], [data-agent-meta-row] > *, [data-agent-step], [data-agent-step] code),
+.nd-side-panel .nd-agent-embedded [data-agent-scroll] .text-muted-foreground:not(.agent-prose *) {
+    color: var(--muted-foreground);
+    font-size: 13px;
+    font-weight: 400;
+    line-height: 20px;
+}
+
+.nd-side-panel .nd-agent-embedded [data-agent-meta-row] {
+    margin-left: 0;
+    column-gap: 12px;
+}
+
+.nd-side-panel .nd-agent-embedded :is([data-agent-meta], [data-agent-meta-row] > *, [data-agent-step]) {
+    padding-inline: 0;
+}
+
+.nd-side-panel .nd-agent-embedded [data-agent-step] {
+    margin-left: 0;
+    width: 100%;
+}
+
+.nd-side-panel .nd-agent-embedded :is([data-agent-step], [data-agent-meta]:has(> svg), [data-agent-meta-row] > button) {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.nd-side-panel .nd-agent-embedded [data-agent-step] > span:first-child {
+    width: 16px;
+    flex: 0 0 16px;
+}
+
+.nd-side-panel .nd-agent-embedded :is([data-agent-meta], [data-agent-meta-row], [data-agent-step]) svg {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+    scrollbar-gutter: auto !important;
+    overflow: visible;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.nd-side-panel .nd-agent-embedded [data-agent-scroll] {
+    padding-block: 20px;
+    scrollbar-color: color-mix(in oklab, var(--color-main-app) 10%, transparent) transparent;
+    font-size: 14px;
+    font-weight: 400;
+    line-height: 20px;
+}
+
+.nd-side-panel .nd-agent-embedded [data-agent-user] > .whitespace-pre-wrap {
+    padding: 8px 14px;
+    border-radius: 10px;
+    background: var(--muted);
+    color: var(--foreground);
+    line-height: 20px;
+    background: rgb(52 52 52 / 63%);
+}
+
+.nd-side-panel .nd-agent-embedded .agent-prose {
+    color: var(--foreground);
+    font-size: 14px;
+    font-weight: 300;
+    line-height: 20px;
+}
+
+.nd-side-panel .nd-agent-embedded .agent-prose :is(p, li, td) {
+    color: var(--foreground);
+    font-weight: inherit;
+}
+
+.nd-side-panel .nd-agent-embedded .agent-prose > :first-child {
+    margin-top: 0;
+}
+
+.nd-side-panel .nd-agent-embedded .agent-prose > :last-child {
+    margin-bottom: 0;
+}
+
+.nd-side-panel .nd-agent-embedded .agent-prose a {
+    color: var(--muted-foreground);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    text-decoration-color: color-mix(in oklab, var(--highlight) 45%, transparent);
+}
+
+.nd-side-panel .nd-agent-embedded .agent-prose :is(h1, h2, h3, h4, h5, h6) {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 300;
+    line-height: 20px;
+    letter-spacing: -0.01em;
+    -webkit-text-stroke: 0;
+}
+
+.nd-side-panel .nd-agent-embedded .agent-prose strong {
+    color: inherit;
+    font-weight: 650;
+    -webkit-text-stroke: 0.05px currentColor;
+}
+
+.nd-side-panel .nd-agent-embedded .agent-prose del {
+    color: var(--muted-foreground);
+}
+
+.nd-side-panel .nd-agent-embedded .agent-prose :not(pre) > code {
+    padding: 0.1em 0.3em;
+    border-radius: 4px;
+    background: color-mix(in oklab, var(--foreground) 8%, transparent);
+    color: inherit;
+    font-family: var(--font-mono);
+    font-size: 0.86em;
+    font-weight: inherit;
+    -webkit-text-stroke: 0;
+}
+
+.nd-side-panel .nd-agent-embedded .agent-prose :is(ul, ol) {
+    margin-block: 0;
+    padding-left: 1.4em;
+    list-style-position: outside;
+    margin: 15px 0;
+}
+
+.nd-side-panel .nd-agent-embedded .agent-prose ul {
+    list-style-type: disc;
+}
+
+.nd-side-panel .nd-agent-embedded .agent-prose ol {
+    list-style-type: decimal;
+}
+
+.nd-side-panel .nd-agent-embedded .agent-prose li {
+    margin: 0;
+    padding: 2px 0;
+    line-height: inherit;
+}
+
+.nd-side-panel .nd-agent-embedded .agent-prose li::marker {
+    color: var(--muted-foreground);
+    font-size: inherit;
+}
+
+.nd-side-panel .nd-agent-embedded .agent-prose > :first-child {
+    font-weight: inherit;
+}
+
+.nd-side-panel .nd-agent-embedded [data-agent-scroll] pre:not(.agent-prose pre) {
+    max-width: 100%;
+    padding: 12px;
+    border: 1px solid var(--input);
+    border-radius: 10px;
+    background: var(--card);
+    color: var(--foreground);
+    font-size: 12px;
+    line-height: 18px;
+    overflow: auto;
+}
+
+.nd-side-panel .nd-agent-embedded [data-agent-step] {
+    min-height: 32px;
+    height: auto;
+    padding-block: 6px;
+    color: var(--muted-foreground);
+    font-size: 13px;
+    font-weight: 400;
+    line-height: 20px;
+}
+
+.nd-side-panel .nd-agent-embedded button[data-agent-step]:hover {
+    color: var(--foreground);
+}
+
+.nd-side-panel .nd-agent-embedded [data-agent-attachment] {
+    min-height: 28px;
+    border-color: var(--input);
+    border-radius: 8px;
+    background: transparent;
+    font-size: 12px;
+    font-weight: 400;
+}
+
+.nd-side-panel .nd-agent-embedded [data-agent-confirm] {
+    padding: 12px;
+    border: 1px solid var(--input) !important;
+    border-radius: 10px;
+    background: color-mix(in oklab, var(--color-main-app) 5%, transparent);
+}
+
+.nd-side-panel .nd-agent-embedded [data-agent-confirm] > p:first-child {
+    font-size: 14px;
+    font-weight: 400;
+    line-height: 20px;
+}
+
+.nd-side-panel .nd-agent-embedded [data-agent-confirm] > p + p {
+    color: var(--muted-foreground);
+    font-size: 13px;
+    font-weight: 400;
+}
+
+.nd-side-panel .nd-agent-embedded [data-agent-confirm] button[data-size="sm"] {
+    min-height: 36px;
+}
+
+.nd-side-panel .nd-agent-embedded [data-agent-empty] {
+    gap: 12px;
+    padding-block: 16px;
+}
+
+.nd-side-panel .nd-agent-embedded [data-agent-empty] > p {
+    margin: 0;
+    color: var(--foreground);
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 20px;
+    letter-spacing: normal;
+}
+
+.nd-side-panel .nd-agent-embedded [data-agent-empty] > ul {
+    margin: 0;
+    gap: 8px;
+}
+
+.nd-side-panel .nd-agent-embedded [data-suggestion] {
+    height: auto;
+    min-height: 36px;
+    padding: 8px 12px;
+    border: 1px solid var(--input);
+    border-radius: 10px;
+    color: var(--muted-foreground);
+    font-size: 14px;
+    font-weight: 300;
+    line-height: 20px;
+}
+
+.nd-side-panel .nd-agent-embedded [data-suggestion]:hover,
+.nd-side-panel .nd-agent-embedded [data-suggestion]:focus-visible {
+    border-color: var(--ring);
+    color: var(--foreground);
+}
+
+.nd-side-panel .nd-agent-embedded [data-suggestion] > svg {
+    color: currentColor;
 }
 
 .nd-side-panel .nd-card-create-panel .text-muted-foreground,
@@ -1854,7 +2155,8 @@ p.-mt-1.text-xs.text-muted-foreground {}
 .nd-side-panel .nd-card-create-form .e-editor .cm-placeholder,
 .nd-side-panel .nd-item-editor-panel .e-editor .cm-placeholder,
 .nd-side-panel .nd-card-create-form .e-editor .cm-scroller,
-.nd-side-panel .nd-item-editor-panel .e-editor .cm-scroller {
+.nd-side-panel .nd-item-editor-panel .e-editor .cm-scroller,
+.nd-side-panel .nd-agent-embedded .agent-prose {
     font-family: inherit;
     font-size: 14px;
     font-weight: 300;
@@ -1954,7 +2256,8 @@ p.-mt-1.text-xs.text-muted-foreground {}
     height: 44px;
 }
 
-.nd-side-panel .cm-md-image img {
+.nd-side-panel .cm-md-image img,
+.nd-side-panel .nd-agent-embedded .agent-prose img {
     max-width: 100%;
     max-height: 8rem;
     border-radius: 6px;
@@ -1979,33 +2282,64 @@ p.-mt-1.text-xs.text-muted-foreground {}
     width: 100%;
 }
 
-.nd-side-panel .cm-md-table-widget table {
+.nd-side-panel .cm-md-table-widget table,
+.nd-side-panel .nd-agent-embedded .agent-prose table {
     font-size: 12.5px;
     line-height: 1.5;
 }
 
 .nd-side-panel .cm-md-table-widget th,
-.nd-side-panel .cm-md-table-widget td {
+.nd-side-panel .cm-md-table-widget td,
+.nd-side-panel .nd-agent-embedded .agent-prose th,
+.nd-side-panel .nd-agent-embedded .agent-prose td {
     padding: 6px 10px;
     border-bottom: 1px solid color-mix(in oklab, var(--color-main-app) 8%, transparent);
 }
 
-.nd-side-panel .cm-md-table-widget tr:last-child td {
+.nd-side-panel .cm-md-table-widget tr:last-child td,
+.nd-side-panel .nd-agent-embedded .agent-prose tr:last-child td {
     border-bottom: none;
 }
 
-.nd-side-panel .cm-md-table-widget th {
+.nd-side-panel .cm-md-table-widget th,
+.nd-side-panel .nd-agent-embedded .agent-prose th {
     font-weight: 700;
     color: var(--color-main-app);
     background: color-mix(in oklab, var(--color-main-app) 5%, transparent);
 }
 
+.nd-side-panel .nd-agent-embedded .agent-prose table {
+    display: table;
+    width: 100%;
+    margin: 20px 0;
+    border: 1px solid var(--input) !important;
+    border-collapse: separate;
+    border-spacing: 0;
+    border-radius: 8px;
+    overflow: hidden;
+    background: transparent;
+    box-shadow: none;
+    scrollbar-gutter: auto !important;
+}
+
+.nd-side-panel .nd-agent-embedded .agent-prose th {
+    background: color-mix(in oklab, var(--color-main-app) 5%, transparent);
+}
+
 /* Quotes in the side panel: subtle marker line, italic, muted text. */
-.nd-side-panel .cm-md-quote {
+.nd-side-panel .cm-md-quote,
+.nd-side-panel .nd-agent-embedded .agent-prose blockquote {
     border-left: 1px solid color-mix(in oklab, var(--color-main-app) 25%, transparent);
     padding-left: 0.8rem !important;
     font-style: italic;
     margin-left: 7px;
+}
+
+.nd-side-panel .nd-agent-embedded .agent-prose blockquote,
+.nd-side-panel .nd-agent-embedded .agent-prose blockquote p {
+    color: var(--muted-foreground);
+    margin-top: 15px;
+    margin-bottom: 15px;
 }
 
 /* Code block widget in the side panel: compact, dark, matching the editor inputs. */
@@ -2013,7 +2347,8 @@ p.-mt-1.text-xs.text-muted-foreground {}
     padding: 8px 0;
 }
 
-.nd-side-panel .cm-md-cb-widget-inner {
+.nd-side-panel .cm-md-cb-widget-inner,
+.nd-side-panel .nd-agent-embedded .agent-prose pre {
     padding: 10px 12px;
     background: transparent;
     border: 1px solid var(--input);
@@ -2021,6 +2356,17 @@ p.-mt-1.text-xs.text-muted-foreground {}
     font-size: 12.5px;
     overflow-x: auto;
     scrollbar-gutter: auto !important;
+}
+
+.nd-side-panel .nd-agent-embedded .agent-prose pre {
+    border: 1px solid var(--input) !important;
+    box-shadow: none;
+}
+
+.nd-side-panel .nd-agent-embedded .agent-prose pre code {
+    padding: 0;
+    background: none;
+    color: inherit;
 }
 
 .nd-side-panel .cm-md-cb-widget-label {
@@ -2031,7 +2377,8 @@ p.-mt-1.text-xs.text-muted-foreground {}
     letter-spacing: 0.02em;
 }
 
-.nd-side-panel .cm-md-cb-widget-pre {
+.nd-side-panel .cm-md-cb-widget-pre,
+.nd-side-panel .nd-agent-embedded .agent-prose pre code {
     margin: 0;
     padding: 0;
     background: none;
@@ -2064,6 +2411,7 @@ p.-mt-1.text-xs.text-muted-foreground {}
     padding-left: 3px;
     line-height: 1.85 !important;
     color: var(--nd-prose-text-color);
+    padding: 1px 0 !important;
 }
 
 .live-md.prose-etude .cm-md-table-widget table {
@@ -2078,15 +2426,40 @@ p.-mt-1.text-xs.text-muted-foreground {}
     padding: 0;
 }
 
-/* Größe der SMILES-Strukturen: 1 = Standard (z. B. 1.5 = 150 %) */
-.cm-md-smiles, .cm-md-smiles-inline, .e-smiles, .e-smiles-inline {
+/* Blockformeln */
+.cm-md-smiles, .e-smiles, .cm-md-smiles tspan, .e-smiles tspan {
+    --nd-smiles-bond-width: 1.2;
     --smiles-scale: 1.8;
-    --smiles-color: var(--nd-prose-text-color);
-    /*--smiles-color-<element> = einzelnes Element (o, n, f, cl, br, i, p, s, b, si), z. B.:
-    --smiles-color: var(--nd-prose-text-color);
-    --smiles-color-o: #e74c3c;
-    --smiles-color-n: #3498db; */
+    --smiles-color: currentColor;
+    font-weight: 600;
+}
 
+/* Inline-Formeln */
+.cm-md-smiles-inline, .e-smiles-inline, .cm-md-smiles-inline tspan, .e-smiles-inline tspan {
+    --nd-smiles-bond-width: 1.5;
+    --smiles-scale: 1.8;
+    --smiles-color: currentColor;
+}
+
+:is(.cm-md-smiles-inline, .e-smiles-inline) svg tspan[fill] {
+  stroke: attr(fill type(<color>));
+  stroke-width: var(--nd-smiles-label-stroke, 0.25px);
+  paint-order: stroke fill;
+}
+
+/* Bindungen (line) und aromatische Ringe (circle) liegen im maskierten <g> des SVG;
+   die Kreise der Textmaske stecken in <mask> und bleiben ebenso unberührt wie die
+   gefüllten Stereo-Keile (polygon). */
+:is(.cm-md-smiles, .cm-md-smiles-inline, .e-smiles, .e-smiles-inline) svg > g[mask] > :is(line, circle) {
+    stroke-width: var(--nd-smiles-bond-width, 1.3);
+}
+
+.nd-side-panel .cm-md-smiles, .nd-side-panel .cm-md-smiles-inline, .nd-side-panel .e-smiles, .nd-side-panel .e-smiles-inline {
+    --smiles-scale: 1.4;
+}
+
+:is(.cm-md-smiles, .cm-md-smiles-inline, .e-smiles, .e-smiles-inline) svg > g[mask] > :is(line, circle) {
+    stroke-width: var(--nd-smiles-bond-width, 1.3);
 }
 
 .nd-side-panel .cm-md-smiles, .nd-side-panel .cm-md-smiles-inline, .nd-side-panel .e-smiles, .nd-side-panel .e-smiles-inline {
@@ -2095,7 +2468,6 @@ p.-mt-1.text-xs.text-muted-foreground {}
 
 .cm-md-smiles svg * {
     font-family: "Comfortaa", sans-serif;
-    font-weight: var(--nd-prose-text-weight);
 }
 
 .cm-md-math-preview {
@@ -2119,3 +2491,10 @@ p.-mt-1.text-xs.text-muted-foreground {}
         color: var(--foreground);
 }
 
+.nd-side-panel .katex .mathnormal, .nd-side-panel .katex .mord, .nd-side-panel .katex .mord .mathnormal {
+    font-weight: 200;
+}
+
+.agent-prose li {
+    padding: 3px 0;
+}
