@@ -1,5 +1,5 @@
 import { autoSync } from "@/lib/sync";
-import { Archive, BarChart3, Blocks, Layers, Library, Settings, Store, X } from "lucide-react";
+import { Archive, BarChart3, Blocks, Layers, Library, Settings, Sparkles, Store, X } from "lucide-react";
 import { Fragment, useEffect, useRef, useState } from "react";
 import { Toaster } from "@/components/ui/sonner";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -19,7 +19,7 @@ import { StatsPage } from "@/pages/stats";
 import { SettingsPage } from "@/pages/settings";
 import { EmbedStudy } from "@/pages/embed";
 import { MarketPage } from "@/pages/market";
-import { AgentLauncher, AgentPanel, announceDataChange, useAgentPanel } from "@/components/agent-panel";
+import { AGENT_SHORTCUT, AgentPanel, announceDataChange, useAgentPanel } from "@/components/agent-panel";
 import { SidebarUpdate, useUpdateDot } from "@/components/update-bar";
 import { PhoneTabBar } from "@/components/phone-shell";
 import { MorePage } from "@/pages/more";
@@ -59,8 +59,9 @@ const NAV = [
   { to: "/types", label: "Card types", icon: Blocks, match: (p: string) => p.startsWith("/types") },
   { to: "/market", label: "Market", icon: Store, match: (p: string) => p === "/market" },
   { to: "/stats", label: "Stats", icon: BarChart3, match: (p: string) => p === "/stats" },
-  { to: "/settings", label: "Settings", icon: Settings, match: (p: string) => p === "/settings" },
 ];
+
+const SETTINGS_NAV = { to: "/settings", label: "Settings", icon: Settings, match: (p: string) => p === "/settings" };
 
 const COLLAPSED_KEY = "etude.sidebar.collapsed";
 /** Pages that only show the collection, so a sync that brought changes can reload them safely. */
@@ -315,6 +316,59 @@ export function App() {
   else if (path === "/more") page = <MorePage />;
   else page = <DecksPage key={path} archived={path === "/archive"} />;
 
+  const renderNavItem = (n: (typeof NAV)[number]) => {
+    const btn = (
+      <button
+        key={n.to}
+        onClick={() => navigate(n.to)}
+        aria-label={n.label}
+        aria-current={n.match(path) ? "page" : undefined}
+        className={cn(
+          "flex h-8 items-center gap-2.5 rounded-md text-sm text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-foreground",
+          collapsed || phone ? "justify-center px-0" : "px-2",
+          n.match(path) && "font-medium text-foreground",
+        )}
+      >
+        <n.icon className={cn("size-4 shrink-0", n.match(path) && "text-highlight")} />
+        {!collapsed && !phone && <span className="nd-primary-sidebar-label whitespace-nowrap">{n.label}</span>}
+      </button>
+    );
+    return collapsed ? (
+      <Tooltip key={n.to}>
+        <TooltipTrigger asChild>{btn}</TooltipTrigger>
+        <TooltipContent side="right">{n.label}</TooltipContent>
+      </Tooltip>
+    ) : (
+      btn
+    );
+  };
+
+  const askEtudeItem = (() => {
+    const btn = (
+      <button
+        onClick={() => agent.setOpen(!agent.open)}
+        aria-label="Ask Etude"
+        data-agent-launcher
+        className={cn(
+          "flex h-8 items-center gap-2.5 rounded-md text-sm text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-foreground",
+          collapsed || phone ? "justify-center px-0" : "px-2",
+          agent.open && "font-medium text-foreground",
+        )}
+      >
+        <Sparkles className={cn("size-4 shrink-0", agent.open && "text-highlight")} />
+        {!collapsed && !phone && <span className="nd-primary-sidebar-label whitespace-nowrap">Ask Etude</span>}
+      </button>
+    );
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>{btn}</TooltipTrigger>
+        <TooltipContent side="right">
+          Ask Etude <span className="opacity-60">· {AGENT_SHORTCUT}</span>
+        </TooltipContent>
+      </Tooltip>
+    );
+  })();
+
   return (
     <TooltipProvider delayDuration={300}>
       {studying ? (
@@ -355,44 +409,20 @@ export function App() {
                 </TooltipContent>
               </Tooltip>
             </div>
-            <div className="nd-primary-sidebar-nav flex flex-col gap-1">
-            {NAV.map((n) => {
-              const btn = (
-                <button
-                  key={n.to}
-                  onClick={() => navigate(n.to)}
-                  aria-label={n.label}
-                  aria-current={n.match(path) ? "page" : undefined}
-                  className={cn(
-                    "flex h-8 items-center gap-2.5 rounded-md text-sm text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-foreground",
-                    collapsed || phone ? "justify-center px-0" : "px-2",
-                    n.match(path) && "font-medium text-foreground",
-                  )}
-                >
-                  <n.icon className={cn("size-4 shrink-0", n.match(path) && "text-highlight")} />
-                  {!collapsed && !phone && <span className="nd-primary-sidebar-label whitespace-nowrap">{n.label}</span>}
-                </button>
-              );
-              return collapsed ? (
-                <Tooltip key={n.to}>
-                  <TooltipTrigger asChild>{btn}</TooltipTrigger>
-                  <TooltipContent side="right">{n.label}</TooltipContent>
-                </Tooltip>
-              ) : (
-                btn
-              );
-            })}
+            <div className="nd-primary-sidebar-nav my-auto flex flex-col gap-1">
+              {NAV.map(renderNavItem)}
             </div>
-            <div className="mt-auto pt-4">
+            <div className="nd-primary-sidebar-nav flex flex-col gap-1 pt-4">
+              {askEtudeItem}
+              {renderNavItem(SETTINGS_NAV)}
               <SidebarUpdate collapsed={collapsed || phone} />
             </div>
           </aside>
-          {/* Room under the last row for the corner launcher, so it never sits on it for good. */}
           <main key={path === "/deck" ? `deck:${deckName}` : dataKey} className="nd-app-content min-w-0 flex-1 pb-16">{page}</main>
           <NoteDropSidePanel visible={path === "/deck" && Boolean(sidePanelContext.deckName)} mode={panel.mode === "overview" ? "overview" : "editor"}>
             {sidePanelContents}
           </NoteDropSidePanel>
-          {agent.open ? (
+          {agent.open && (
             <AgentPanel
               width={agent.width}
               setWidth={agent.setWidth}
@@ -405,8 +435,6 @@ export function App() {
                 }
               }}
             />
-          ) : phone ? null : (
-            <AgentLauncher onOpen={() => agent.setOpen(true)} />
           )}
           {!phone && <PhoneTabBar path={path} updateDot={updateDot} onAsk={() => agent.setOpen(true)} />}
         </div>

@@ -1,4 +1,4 @@
-// "Ask Etude": the assistant's launcher and side panel. The panel pushes the page on desktop and is a full-screen sheet on phones.
+// "Ask Etude": the assistant's side panel. The panel pushes the page on desktop and is a full-screen sheet on phones; the launcher lives in the sidebar dock.
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { ArrowUp, Ban, CalendarCheck, Check, ChevronDown, ChevronLeft, ChevronRight, ChevronsRight, CornerDownRight, Ellipsis, FileText, FileUp, FolderTree, ImageIcon, Loader2, Package, Palette, Pencil, Plus, RotateCcw, Settings2, Square, SquarePen, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
@@ -63,50 +63,6 @@ export function useAgentPanel() {
     return () => window.removeEventListener("keydown", h);
   }, []);
   return { open, setOpen, width, setWidth };
-}
-
-const HINT_KEY = "etude.agent.hinted";
-
-/** The ε on the card surface, bottom-right. On the first visit a small "Ask Etude" label shows beside it for a few seconds. */
-export function AgentLauncher({ onOpen }: { onOpen(): void }) {
-  const [hint, setHint] = useState(() => localStorage.getItem(HINT_KEY) !== "1");
-  useEffect(() => {
-    if (!hint) return;
-    const t = setTimeout(() => {
-      setHint(false);
-      localStorage.setItem(HINT_KEY, "1");
-    }, 5000);
-    return () => clearTimeout(t);
-  }, [hint]);
-  const open = () => {
-    localStorage.setItem(HINT_KEY, "1");
-    setHint(false);
-    onOpen();
-  };
-  return (
-    <div className="fixed right-3 bottom-[calc(var(--tabbar-h)+0.5rem)] z-30 flex items-center gap-2 md:right-4 md:bottom-4">
-      {hint && (
-        <button onClick={open} tabIndex={-1} aria-hidden className="agent-rise h-8 rounded-full border bg-card px-3 text-xs font-medium whitespace-nowrap text-foreground shadow-sm">
-          Ask Etude
-        </button>
-      )}
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <button
-            onClick={open}
-            aria-label="Ask Etude"
-            data-agent-launcher
-            className="flex size-11 items-center justify-center rounded-full border bg-card shadow-[0_1px_2px_rgb(0_0_0/0.18),0_4px_12px_-4px_rgb(0_0_0/0.28)] transition-[translate,border-color,box-shadow] duration-150 outline-ring hover:-translate-y-px hover:border-foreground/30 focus-visible:outline-2 active:translate-y-0 motion-reduce:transition-none"
-          >
-            <Logo className="size-[26px]" />
-          </button>
-        </TooltipTrigger>
-        <TooltipContent side="left">
-          Ask Etude <span className="opacity-60">· {AGENT_SHORTCUT}</span>
-        </TooltipContent>
-      </Tooltip>
-    </div>
-  );
 }
 
 /** Phones: the sheet follows the visual viewport, so the composer stays above the on-screen keyboard. */

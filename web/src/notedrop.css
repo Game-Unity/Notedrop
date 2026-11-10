@@ -341,7 +341,7 @@ aside.bg-sidebar {
   border-radius: 16px !important;
   gap: 4px !important;
   min-width: 42px !important;
-  height: fit-content !important;
+  height: calc(100vh - 2 * 13px) !important;
   min-height: 0 !important;
   margin: 13px !important;
   overflow: visible !important;
@@ -813,7 +813,8 @@ color-mix(in oklab, var(--highlight) 12%, transparent);
    font-size-adjust matches Comfortaa's larger x-height to KaTeX_Main so both blend. */
 .katex {
     font-family: "Comfortaa", KaTeX_Main, math, "Times New Roman", serif;
-    font-size-adjust: 0.5 !important;
+    font-size-adjust: 0.48 !important;
+    font-weight: 600 !important;
 }
 
 .katex .mathnormal,
@@ -863,7 +864,8 @@ color-mix(in oklab, var(--highlight) 12%, transparent);
 }
 
 .live-md.prose-etude .cm-md-code {
-    background: var(--nd-prose-code-bg);
+    /* No opaque background: it would cover the selection layer drawSelection() paints behind the text. */
+    background: transparent;
     color: var(--nd-prose-code-color);
     border-radius: var(--nd-prose-code-radius);
     padding: var(--nd-prose-code-padding);
@@ -2071,3 +2073,49 @@ p.-mt-1.text-xs.text-muted-foreground {}
 .nd-side-panel .nd-item-editor-panel .e-editor .cm-scroller, .nd-side-panel .nd-item-editor-panel .e-editor {
     scrollbar-gutter: auto !important;
 }
+
+.ͼp .cm-md-smiles{
+    padding: 0;
+}
+
+/* Größe der SMILES-Strukturen: 1 = Standard (z. B. 1.5 = 150 %) */
+.cm-md-smiles, .cm-md-smiles-inline, .e-smiles, .e-smiles-inline {
+    --smiles-scale: 1.8;
+    --smiles-color: var(--nd-prose-text-color);
+    /*--smiles-color-<element> = einzelnes Element (o, n, f, cl, br, i, p, s, b, si), z. B.:
+    --smiles-color: var(--nd-prose-text-color);
+    --smiles-color-o: #e74c3c;
+    --smiles-color-n: #3498db; */
+
+}
+
+.nd-side-panel .cm-md-smiles, .nd-side-panel .cm-md-smiles-inline, .nd-side-panel .e-smiles, .nd-side-panel .e-smiles-inline {
+    --smiles-scale: 1.4;
+}
+
+.cm-md-smiles svg * {
+    font-family: "Comfortaa", sans-serif;
+    font-weight: var(--nd-prose-text-weight);
+}
+
+.cm-md-math-preview {
+  display: none !important;
+}
+
+/* Mathe- und Code-Quelltext im Editor: wie normaler Fließtext, nicht als Code. */
+.live-md.prose-etude .cm-md-mathline,
+.live-md.prose-etude .cm-md-math-src,
+.live-md.prose-etude .cm-md-code {
+    font-family: "Comfortaa", sans-serif;
+    font-size: inherit;
+    color: var(--nd-prose-text-color) !important;
+    font-weight: var(--nd-prose-text-weight) !important;
+    line-height: 1.6;
+    -webkit-text-stroke: 0;
+}
+
+.hover\:bg-sidebar-accent:hover {
+        background-color: #FFF;
+        color: var(--foreground);
+}
+
