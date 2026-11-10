@@ -34,7 +34,7 @@ Every key except `etude` is optional. Decks named by items but not listed are cr
 - `type`: a built-in type id (below) or a type defined in the pack's `types`.
 - `deck`: full deck path; `::` separates levels.
 - `tags`: hierarchical with `::`. Searching `tag:net` matches every tag below it.
-- `fields`: the type's fields. Markdown fields support GitHub markdown, fenced code (highlighted for any language named after the fence), tables, images and KaTeX math (`$inline$`, `$$display$$`).
+- `fields`: the type's fields. Markdown fields support GitHub markdown, fenced code (highlighted for any language named after the fence), tables, images, KaTeX math (`$inline$`, `$$display$$`) and 2D chemical structures (```` ```smiles ```` blocks, one SMILES per line, and inline `` `smiles:CCO` `` code spans).
 - `source`: where the content comes from (shown after answering).
 
 ### Example answers

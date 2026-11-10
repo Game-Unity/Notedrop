@@ -57,7 +57,7 @@ The format is in `docs/packs.md`. In short:
 | `free` | ai | prompt, *reference*, *rubric*, input (text\|long\|code), *explanation* |
 | `draw` | ai (vision) | prompt, *reference*, *rubric*, background (blank\|grid\|lines) |
 
-Fields support markdown and `$...$` / `$$...$$` math. Always confirm field names with `etude type show <id> --fields-only`, because edited or custom types can differ.
+Fields support markdown, `$...$` / `$$...$$` math and 2D chemical structures (```` ```smiles ```` blocks, one SMILES per line, and inline `` `smiles:CCO` `` code spans). Always confirm field names with `etude type show <id> --fields-only`, because edited or custom types can differ.
 
 ## Generated items
 

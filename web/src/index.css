@@ -142,6 +142,15 @@
 .prose-etude strong { font-weight: 600; }
 .prose-etude a { text-decoration: underline; text-underline-offset: 2px; }
 .prose-etude .katex-display { margin: 0.5em 0; overflow-x: auto; overflow-y: hidden; }
+
+/* SMILES structures (```smiles blocks and inline `smiles:…` spans), drawn by the editor kit.
+   --smiles-font, --smiles-stroke and --smiles-scale on an ancestor set the label font,
+   bond thickness and a size multiplier (default 1); --smiles-color sets the base color
+   (bonds, C, H) and --smiles-color-<element> (e.g. --smiles-color-o) one element's color. */
+.e-smiles { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 0.5em 1.5em; margin: 0.75em 0; }
+.e-smiles svg { height: auto; }
+.e-smiles-inline { display: inline-block; vertical-align: middle; padding: 0 0.15em; }
+.e-smiles-error { text-decoration: underline wavy var(--destructive); text-underline-offset: 3px; }
 kbd { font-family: var(--font-mono); font-size: 0.72rem; }
 
 /* Ask Etude: the panel slides in, new turns rise in; replies are set for a ~400 px column. */

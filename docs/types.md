@@ -83,7 +83,7 @@ The HTML is expanded with the card's `view` (see Prepare) before the card script
 | syntax | result |
 |---|---|
 | `{{field}}` | the value, HTML-escaped |
-| `{{md:field}}` | markdown (GitHub flavour) with KaTeX math (`$inline$`, `$$display$$`, `\(...\)`, `\[...\]`), as blocks |
+| `{{md:field}}` | markdown (GitHub flavour) with KaTeX math (`$inline$`, `$$display$$`, `\(...\)`, `\[...\]`) and 2D chemical structures (```` ```smiles ```` blocks, one SMILES per line, and inline `` `smiles:CCO` `` code spans), as blocks |
 | `{{mdi:field}}` | the same, inline (no surrounding `<p>`) |
 | `{{#field}}...{{/field}}` | kept only when the field is set: not null, `""`, `false` or an empty list |
 | `<template data-on="result">...</template>` | left out until the answer is graded, then expanded with the view, the `key` merged over it, and `grade` |
@@ -110,6 +110,7 @@ The body gets `data-mode="answer"` or `data-mode="result"`, so `.only-answer` an
 | `await etude.languageName(id)` | display name of a language id (`"py"` → `"Python"`) |
 | `await etude.codeEditor(el, opts)` | a code editor in `el`; `opts`: `value`, `language`, `placeholder`, `readOnly`, `minLines`, `wrap`, `autofocus`, `onChange(v)`. Returns `{ value(), set(v), focus(), setReadOnly(b), destroy() }` |
 | `await etude.markdownEditor(el, opts)` | a markdown editor with live preview, like Obsidian: formatting, `$math$`, `$$display$$` and code render in place and the markup comes back where the cursor is. Same options and handle as `codeEditor` |
+| `await etude.smiles(el, smiles, opts?)` | draws the 2D structure for a SMILES string into `el` as an SVG (`opts.inline` for a smaller, in-text size); rejects on an invalid string. Markdown does this automatically for ```` ```smiles ```` blocks and `` `smiles:…` `` code spans. The CSS variables `--smiles-font`, `--smiles-stroke` and `--smiles-scale` on an ancestor set the label font, bond thickness and a size multiplier; `--smiles-color` overrides the base color (bonds, carbon, hydrogen) and `--smiles-color-<element>` (lowercase, e.g. `--smiles-color-o`, `--smiles-color-cl`) a single element's color (O, N, F, Cl, Br, I, P, S, B, Si) |
 | `etude.escape(s)` | HTML-escape text |
 | `etude.html\`...\`` | tagged template that escapes interpolated values |
 | `etude.$(sel)`, `etude.$$(sel)` | `querySelector` / `querySelectorAll` (as an array) inside the card |

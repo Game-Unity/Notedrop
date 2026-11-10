@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef } from "react";
 import DOMPurify from "dompurify";
 import { highlightBlocks } from "@/editor/highlight";
+import { renderSmilesBlocks } from "@/editor/smiles";
 import "katex/dist/katex.min.css";
 import { renderMarkdown as render } from "@/lib/render-markdown";
 import { cn } from "@/lib/utils";
@@ -17,6 +18,7 @@ export function Markdown({ children, className }: { children: string; className?
   useEffect(() => {
     if (!ref.current) return;
     void highlightBlocks(ref.current);
+    void renderSmilesBlocks(ref.current);
     loadLocalMedia(ref.current);
   }, [html]);
   return <div ref={ref} className={cn("prose-etude", className)} dangerouslySetInnerHTML={{ __html: html }} />;

@@ -12,6 +12,7 @@ import { classHighlighter } from "@lezer/highlight";
 import type { BlockContext, InlineContext, Line, MarkdownConfig } from "@lezer/markdown";
 import { editorTheme, leaveModEnter, type EditorHandle } from "./code-editor";
 import { highlight } from "./highlight";
+import { inlineSmiles, renderSmiles } from "./smiles";
 
 /** The parts of KaTeX the editor needs; passed in so card frames can share the copy they already load. */
 export interface Katex {
@@ -258,6 +259,32 @@ class CodeBlockWidget extends WidgetType {
   }
 }
 
+/** A SMILES structure drawn in place of its source while the cursor is elsewhere. */
+class SmilesWidget extends WidgetType {
+  constructor(readonly source: string, readonly inline: boolean) {
+    super();
+  }
+  eq(o: SmilesWidget) {
+    return o.source === this.source && o.inline === this.inline;
+  }
+  toDOM() {
+    const el = document.createElement(this.inline ? "span" : "div");
+    el.className = this.inline ? "cm-md-smiles-inline" : "cm-md-smiles";
+    const lines = this.inline ? [this.source] : this.source.split("\n").map((l) => l.trim()).filter(Boolean);
+    void (async () => {
+      for (const line of lines) await renderSmiles(line, el, { inline: this.inline });
+    })().catch((e) => {
+      el.textContent = this.source;
+      el.classList.add("cm-md-smiles-error");
+      el.title = e instanceof Error ? e.message : String(e);
+    });
+    return el;
+  }
+  ignoreEvent() {
+    return false;
+  }
+}
+
 /** A markdown table rendered as a real table while the cursor is elsewhere, like the image widget. */
 class TableWidget extends WidgetType {
   constructor(readonly source: string) {
@@ -387,9 +414,17 @@ function build(state: EditorState): DecorationSet {
           else out.push(mark("cm-md-mark").range(from, to));
           break;
         case "InlineCode": {
+          const marks: { from: number; to: number }[] = [];
+          for (let c = node.node.firstChild; c; c = c.nextSibling) if (c.name === "CodeMark") marks.push({ from: c.from, to: c.to });
+          const inner = marks.length >= 2 ? doc.sliceString(marks[0].to, marks[marks.length - 1].from) : "";
+          const smiles = inlineSmiles(inner);
+          if (smiles && !touches(from, to)) {
+            out.push(Decoration.replace({ widget: new SmilesWidget(smiles, true) }).range(from, to));
+            return false;
+          }
           out.push(mark("cm-md-code").range(from, to));
           if (!touches(from, to)) {
-            for (let c = node.node.firstChild; c; c = c.nextSibling) if (c.name === "CodeMark") out.push(hide.range(c.from, c.to));
+            for (const m of marks) out.push(hide.range(m.from, m.to));
           }
           return false;
         }
@@ -402,7 +437,8 @@ function build(state: EditorState): DecorationSet {
           if (!active) {
             // Render the whole block as one widget: box styling without breaking line metrics.
             const body = doc.sliceString(first.to + 1, closed ? last.from : last.to).replace(/\n$/, "");
-            out.push(Decoration.replace({ widget: new CodeBlockWidget(body, info), block: true }).range(first.from, closed ? last.to : last.to));
+            const widget = info.trim().toLowerCase() === "smiles" ? new SmilesWidget(body, false) : new CodeBlockWidget(body, info);
+            out.push(Decoration.replace({ widget, block: true }).range(first.from, closed ? last.to : last.to));
           } else {
             for (let n = first.number; n <= last.number; n++) {
               const l = doc.line(n);
@@ -548,6 +584,9 @@ const previewTheme = EditorView.theme({
   ".cm-md-math-block .katex-display": { margin: "0" },
   ".cm-md-math-preview": { margin: "0.15rem 0.8rem 0.35rem", borderRadius: "6px", backgroundColor: "color-mix(in oklab, var(--highlight) 7%, transparent)" },
   ".cm-md-math-src, .cm-md-mathline": { fontFamily: "var(--font-mono)", fontSize: "0.86em", color: "color-mix(in oklab, var(--highlight) 80%, var(--foreground))" },
+  ".cm-md-smiles": { display: "flex", flexWrap: "wrap", justifyContent: "center", alignItems: "center", gap: "0.5rem 1.5rem", padding: "0.4rem 0", cursor: "text" },
+  ".cm-md-smiles-inline": { display: "inline-block", verticalAlign: "middle", padding: "0 0.15em", cursor: "text" },
+  ".cm-md-smiles-error": { fontFamily: "var(--font-mono)", fontSize: "0.86em", color: "var(--destructive, #e5484d)" },
   ".cm-md-empty": { color: "var(--muted-foreground)" },
   ".cm-md-image": { margin: "0.3rem 0", maxWidth: "100%" },
   ".cm-md-image img": { maxWidth: "100%", maxHeight: "20rem", borderRadius: "6px", display: "block" },

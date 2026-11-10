@@ -56,6 +56,16 @@ body {
 .prose .katex-display { margin: 0.75em 0; overflow-x: auto; overflow-y: hidden; }
 .prose strong { font-weight: 600; }
 
+/* SMILES structures (```smiles blocks and inline `smiles:…` spans), drawn by the kit.
+   --smiles-font, --smiles-stroke and --smiles-scale on an ancestor set the label font,
+   bond thickness and a size multiplier (default 1); --smiles-color sets the base color
+   (bonds, C, H) and --smiles-color-<element> (e.g. --smiles-color-o) one element's color. */
+.e-smiles, .e-smiles-inline { --smiles-scale: 1.5; }
+.e-smiles { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 0.5em 1.5em; margin: 0.75em 0; }
+.e-smiles svg { height: auto; }
+.e-smiles-inline { display: inline-block; vertical-align: middle; padding: 0 0.15em; }
+.e-smiles-error { text-decoration: underline wavy var(--danger); text-underline-offset: 3px; }
+
 .e-muted { color: var(--muted-foreground); }
 .e-label { font-size: 0.8rem; font-weight: 500; color: var(--muted-foreground); letter-spacing: 0.01em; }
 .e-row { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }

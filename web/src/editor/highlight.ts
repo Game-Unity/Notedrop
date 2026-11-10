@@ -58,9 +58,9 @@ export async function highlight(code: string, language: string): Promise<string>
   return html;
 }
 
-/** Highlights every `pre > code.language-*` under `root` that hasn't been highlighted yet. */
+/** Highlights every `pre > code.language-*` under `root` that hasn't been highlighted yet (SMILES blocks belong to `renderSmilesBlocks`). */
 export async function highlightBlocks(root: ParentNode): Promise<void> {
-  const blocks = [...root.querySelectorAll<HTMLElement>("pre > code[class*='language-']:not([data-hl])")];
+  const blocks = [...root.querySelectorAll<HTMLElement>("pre > code[class*='language-']:not([data-hl]):not(.language-smiles)")];
   await Promise.all(
     blocks.map(async (el) => {
       el.dataset.hl = "1";

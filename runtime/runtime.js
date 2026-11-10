@@ -109,6 +109,10 @@ function createApi(init, assets = { type: "", files: {} }) {
     async markdownEditor(el, opts = {}) {
       return (await kit()).createMarkdownEditor(el, { katex, ...opts });
     },
+    /** Draws the 2D structure for a SMILES string into `el` (SVG). Rejects on invalid SMILES. */
+    async smiles(el, smiles, opts = {}) {
+      return (await kit()).renderSmiles(String(smiles ?? ""), el, opts);
+    },
     /** Tell the app how to read the current answer when the learner presses Submit. */
     getAnswer(fn) {
       getter = fn;
@@ -176,13 +180,29 @@ function createApi(init, assets = { type: "", files: {} }) {
 
 // ---------- code blocks ----------
 
-/** Highlights fenced code blocks (`pre > code.language-*`) wherever they appear in the card, now or later. */
+/** True when `root` holds a SMILES block or inline `smiles:…` code span not yet rendered. */
+function hasSmiles(root) {
+  if (root.querySelector("pre > code.language-smiles:not([data-smiles])")) return true;
+  for (const el of root.querySelectorAll("code:not([data-smiles])")) {
+    if (!el.closest("pre") && /^\s*smiles:\s*\S/.test(el.textContent ?? "")) return true;
+  }
+  return false;
+}
+
+/** Highlights fenced code blocks (`pre > code.language-*`) and renders SMILES wherever they appear in the card, now or later. */
 function watchCodeBlocks(root) {
   let queued = false;
   const run = () => {
     queued = false;
-    if (!root.querySelector("pre > code[class*='language-']:not([data-hl])")) return;
-    kit().then((k) => k.highlightBlocks(root)).catch(() => {});
+    const code = root.querySelector("pre > code[class*='language-']:not([data-hl]):not(.language-smiles)");
+    const smiles = hasSmiles(root);
+    if (!code && !smiles) return;
+    kit()
+      .then((k) => {
+        if (code) k.highlightBlocks(root).catch(() => {});
+        if (smiles) k.renderSmilesBlocks(root).catch(() => {});
+      })
+      .catch(() => {});
   };
   const schedule = () => {
     if (!queued) (queued = true), queueMicrotask(run);
