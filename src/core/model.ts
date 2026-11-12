@@ -253,7 +253,9 @@ export interface Deck {
   config: Partial<PresetConfig>;
   description: string;
   instructions: string;
+  thumbnail: string | null;
   archived: boolean;
+  archivedAt: string | null;
   /** Order among sibling decks (null: unordered, after the ordered ones, by name). */
   position: number | null;
 }

@@ -7,8 +7,8 @@ export function Page({ className, children }: { className?: string; children: Re
   return <div className={cn("w-full pt-6 pb-10 max-md:pt-[calc(1.25rem+env(safe-area-inset-top))] sm:pt-10 sm:pb-12", className)}>{children}</div>;
 }
 
-/** Page titles on a phone are set in Computer Modern, large ("Score", docs/mobile-design.md). */
-export const PHONE_H1 = "max-md:score-serif max-md:score-display max-md:text-[2.25rem] max-md:leading-[1.08] max-md:font-normal max-md:tracking-normal";
+/** Keep the title typeface consistent while retaining phone-sized heading dimensions. */
+export const PHONE_H1 = "max-md:text-[2.25rem] max-md:leading-[1.08] max-md:font-normal max-md:tracking-normal";
 
 /** Negative margins that let a bar inside <Page> run edge to edge. */
 export const PAGE_BLEED = "-mx-4 px-4 sm:-mx-8 sm:px-8";

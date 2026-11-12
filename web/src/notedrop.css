@@ -51,6 +51,7 @@ html:root {
     --nd-side-panel-width: 270px;
     --nd-side-panel-editor-width: 450px;
     --nd-side-panel-chat-width: 370px;
+    --nd-deck-tile-min-width: 320px;
     --background: white;
     --background-app: #1c1c1c;
     --background-app-sidebar: #242424;
@@ -132,7 +133,7 @@ select {
     --nd-prose-pre-bg: var(--background);
     --nd-prose-pre-padding-inline: 25px;
     --nd-prose-pre-size: 14px;
-    --nd-prose-img-max: 420px;
+    --nd-prose-img-max: 300px;
     --nd-prose-marker: #858585;
 }
 
@@ -398,7 +399,7 @@ h1.text-2xl {
 
 div[class~="bg-card/40"] {
     background: var(--background);
-    border: none !important;
+    border: 1px solid transparent !important;
     box-shadow: 0 1px 2px rgb(0 0 0 / 2%), -1px 2px 18px rgba(0, 0, 0, 0.06);
 }
 
@@ -1612,6 +1613,110 @@ color-mix(in oklab, var(--highlight) 15%, transparent);
     overflow: hidden;
 }
 
+.nd-deck-cards-list--small .nd-deck-card-tile {
+    min-height: 67px;
+}
+
+.nd-deck-overview-container {
+    width: 100%;
+    container-type: inline-size;
+}
+
+.nd-deck-overview-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, var(--nd-deck-tile-min-width)), 1fr));
+    gap: 12px;
+    align-items: stretch;
+}
+
+.nd-deck-overview-tile {
+    width: 100%;
+    min-width: 0;
+    min-height: 164px;
+    gap: 12px;
+    padding: 8px;
+    border-color: transparent;
+    background: var(--background);
+    box-shadow: 0 1px 2px rgb(0 0 0 / 2%), -1px 2px 18px rgb(0 0 0 / 6%);
+}
+
+.nd-deck-overview-cover {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    width: 100%;
+    height: 220px;
+    min-width: 0;
+    flex: 0 0 220px;
+    overflow: hidden;
+    border-radius: var(--radius);
+    background: var(--muted);
+}
+
+.nd-deck-overview-cover > img {
+    position: absolute;
+    inset: 0;
+}
+
+.nd-deck-overview-placeholder-icon {
+    color: #d2d2d2;
+}
+
+.nd-deck-overview-cover img {
+    max-width: none;
+}
+
+.nd-deck-overview-heading {
+    margin: 4px 0 11px;
+}
+
+.nd-deck-card-tile:hover,
+.nd-deck-overview-tile:hover {
+    border-color: color-mix(in oklab, var(--foreground) 20%, transparent) !important;
+}
+
+.nd-deck-overview-badge {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    min-height: 20px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 0 8px;
+    color: var(--muted-foreground);
+    font-size: 11px;
+    line-height: 1;
+    white-space: nowrap;
+}
+
+.nd-deck-overview-progress {
+    display: block;
+    width: 100%;
+    height: 4px;
+    appearance: none;
+    overflow: hidden;
+    border: 0;
+    border-radius: 999px;
+    background: #e5e5e5;
+    color: #121212;
+}
+
+.nd-deck-overview-progress::-webkit-progress-bar {
+    border-radius: 999px;
+    background: #e5e5e5;
+}
+
+.nd-deck-overview-progress::-webkit-progress-value {
+    border-radius: 999px;
+    background: #121212;
+}
+
+.nd-deck-overview-progress::-moz-progress-bar {
+    border-radius: 999px;
+    background: #121212;
+}
+
 .nd-side-panel .nd-tree-content,
 .nd-side-panel .nd-item-editor-scroll,
 .nd-side-panel .nd-card-create-form {
@@ -2407,11 +2512,28 @@ p.-mt-1.text-xs.text-muted-foreground {}
     line-height: 1.8;
 }
 
-.prose-etude .cm-line:has(.cm-md-bullet, .cm-md-listmark) {
-    padding-left: 3px;
+.live-md.prose-etude .cm-line:has(.cm-md-bullet, .cm-md-list-marker) {
     line-height: 1.85 !important;
     color: var(--nd-prose-text-color);
-    padding: 1px 0 !important;
+}
+
+:is(.live-md.prose-etude, .nd-side-panel .live-md) .cm-line:has(.cm-md-bullet, .cm-md-list-marker) {
+    --nd-list-marker-width: 2em;
+    padding: 1px 0 1px var(--nd-list-marker-width) !important;
+    text-indent: calc(-1 * var(--nd-list-marker-width));
+}
+
+:is(.live-md.prose-etude, .nd-side-panel .live-md) :is(.cm-md-bullet, .cm-md-list-marker) {
+    display: inline-block;
+    width: var(--nd-list-marker-width);
+    min-width: 0;
+    padding: 0;
+    text-align: center;
+    text-indent: 0;
+}
+
+:is(.live-md.prose-etude, .nd-side-panel .live-md) .cm-md-list-space {
+    font-size: 0;
 }
 
 .live-md.prose-etude .cm-md-table-widget table {

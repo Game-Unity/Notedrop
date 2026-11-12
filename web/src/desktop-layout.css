@@ -1,0 +1,135 @@
+:root {
+  --tabbar-h: 0px;
+}
+
+.nd-app-shell > aside.nd-primary-sidebar {
+  height: 100dvh !important;
+  margin: 0 !important;
+  padding-block: 1rem !important;
+}
+
+.nd-app-shell[data-sidebar-collapsed="true"] > aside.nd-primary-sidebar {
+  flex: 0 0 3.5rem !important;
+  width: 3.5rem !important;
+  min-width: 0 !important;
+  padding-inline: 0.5rem !important;
+}
+
+.nd-app-shell[data-sidebar-collapsed="false"] > aside.nd-primary-sidebar {
+  flex: 0 0 13rem !important;
+  width: 13rem !important;
+  min-width: 0 !important;
+  padding-inline: 0.75rem !important;
+}
+
+.nd-primary-sidebar-brand,
+.nd-primary-sidebar-label {
+  display: revert !important;
+}
+
+.nd-app-shell[data-sidebar-collapsed="true"] .nd-primary-sidebar-header {
+  justify-content: center !important;
+  padding-left: 0 !important;
+}
+
+.nd-app-shell[data-sidebar-collapsed="false"] .nd-primary-sidebar-header {
+  justify-content: space-between !important;
+  padding-left: 0.5rem !important;
+}
+
+.nd-app-shell[data-sidebar-collapsed="true"] .nd-primary-sidebar-nav button {
+  justify-content: center !important;
+  padding-inline: 0 !important;
+}
+
+.nd-app-shell[data-sidebar-collapsed="false"] .nd-primary-sidebar-nav button {
+  justify-content: flex-start !important;
+  padding-inline: 0.5rem !important;
+}
+
+.nd-deck-study-bar {
+  align-items: center;
+  flex-direction: row;
+}
+
+.nd-deck-study-bar .nd-deck-actions {
+  width: auto;
+}
+
+.nd-app-content .nd-deck-tabs-nav .nd-deck-tab,
+.nd-side-panel .nd-item-editor-tabs-nav .nd-item-editor-tab {
+  height: 32px;
+  padding-inline: 14px;
+}
+
+.nd-side-panel:not([hidden]) #notedrop-tree {
+  height: calc(100dvh - 42px);
+  max-height: calc(100dvh - 42px);
+}
+
+.nd-app-shell--deck[data-panel-mode="overview"] > .nd-side-panel:not([hidden]),
+.nd-app-shell--deck[data-panel-mode="chat"] > .nd-side-panel:not([hidden]) {
+  display: block !important;
+}
+
+.nd-app-shell--deck[data-panel-mode="editor"] > .nd-app-content {
+  display: block !important;
+}
+
+.nd-app-shell--deck > .nd-side-panel:not([hidden]) {
+  flex: 0 0 var(--nd-panel-width) !important;
+  width: var(--nd-panel-width) !important;
+  min-width: var(--nd-panel-width) !important;
+}
+
+.market-detail {
+  width: calc(100% - 2rem);
+  max-width: 860px;
+  max-height: 92dvh;
+}
+
+.market-detail > [data-slot="dialog-footer"] {
+  padding-bottom: 1rem;
+}
+
+.market-detail-scroll {
+  padding: 28px;
+}
+
+.market-gallery {
+  --shot-h: 300px;
+  --gutter: 28px;
+  --fade: 96px;
+}
+
+.market-fact {
+  padding-inline: 16px;
+}
+
+.market-fact strong {
+  font-size: 14px;
+}
+
+.market-detail .market-facts {
+  display: flex;
+}
+
+.market-detail .market-fact:nth-child(odd) {
+  border-left: 1px solid var(--border);
+  padding-inline: 16px;
+}
+
+.market-detail .market-fact:first-child {
+  border: 0;
+  padding-left: 0;
+}
+
+.market-detail .market-fact strong {
+  overflow-wrap: anywhere;
+}
+
+input,
+textarea,
+select {
+  font-size: 14px !important;
+}

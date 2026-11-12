@@ -27,6 +27,25 @@ test("decks: sibling order, subdecks follow their parent", async () => {
   assert.throws(() => e.reorderDecks("Nope", []), /unknown deck/);
 });
 
+test("deck tree: latest review includes cards in subdecks", async () => {
+  const e = await Etude.open(":memory:");
+  e.ensureDeck("Course");
+  e.ensureDeck("Course::Unit");
+  e.ensureDeck("Other");
+  e.upsertItem({ id: "course-card", deck: "Course", type: "basic", fields: { front: "Q", back: "A" } });
+  e.upsertItem({ id: "unit-card", deck: "Course::Unit", type: "basic", fields: { front: "Q", back: "A" } });
+
+  const courseReview = "2026-01-01T10:00:00.000Z";
+  const unitReview = "2026-02-01T10:00:00.000Z";
+  e.db.run("UPDATE cards SET last_review = ? WHERE item_id = ?", courseReview, "course-card");
+  e.db.run("UPDATE cards SET last_review = ? WHERE item_id = ?", unitReview, "unit-card");
+
+  const tree = e.deckTree();
+  assert.equal(tree.find((deck) => deck.name === "Course")?.lastReview, unitReview);
+  assert.equal(tree.find((deck) => deck.name === "Course::Unit")?.lastReview, unitReview);
+  assert.equal(tree.find((deck) => deck.name === "Other")?.lastReview, null);
+});
+
 test("decks: move a subdeck to another deck, out to the top level, and back", async () => {
   const e = await Etude.open(":memory:");
   for (const n of ["Biology", "Networks::Week 1", "Networks::Week 2", "Networks::Week 2::Lab", "Games::Chess"]) e.ensureDeck(n);

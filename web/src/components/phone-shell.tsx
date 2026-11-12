@@ -2,14 +2,13 @@
 // the big serif page title that folds into a slim bar on scroll, and the bottom action sheet.
 // Nothing here renders at md (768 px) and up.
 import { useEffect, useRef, useState } from "react";
-import { BarChart3, Layers, Library, MoreHorizontal } from "lucide-react";
+import { BarChart3, Layers, MoreHorizontal } from "lucide-react";
 import { Logo } from "@/components/logo";
 import { navigate } from "@/lib/router";
 import { cn } from "@/lib/utils";
 
 const TABS = [
   { to: "/", label: "Decks", icon: Layers, match: (p: string) => p === "/" || p === "/deck" || p === "/archive" },
-  { to: "/browse", label: "Browse", icon: Library, match: (p: string) => p === "/browse" },
   { to: "/stats", label: "Stats", icon: BarChart3, match: (p: string) => p === "/stats" },
   { to: "/more", label: "More", icon: MoreHorizontal, match: (p: string) => p === "/more" || p.startsWith("/types") || p === "/market" || p === "/settings" },
 ];

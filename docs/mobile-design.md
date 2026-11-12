@@ -1,10 +1,10 @@
 # Etude on a phone: "Score"
 
-Below 768 px Etude has its own layout instead of a narrow desktop. The language is called Score because Etude is a practice piece: titles are set like a score, the current place is marked in pink, and the counts carry their meaning in their shape.
+The phone-specific Score components remain available in the code, but the desktop app now selects the same content and desktop styling at every window size. Tailwind's viewport breakpoints are disabled, and the remaining screen-width-specific app styles are overridden in `web/src/desktop-layout.css`. No additional minimum window width is imposed. The language is called Score because Etude is a practice piece: titles are set like a score, the current place is marked in pink, and the counts carry their meaning in their shape.
 
-Desktop (768 px and up) is unchanged. Every phone-only branch goes through `usePhone()` (`web/src/lib/phone.ts`) or a `max-md:` class, so the two can't drift into each other.
+`usePhone()` (`web/src/lib/phone.ts`) no longer selects alternate phone-only content. Existing phone components and styles are retained; this does not remove any content from the codebase.
 
-## Rules
+## Legacy phone rules
 
 - **Type.** Page titles are Computer Modern (`score-serif score-display`, ~36 px, regular weight with a hairline stroke so it holds on dark themes). Small labels are tracked caps (`score-kicker`). Everything else stays Inter.
 - **Counts by shape.** New is an open ring, learning a half ring, due a filled dot (`Mark`, `Tally` in `components/phone-shell.tsx`). Zeros drop out of rows. Colour still follows the theme (`--new`, `--learn`, `--review`), so every theme works, but the shapes read without it.
@@ -16,7 +16,7 @@ Desktop (768 px and up) is unchanged. Every phone-only branch goes through `useP
 - **Titles fold.** `PhoneTitle` puts the big title in the page; when it scrolls away a slim bar fades in with the same title (and the back chevron on deck pages).
 - **Toasts** sit at the bottom above the tab bar or the study controls.
 
-## Pieces
+## Retained phone components
 
 | File | What |
 |---|---|

@@ -8,13 +8,15 @@ A pack is one JSON file that carries decks, presets, card types and items. It is
   "name": "Networks Midterm",
   "description": "Optional markdown.",
   "presets": [{ "id": "exam", "name": "Exam cram", "config": { "desiredRetention": 0.92, "deadline": "2026-10-23T16:30:00-07:00" } }],
-  "decks": [{ "name": "Networks", "preset": "exam", "description": "", "instructions": "Grading notes the AI grader reads for every item in this deck." }],
+  "decks": [{ "name": "Networks", "preset": "exam", "description": "", "instructions": "Grading notes the AI grader reads for every item in this deck.", "thumbnail": null }],
   "types": [],
   "items": []
 }
 ```
 
 Every key except `etude` is optional. Decks named by items but not listed are created with defaults.
+
+A deck may include an optional `thumbnail` image data URL (`data:image/...;base64,...`) or `null`. Exported packs embed the image bytes and preserve which deck owns the thumbnail; importing stores the image in the collection's media folder. If an older pack omits `thumbnail`, importing it leaves any existing thumbnail unchanged.
 
 ## Items
 

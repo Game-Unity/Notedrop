@@ -1513,10 +1513,10 @@ export class Etude {
   }
 
   private deckFromRow(r: Row): Deck {
-    return { id: r.id, name: r.name, presetId: r.preset_id, config: parse(r.config, {}), description: r.description, instructions: r.instructions, archived: !!r.archived, position: r.position ?? null };
+    return { id: r.id, name: r.name, presetId: r.preset_id, config: parse(r.config, {}), description: r.description, instructions: r.instructions, thumbnail: r.thumbnail ?? null, archived: !!r.archived, archivedAt: r.archived_at ?? null, position: r.position ?? null };
   }
 
-  updateDeck(nameOrId: string | number, patch: Partial<Pick<Deck, "presetId" | "config" | "description" | "instructions" | "archived">> & { name?: string }) {
+  updateDeck(nameOrId: string | number, patch: Partial<Pick<Deck, "presetId" | "config" | "description" | "instructions" | "thumbnail" | "archived">> & { name?: string }) {
     const r = this.deckRow(nameOrId);
     if (patch.config) {
       const e = sched.validateConfig(patch.config);
@@ -1524,15 +1524,24 @@ export class Etude {
       this.checkSchedulerRef(patch.config);
     }
     if (patch.presetId) this.preset(patch.presetId);
+    if (patch.thumbnail !== undefined && patch.thumbnail !== null) {
+      if (!patch.thumbnail.startsWith("/media/")) throw new EtudeError("thumbnail must be stored in Etude media");
+      const mediaRoot = resolve(this.mediaDir);
+      const path = resolve(mediaRoot, patch.thumbnail.slice("/media/".length));
+      if (!path.startsWith(mediaRoot + sep) || !existsSync(path)) throw new EtudeError(`no media file at ${patch.thumbnail}`, 404);
+      if (mediaType(path)?.kind !== "image") throw new EtudeError("deck thumbnail must be an image");
+    }
     this.db.tx(() => {
       if (patch.name !== undefined && normDeck(patch.name) !== r.name) this.renameDeck(r.name, patch.name);
       this.db.run(
-        "UPDATE decks SET preset_id = ?, config = ?, description = ?, instructions = ?, archived = ? WHERE id = ?",
+        "UPDATE decks SET preset_id = ?, config = ?, description = ?, instructions = ?, thumbnail = ?, archived = ?, archived_at = ? WHERE id = ?",
         patch.presetId !== undefined ? patch.presetId : r.preset_id,
         patch.config !== undefined ? json(patch.config) : r.config,
         patch.description ?? r.description,
         patch.instructions ?? r.instructions,
+        patch.thumbnail !== undefined ? patch.thumbnail : r.thumbnail ?? null,
         patch.archived !== undefined ? Number(patch.archived) : r.archived,
+        patch.archived === undefined || patch.archived === !!r.archived ? r.archived_at : patch.archived ? new Date().toISOString() : null,
         r.id,
       );
     });
@@ -1591,8 +1600,9 @@ export class Etude {
   setDeckArchived(name: string, archived: boolean, opts: { subdecks?: boolean } = {}) {
     const src = this.deckRow(name).name;
     const names = this.db.all<{ name: string }>("SELECT name FROM decks WHERE name = ? OR (? AND name LIKE ? ESCAPE '\\') ORDER BY name", src, Number(!!opts.subdecks), src.replace(/[\\%_]/g, "\\$&") + "::%").map((r) => r.name);
+    const archivedAt = archived ? new Date().toISOString() : null;
     this.db.tx(() => {
-      for (const n of names) this.db.run("UPDATE decks SET archived = ? WHERE name = ?", Number(archived), n);
+      for (const n of names) this.db.run("UPDATE decks SET archived_at = CASE WHEN archived = ? THEN archived_at ELSE ? END, archived = ? WHERE name = ?", Number(archived), archivedAt, Number(archived), n);
     });
     return { decks: names, archived };
   }
@@ -3082,20 +3092,21 @@ export class Etude {
     const t = now();
     const totals = new Map(
       this.db
-        .all("SELECT i.deck_id, COUNT(*) AS cards, SUM(c.state = 0) AS new, SUM(c.suspended) AS suspended FROM cards c JOIN items i ON i.id = c.item_id WHERE i.archived = 0 GROUP BY i.deck_id")
+        .all("SELECT i.deck_id, COUNT(*) AS cards, SUM(c.state = 0) AS new, SUM(c.suspended) AS suspended, MAX(c.last_review) AS lastReview FROM cards c JOIN items i ON i.id = c.item_id WHERE i.archived = 0 GROUP BY i.deck_id")
         .map((r) => [r.deck_id, r]),
     );
     return decks.map((d) => {
       const prefix = d.name + "::";
-      let cards = 0, unseen = 0;
+      let cards = 0, unseen = 0, lastReview: string | null = null;
       for (const o of decks) if ((!o.archived || d.archived) && (o.name === d.name || o.name.startsWith(prefix))) {
         const tt = totals.get(o.id);
         cards += Number(tt?.cards ?? 0);
         unseen += Number(tt?.new ?? 0);
+        if (tt?.lastReview && (!lastReview || tt.lastReview > lastReview)) lastReview = tt.lastReview;
       }
       const counts = cards ? this.counts({ deck: d.name }) : { new: 0, learning: 0, learningSoon: 0, review: 0, doneToday: 0, nextDue: null };
       const cfg = this.configFor(d.name);
-      return { ...this.deckFromRow(d), depth: deckParts(d.name).length - 1, cards, unseen, ...counts, deadline: cfg.deadline ?? null, mode: cfg.mode, at: iso(t) };
+      return { ...this.deckFromRow(d), depth: deckParts(d.name).length - 1, cards, unseen, lastReview, ...counts, deadline: cfg.deadline ?? null, mode: cfg.mode, at: iso(t) };
     });
   }
 
@@ -3566,6 +3577,33 @@ export class Etude {
     return out;
   }
 
+  private unpackThumbnail(value: unknown, dryRun: boolean): string | null {
+    if (value === null) return null;
+    if (typeof value !== "string") throw new EtudeError("pack thumbnail must be an image data URL or null");
+    const match = /^data:(image\/[\w.+-]+);base64,([A-Za-z0-9+/=\s]+)$/.exec(value);
+    if (!match) throw new EtudeError("pack thumbnail must be an image data URL");
+    const extensions: Record<string, string> = {
+      "image/png": "png", "image/jpeg": "jpg", "image/webp": "webp", "image/gif": "gif",
+      "image/svg+xml": "svg", "image/avif": "avif", "image/bmp": "bmp", "image/x-icon": "ico",
+    };
+    const extension = extensions[match[1]];
+    if (!extension) throw new EtudeError(`unsupported pack thumbnail type "${match[1]}"`);
+    const media = this.storeMedia(`thumbnail.${extension}`, Buffer.from(match[2], "base64"), { dryRun });
+    if (media.kind !== "image") throw new EtudeError("pack thumbnail must be an image");
+    return media.url;
+  }
+
+  private packThumbnail(url: string | null): string | null {
+    if (!url) return null;
+    if (!url.startsWith("/media/")) throw new EtudeError("deck thumbnail is not stored in Etude media");
+    const root = resolve(this.mediaDir);
+    const path = resolve(root, url.slice("/media/".length));
+    if (!path.startsWith(root + sep) || !existsSync(path)) throw new EtudeError(`no media file at ${url}`, 404);
+    const type = mediaType(path);
+    if (!type || type.kind !== "image") throw new EtudeError(`deck thumbnail is not an image: ${url}`);
+    return `data:${type.mime};base64,${readFileSync(path).toString("base64")}`;
+  }
+
   importPack(pack: any, opts: { dryRun?: boolean } = {}) {
     if (!pack || pack.etude !== "pack/1") throw new EtudeError('not an Etude pack (expected "etude": "pack/1")');
     const report = {
@@ -3598,6 +3636,7 @@ export class Etude {
         if (d.config !== undefined) patch.config = d.config;
         if (d.description !== undefined) patch.description = d.description;
         if (d.instructions !== undefined) patch.instructions = d.instructions;
+        if (Object.hasOwn(d, "thumbnail")) patch.thumbnail = this.unpackThumbnail(d.thumbnail, !!opts.dryRun);
         this.updateDeck(d.name, patch);
         report.decks++;
       }
@@ -3777,6 +3816,13 @@ export class Etude {
       const p = deckParts(it.deck);
       for (let i = 1; i <= p.length; i++) deckNames.add(p.slice(0, i).join("::"));
     }
+    if (scope.deck) {
+      const selected = this.deckRow(scope.deck).name;
+      const parts = deckParts(selected);
+      for (let i = 1; i <= parts.length; i++) deckNames.add(parts.slice(0, i).join("::"));
+      const prefix = selected.replace(/[\\%_]/g, "\\$&") + "::%";
+      for (const row of this.db.all<{ name: string }>("SELECT name FROM decks WHERE name LIKE ? ESCAPE '\\'", prefix)) deckNames.add(row.name);
+    }
     const decks = [...deckNames].sort().map((n) => this.deckFromRow(this.deckRow(n)));
     const presetIds = new Set(decks.map((d) => d.presetId).filter(Boolean) as string[]);
     const typeIds = new Set(items.map((i) => i.type));
@@ -3795,7 +3841,7 @@ export class Etude {
       name: scope.name ?? scope.deck ?? "Etude export",
       exported: iso(),
       presets: [...presetIds].map((id) => this.preset(id)),
-      decks: decks.map((d) => ({ name: d.name, ...(d.presetId ? { preset: d.presetId } : {}), ...(Object.keys(d.config).length ? { config: d.config } : {}), description: d.description, instructions: d.instructions })),
+      decks: decks.map((d) => ({ name: d.name, ...(d.presetId ? { preset: d.presetId } : {}), ...(Object.keys(d.config).length ? { config: d.config } : {}), description: d.description, instructions: d.instructions, thumbnail: this.packThumbnail(d.thumbnail) })),
       tags: tags.map((t) => ({ name: t.tag, instructions: t.instructions, description: t.description })),
       ...(schedulers.length ? { schedulers } : {}),
       types: custom,

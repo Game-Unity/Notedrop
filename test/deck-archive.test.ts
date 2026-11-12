@@ -1,6 +1,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { Etude } from "../src/core/engine.ts";
+import { Db } from "../src/core/db.ts";
+import { install as installSync } from "../src/core/sync/log.ts";
 import { createApp } from "../src/server/app.ts";
 
 function add(e: Etude, id: string, deck: string) {
@@ -22,6 +24,11 @@ test("decks: archive and restore a subtree, keeping cards and history out of stu
   assert.deepEqual(e.deckTree().map((d) => d.name), ["Other"]);
   const archived = e.deckTree({ archived: true }).filter((d) => d.archived);
   assert.deepEqual(archived.map((d) => [d.name, d.cards]), [["Course", 2], ["Course::Unit", 1]]);
+  assert.ok(archived[0].archivedAt);
+  assert.equal(archived[0].archivedAt, archived[1].archivedAt);
+  assert.ok(!Number.isNaN(Date.parse(archived[0].archivedAt)));
+  e.setDeckArchived("Course", true);
+  assert.equal(e.deck("Course").archivedAt, archived[0].archivedAt);
   assert.equal(e.counts({ deck: "Course" }).new, 0);
   assert.equal(e.counts({}).new, 1);
   assert.equal(e.next({ deck: "Course", ahead: true }).card, null);
@@ -29,6 +36,7 @@ test("decks: archive and restore a subtree, keeping cards and history out of stu
   assert.deepEqual(e.db.all("SELECT * FROM reviews"), reviews);
 
   e.setDeckArchived("Course", false, { subdecks: true });
+  assert.equal(e.deck("Course").archivedAt, null);
   assert.equal(e.deckTree().find((d) => d.name === "Course")!.cards, 2);
   assert.equal(e.counts({ deck: "Course" }).new, 1);
   assert.deepEqual(e.item("course"), before);
@@ -36,6 +44,39 @@ test("decks: archive and restore a subtree, keeping cards and history out of stu
   e.setDeckArchived("Course::Unit", true);
   assert.equal(e.deckTree().find((d) => d.name === "Course")!.cards, 1);
   assert.equal(e.deckTree({ archived: true }).find((d) => d.name === "Course")!.cards, 1);
+});
+
+test("decks: archive timestamps follow direct updates and legacy unknown dates remain unknown", async (t) => {
+  const e = await Etude.open(":memory:");
+  t.after(() => e.close());
+  e.ensureDeck("Course");
+  e.db.run("UPDATE decks SET archived = 1 WHERE name = ?", "Course");
+  assert.equal(e.deck("Course").archivedAt, null);
+  e.updateDeck("Course", { description: "kept" });
+  e.setDeckArchived("Course", true);
+  assert.equal(e.deck("Course").archivedAt, null);
+  e.updateDeck("Course", { archived: false });
+  assert.equal(e.deck("Course").archivedAt, null);
+  e.updateDeck("Course", { archived: true });
+  const date = e.deck("Course").archivedAt;
+  assert.ok(date && !Number.isNaN(Date.parse(date)));
+  e.updateDeck("Course", { archived: true });
+  assert.equal(e.deck("Course").archivedAt, date);
+  e.updateDeck("Course", { archived: false });
+  assert.equal(e.deck("Course").archivedAt, null);
+});
+
+test("decks: upgrading a synced collection captures archive dates in refreshed triggers", async (t) => {
+  const e = await Etude.open(":memory:");
+  t.after(() => e.close());
+  e.ensureDeck("Course");
+  for (const op of ["insert", "update", "delete"]) e.db.sql.exec(`DROP TRIGGER IF EXISTS sync_decks_${op}`);
+  e.db.sql.exec("ALTER TABLE decks DROP COLUMN archived_at");
+  installSync(e.db);
+  new Db(e.db.sql);
+  e.setDeckArchived("Course", true);
+  const event = e.db.get<{ value: string }>("SELECT value FROM sync_outbox WHERE tbl = 'decks' ORDER BY seq DESC LIMIT 1")!;
+  assert.equal(JSON.parse(event.value).archived_at, e.deck("Course").archivedAt);
 });
 
 test("decks: deleting content is explicit, counts all cards, and cascades only through the chosen subtree", async (t) => {

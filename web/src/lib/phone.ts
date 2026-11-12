@@ -1,18 +1,8 @@
-// Phones get their own layout (the "Score" language in docs/mobile-design.md), not a squeezed desktop.
-// The breakpoint matches the tab bar: below md (768 px) is a phone.
-import { useEffect, useRef, useState } from "react";
+import { useRef } from "react";
 
-const Q = "(max-width: 767px)";
-
+// Keep page content consistent; responsive styling remains separate.
 export function usePhone() {
-  const [phone, setPhone] = useState(() => typeof window !== "undefined" && window.matchMedia(Q).matches);
-  useEffect(() => {
-    const m = window.matchMedia(Q);
-    const h = () => setPhone(m.matches);
-    m.addEventListener("change", h);
-    return () => m.removeEventListener("change", h);
-  }, []);
-  return phone;
+  return false;
 }
 
 /**

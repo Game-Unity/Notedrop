@@ -465,14 +465,19 @@ function build(state: EditorState): DecorationSet {
           break;
         case "ListMark": {
           const list = parent?.parent;
+          const isList = list?.name === "BulletList" || list?.name === "OrderedList";
           if (!lineActive(from)) {
             if (list?.name === "BulletList") out.push(Decoration.replace({ widget: new TextWidget("•", "cm-md-bullet") }).range(from, to));
             else if (list?.name === "OrderedList") {
               const num = doc.sliceString(from, to).replace(/[.)]/, "");
               out.push(Decoration.replace({ widget: new TextWidget(num + ".", "cm-md-bullet cm-md-ol") }).range(from, to));
             }
-            else out.push(mark("cm-md-listmark").range(from, to));
-          } else out.push(mark("cm-md-listmark").range(from, to));
+            else out.push(mark("cm-md-listmark cm-md-list-marker").range(from, to));
+          } else out.push(mark("cm-md-listmark cm-md-list-marker").range(from, to));
+          if (isList) {
+            const space = doc.sliceString(to, doc.lineAt(to).to).match(/^[ \t]+/)?.[0];
+            if (space) out.push(mark("cm-md-list-space").range(to, to + space.length));
+          }
           break;
         }
         case "TaskMarker":

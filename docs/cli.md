@@ -450,7 +450,7 @@ etude deck list [flags]
 | --- | --- | --- |
 | `--archived` | boolean | Include archived decks. |
 
-Output: array of decks: { name, depth, presetId, cards, unseen, new, learning, review, doneToday, nextDue, deadline, archived }
+Output: array of decks: { name, depth, presetId, cards, unseen, new, learning, review, doneToday, nextDue, deadline, archived, archivedAt }
 
 ```sh
 etude deck list

@@ -1,5 +1,5 @@
 import { autoSync } from "@/lib/sync";
-import { Archive, BarChart3, Blocks, Layers, Library, Settings, Sparkles, Store, X } from "lucide-react";
+import { Archive, BarChart3, Blocks, Layers, Settings, Sparkles, Store, X } from "lucide-react";
 import { Fragment, useEffect, useRef, useState } from "react";
 import { Toaster } from "@/components/ui/sonner";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -55,7 +55,6 @@ function useOnboarding(skip: boolean) {
 const NAV = [
   { to: "/", label: "Decks", icon: Layers, match: (p: string) => p === "/" || p === "/deck" },
   { to: "/archive", label: "Archive", icon: Archive, match: (p: string) => p === "/archive" },
-  { to: "/browse", label: "Browse", icon: Library, match: (p: string) => p === "/browse" },
   { to: "/types", label: "Card types", icon: Blocks, match: (p: string) => p.startsWith("/types") },
   { to: "/market", label: "Market", icon: Store, match: (p: string) => p === "/market" },
   { to: "/stats", label: "Stats", icon: BarChart3, match: (p: string) => p === "/stats" },
@@ -63,7 +62,7 @@ const NAV = [
 
 const SETTINGS_NAV = { to: "/settings", label: "Settings", icon: Settings, match: (p: string) => p === "/settings" };
 
-const COLLAPSED_KEY = "etude.sidebar.collapsed";
+const COLLAPSED_KEY = "etude.sidebar.collapsed.v2";
 /** Pages that only show the collection, so a sync that brought changes can reload them safely. */
 const RELOAD_ON_SYNC = new Set(["/", "/archive", "/deck", "/stats", "/more"]);
 const toggleKey = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform) ? "⌘B" : "Ctrl+B";
@@ -160,7 +159,7 @@ function DeckCardPanel({ deckName, mode, itemId, saveRef, onChanged, onClose, on
 }
 
 function useSidebarCollapsed() {
-  const [collapsed, setCollapsed] = useState(() => localStorage.getItem(COLLAPSED_KEY) === "1");
+  const [collapsed, setCollapsed] = useState(() => localStorage.getItem(COLLAPSED_KEY) !== "0");
   useEffect(() => localStorage.setItem(COLLAPSED_KEY, collapsed ? "1" : "0"), [collapsed]);
   useEffect(() => {
     const h = (e: KeyboardEvent) => {

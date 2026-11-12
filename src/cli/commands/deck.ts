@@ -12,7 +12,7 @@ command({
   description: "Each row has the deck's name, depth, card totals and today's queue (new, learning, review). Archived decks are hidden unless --archived.",
   flags: [{ name: "archived", type: "boolean", description: "Include archived decks." }],
   examples: ["etude deck list", "etude deck list --format table"],
-  output: "array of decks: { name, depth, presetId, cards, unseen, new, learning, review, doneToday, nextDue, deadline, archived }",
+  output: "array of decks: { name, depth, presetId, cards, unseen, new, learning, review, doneToday, nextDue, deadline, archived, archivedAt }",
   run(ctx) {
     return ctx.e.deckTree({ archived: !!ctx.flags.archived }).map(({ at, config, description, instructions, ...d }) => ({ ...d, overrides: Object.keys(config) }));
   },

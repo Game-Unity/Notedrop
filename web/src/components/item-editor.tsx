@@ -87,7 +87,7 @@ export function ItemRow({ row: r, active, checked, onOpen, onToggle, className, 
       className={cn(
         "group flex cursor-pointer items-start gap-3 transition-colors max-md:select-none max-md:[-webkit-touch-callout:none]",
         variant === "tile"
-          ? "nd-deck-card-tile relative min-h-24 rounded-xl border bg-card/40 px-4 py-4 hover:border-foreground/20 hover:bg-accent/40"
+          ? "nd-deck-card-tile relative min-h-24 rounded-xl border bg-card/40 px-4 py-4"
           : "border-b px-3 py-3 hover:bg-accent/40 max-md:min-h-[4.25rem] max-md:py-3.5",
         phone && checked && "bg-highlight/[0.07]",
         (r.suspended || r.archived) && "opacity-55",

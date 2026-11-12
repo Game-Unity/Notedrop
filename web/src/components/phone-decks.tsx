@@ -13,6 +13,7 @@ import { ActionSheet, Mark, PhoneIconButton, PhoneTitle, Tally, type SheetAction
 import { useImportPicker } from "@/pages/decks";
 import { NewDeckDialog } from "@/components/new-deck-dialog";
 import { DeckMenu, useDeckActions } from "@/components/deck-actions";
+import { DeckOverviewTiles } from "@/components/deck-overview-tiles";
 
 const enc = encodeURIComponent;
 const work = (d: DeckNode) => d.new + d.learning + d.review;
@@ -68,7 +69,15 @@ export function PhoneDecks() {
 
       {!decks && <div className="mx-5 mt-2 h-36 animate-pulse rounded-3xl bg-muted/50" />}
 
-      {top.length > 0 && <DeckList decks={decks ?? []} parent="" label="Your decks" onChanged={reload} />}
+      {top.length > 0 && (
+        <section className="mt-8">
+          <div className="mx-5 flex items-baseline justify-between pb-2">
+            <span className="score-kicker">Your decks</span>
+            <span className="text-[12px] text-muted-foreground">{plural(top.length, "deck")}</span>
+          </div>
+          <DeckOverviewTiles decks={top} allDecks={decks ?? []} onChanged={reload} />
+        </section>
+      )}
       <button onClick={() => navigate("/archive")} className="mx-5 mt-5 flex min-h-11 items-center gap-2 text-[14px] text-muted-foreground"><Archive className="size-4" />Archive</button>
 
       <ActionSheet

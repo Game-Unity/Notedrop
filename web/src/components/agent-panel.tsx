@@ -17,6 +17,7 @@ import { api, relative } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { isNativeApp } from "@/lib/platform";
 import { track } from "@/lib/telemetry";
+import { usePhone } from "@/lib/phone";
 
 // In the iOS app a file input with no accept list offers "Take Video", which needs the microphone; the
 // app only takes images, PDFs, text and .apkg, so it asks for those and iOS offers photos, camera and files.
@@ -26,18 +27,6 @@ const OPEN_KEY = "etude.agent.open";
 const WIDTH_KEY = "etude.agent.width";
 const CONV_KEY = "etude.agent.conversation";
 export const AGENT_SHORTCUT = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform) ? "⌘J" : "Ctrl+J";
-
-const usePhone = () => {
-  const q = "(max-width: 640px)";
-  const [phone, setPhone] = useState(() => window.matchMedia(q).matches);
-  useEffect(() => {
-    const m = window.matchMedia(q);
-    const h = () => setPhone(m.matches);
-    m.addEventListener("change", h);
-    return () => m.removeEventListener("change", h);
-  }, []);
-  return phone;
-};
 
 /** Open state and width, shared by the launcher, the panel and the layout. The Ctrl+J shortcut lives in App, where opening goes through the unsaved-changes guard. */
 export function useAgentPanel() {

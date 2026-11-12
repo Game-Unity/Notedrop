@@ -1,8 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowUpLeft, ArrowUpToLine, CalendarClock, ChevronRight, Eye, FastForward, FolderInput, GripVertical, Pencil, Play, Plus, Upload } from "lucide-react";
+import { ArrowUpLeft, ArrowUpToLine, CalendarClock, ChevronRight, Eye, FastForward, FolderInput, GripVertical, Pencil, Play, Plus, Search, Upload, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { api, relative, type DeckNode } from "@/lib/api";
+import { ARCHIVE_ORDERS, archiveRoot, archiveRootSearch, matchesArchiveSearch, sortArchiveDecks, type ArchiveOrder } from "@/lib/archive-search";
 import { navigate } from "@/lib/router";
 import { cn } from "@/lib/utils";
 import { EmptyState, Page, PageHeader, Section } from "@/components/page";
@@ -13,6 +16,7 @@ import { DeckContextMenu, type DeckMenuEntry, useDeckActions } from "@/component
 import { invalidateProgress } from "@/lib/notedrop-progress";
 import { useDeckTreeDrag } from "@/components/deck-tree-drag";
 import { NewDeckDialog } from "@/components/new-deck-dialog";
+import { DeckOverviewTiles } from "@/components/deck-overview-tiles";
 
 function ancestorsOf(name: string) {
   const parts = name.split("::");
@@ -27,6 +31,8 @@ function DesktopDecks({ archived }: { archived: boolean }) {
   const [decks, setDecks] = useState<(DeckNode & { displayDepth: number })[] | null>(null);
   const [collapsed, setCollapsed] = useState<Set<string>>(() => new Set(JSON.parse(localStorage.getItem("etude.collapsed") ?? "[]")));
   const [creating, setCreating] = useState(false);
+  const [archiveQuery, setArchiveQuery] = useState("");
+  const [archiveOrder, setArchiveOrder] = useState<ArchiveOrder>("default");
 
   const reload = () => {
     invalidateProgress();
@@ -61,11 +67,13 @@ function DesktopDecks({ archived }: { archived: boolean }) {
     }
     return decks
       .filter((d) => {
-        return !ancestorsOf(d.name).some((n) => names.has(n) && collapsed.has(n));
+        return archived || !ancestorsOf(d.name).some((n) => names.has(n) && collapsed.has(n));
       })
       .map((d) => ({ ...d, hasChildren: hasChildren.has(d.name) }));
-  }, [decks, collapsed]);
+  }, [decks, collapsed, archived]);
 
+  const archiveRoots = useMemo(() => [...new Set((decks ?? []).map((deck) => archiveRoot(deck.name)))], [decks]);
+  const archiveResults = sortArchiveDecks(visible.filter((deck) => matchesArchiveSearch(deck.name, archiveQuery)), archiveOrder);
   const due = (decks ?? []).filter((d) => d.displayDepth === 0).reduce((a, d) => a + d.new + d.learning + d.review, 0);
 
   // ------------------------------------------------------------ moving
@@ -98,29 +106,57 @@ function DesktopDecks({ archived }: { archived: boolean }) {
         actions={!archived &&
           <>
             <ImportButton onDone={reload} />
-            <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setCreating(true)}><Plus className="size-4" />New deck</Button>
+            <Button variant="default" size="sm" className="gap-1.5" onClick={() => setCreating(true)}><Plus className="size-4" />New deck</Button>
           </>
         }
       />
 
-      {decks && decks.length === 0 && (
-        <EmptyState title={archived ? "No archived decks" : "No decks yet"} action={!archived && <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setCreating(true)}><Plus className="size-4" />New deck</Button>}>
-          {archived ? "Decks you move to the archive will appear here." : "Import a pack or create a deck to start."}
+      {!archived && decks && decks.length === 0 && (
+        <EmptyState title="No decks yet" action={<Button variant="outline" size="sm" className="gap-1.5" onClick={() => setCreating(true)}><Plus className="size-4" />New deck</Button>}>
+          Import a pack or create a deck to start.
         </EmptyState>
       )}
 
-      {visible.length > 0 && (
-        <Section>
-          <div ref={(element) => { listRef.current = element; treeDrag.setListRef(element); }} className="relative">
-          <div className={cn("hidden items-center gap-2 border-b px-5 py-2.5 text-xs font-medium text-muted-foreground sm:grid", archived ? "grid-cols-[1fr_4rem_2.5rem]" : "grid-cols-[1fr_4rem_repeat(3,3.5rem)_8.5rem]")}>
+      {archived && (
+        <div className={cn("flex flex-col", decks && decks.length > 0 && "mb-3 gap-2.5")}>
+          <div className="flex items-center gap-2">
+            <div className="relative min-w-0 flex-1">
+              <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+              <Input value={archiveQuery} onChange={(e) => setArchiveQuery(e.target.value)} placeholder="Search archived decks" aria-label="Search archived decks" className={cn("h-10 pl-9", archiveQuery && "pr-10")} />
+              {archiveQuery && <button className="absolute top-1 right-1 flex size-8 items-center justify-center rounded text-muted-foreground hover:text-foreground" onClick={() => setArchiveQuery("")} aria-label="Clear search"><X className="size-4" /></button>}
+            </div>
+            <Select value={archiveOrder} onValueChange={(value) => {
+              const order = ARCHIVE_ORDERS.find(([key]) => key === value);
+              if (order) setArchiveOrder(order[0]);
+            }}>
+              <SelectTrigger aria-label="Sort archived decks" className="!h-10 w-auto max-w-[45%] gap-1.5 border border-input bg-transparent px-3 text-[13px] font-medium shadow-xs hover:bg-accent hover:text-accent-foreground"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {ARCHIVE_ORDERS.map(([value, label]) => <SelectItem key={value} value={value}>{label}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          {archiveRoots.length > 0 && <div className="flex flex-wrap gap-1.5">
+            {archiveRoots.map((root) => (
+              <button key={root} type="button" onClick={() => setArchiveQuery((query) => query ? `${query} ${archiveRootSearch(root)}` : archiveRootSearch(root))} className="h-7 rounded-md border px-2 text-xs text-muted-foreground transition-colors hover:border-ring hover:text-foreground pointer-coarse:h-9 pointer-coarse:px-2.5">{root}</button>
+            ))}
+          </div>}
+        </div>
+      )}
+
+      {archived && decks && (
+        <Section bare={archived}>
+          <div ref={(element) => { listRef.current = element; treeDrag.setListRef(element); }} className={cn("relative", archived && "flex flex-col gap-3")}>
+          {decks.length > 0 && <div className={cn("items-center text-xs font-medium text-muted-foreground", archived ? "nd-deck-cards-toolbar grid min-h-11 grid-cols-[minmax(0,1fr)_3rem] gap-3 sm:grid-cols-[minmax(0,3fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)]" : "hidden gap-2 border-b px-5 py-2.5 sm:grid grid-cols-[1fr_4rem_repeat(3,3.5rem)_8.5rem]")}>
             <span>Deck</span>
-            <span className="text-right">Cards</span>
+            <span className={cn(!archived && "text-right")}>Cards</span>
+            {archived && <><span className="hidden sm:block">Path</span><span className="hidden sm:block">Archived on</span></>}
             {!archived && <><span className="text-right">New</span>
             <span className="text-right">Learn</span>
             <span className="text-right">Due</span></>}
-            <span />
-          </div>
-          {visible.map((d, i) => {
+            {!archived && <span />}
+          </div>}
+          <div className={cn(archived && "nd-deck-cards-list nd-deck-cards-list--small grid gap-3")}>
+          {archiveResults.map((d, i) => {
             const name = d.name.split("::").pop()!;
             const work = d.new + d.learning + d.review;
             const soon = d.displayDepth === 0 && d.deadline && new Date(d.deadline) > new Date();
@@ -154,10 +190,11 @@ function DesktopDecks({ archived }: { archived: boolean }) {
                   treeDrag.setRowRef(d.name, el);
                 }}
                 className={cn(
-                  "group relative flex min-h-14 items-stretch gap-2 pr-3 pl-0.5 hover:bg-accent/40 data-[state=open]:bg-accent/40 sm:grid sm:min-h-12 sm:pr-5 sm:pl-1",
-                  archived ? "sm:grid-cols-[1fr_4rem_2.5rem]" : "sm:grid-cols-[1fr_4rem_repeat(3,3.5rem)_8.5rem]",
-                  i > 0 && "border-t",
-                  groupStart && "border-t-foreground/15",
+                  archived
+                    ? "nd-deck-card-tile group relative grid grid-cols-[minmax(0,1fr)_3rem] items-center gap-3 rounded-xl border bg-card/40 px-4 py-4 data-[state=open]:bg-accent/40 sm:grid-cols-[minmax(0,3fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)]"
+                    : "group relative flex min-h-14 items-stretch gap-2 pr-3 pl-0.5 hover:bg-accent/40 data-[state=open]:bg-accent/40 sm:grid sm:min-h-12 sm:grid-cols-[1fr_4rem_repeat(3,3.5rem)_8.5rem] sm:pr-5 sm:pl-1",
+                  !archived && i > 0 && "border-t",
+                  !archived && groupStart && "border-t-foreground/15",
                   !drag && "transition-colors",
                   lifted && "opacity-35",
                   target && !targetBlocked && "bg-highlight/10 ring-1 ring-highlight/60 ring-inset",
@@ -165,8 +202,8 @@ function DesktopDecks({ archived }: { archived: boolean }) {
                 )}
               >
                 <div className="flex min-w-0 flex-1 items-stretch">
-                  <TreeGuides depth={d.displayDepth} />
-                  <div className="flex shrink-0 items-center">
+                  {!archived && <TreeGuides depth={d.displayDepth} />}
+                  {!archived && <div className="flex shrink-0 items-center">
                     <button
                       data-grip
                       disabled={archived}
@@ -190,17 +227,19 @@ function DesktopDecks({ archived }: { archived: boolean }) {
                     >
                       <ChevronRight className={cn("size-4 transition-transform", !collapsed.has(d.name) && "rotate-90")} />
                     </button>
-                  </div>
-                  <div className="flex min-w-0 flex-1 flex-col justify-center py-2">
-                    <button
+                  </div>}
+                  <div className={cn("flex min-w-0 flex-1 flex-col justify-center", !archived && "py-2")}>
+                    {archived ? (
+                      <span className="nd-deck-card-title text-sm leading-snug font-medium max-md:text-[15px]">{name}</span>
+                    ) : <button
                       className={cn("text-left text-[0.95rem] leading-snug hover:underline sm:truncate", d.displayDepth === 0 ? "font-medium" : "text-foreground/90")}
                       onClick={() => navigate(`/deck?name=${encodeURIComponent(d.name)}`)}
                     >
                       {d.displayDepth === 0 ? d.name : name}
                       {soon && <span className="ml-2 inline-flex items-center gap-1 align-middle text-xs font-normal text-highlight"><CalendarClock className="size-3.5" />{relative(d.deadline!)}</span>}
-                    </button>
+                    </button>}
                     {/* Phone: counts on one line under the name instead of three narrow columns. */}
-                    <div className="mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5 text-xs tabular text-muted-foreground sm:hidden [&>span]:whitespace-nowrap">
+                    {!archived && <div className="mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5 text-xs tabular text-muted-foreground sm:hidden [&>span]:whitespace-nowrap">
                       {archived ? <span>{d.cards} card{d.cards === 1 ? "" : "s"}</span> : watch ? (
                         <span>{d.cards} card{d.cards === 1 ? "" : "s"} to watch</span>
                       ) : work ? (
@@ -213,10 +252,14 @@ function DesktopDecks({ archived }: { archived: boolean }) {
                       ) : (
                         <span>{d.cards ? `${d.cards} card${d.cards === 1 ? "" : "s"} · nothing due` : "empty"}</span>
                       )}
-                    </div>
+                    </div>}
                   </div>
                 </div>
-                <span className="hidden items-center justify-end tabular text-sm text-muted-foreground sm:flex" title={`${d.cards} card${d.cards === 1 ? "" : "s"} in this deck`}>{d.cards}</span>
+                <span className={cn("items-center tabular text-sm text-muted-foreground", archived ? "flex" : "hidden justify-end sm:flex")} title={`${d.cards} card${d.cards === 1 ? "" : "s"} in this deck`}>{d.cards}</span>
+                {archived && <>
+                  <span className="col-span-2 min-w-0 truncate text-sm text-muted-foreground sm:col-span-1" title={parentOf(d.name) || undefined}><span className="sm:hidden">Path: </span>{parentOf(d.name) || "—"}</span>
+                  <span className="col-span-2 tabular text-sm text-muted-foreground sm:col-span-1"><span className="sm:hidden">Archived on: </span>{d.archivedAt ? new Date(d.archivedAt).toLocaleDateString("de-DE") : "—"}</span>
+                </>}
                 {!archived && (watch ? (
                   <span className="hidden items-center justify-end text-xs text-muted-foreground sm:col-span-3 sm:flex">tour</span>
                 ) : (
@@ -226,7 +269,7 @@ function DesktopDecks({ archived }: { archived: boolean }) {
                     <Count value={d.review} cls="text-review" />
                   </>
                 ))}
-                <div className="flex shrink-0 items-center justify-end gap-0.5">
+                {!archived && <div className="flex shrink-0 items-center justify-end gap-0.5">
                   {!archived && <Button
                     size="sm"
                     variant={work || (watch && d.cards) ? "secondary" : "ghost"}
@@ -246,11 +289,17 @@ function DesktopDecks({ archived }: { archived: boolean }) {
                     )
                     )}
                   </Button>}
-                </div>
+                </div>}
               </div>
               </DeckContextMenu>
             );
           })}
+          </div>
+          {decks.length === 0 ? (
+            <EmptyState title="No archived decks">Decks you move to the archive will appear here.</EmptyState>
+          ) : archiveResults.length === 0 && (
+            <EmptyState inset title="No matches" action={<Button variant="outline" size="sm" onClick={() => setArchiveQuery("")}>Clear search</Button>}>No archived decks match that search.</EmptyState>
+          )}
           {drag?.drop && !treeDrag.isNoop(drag.name, drag.drop) && (
             drag.drop.kind === "line" ? (
               <div
@@ -263,6 +312,15 @@ function DesktopDecks({ archived }: { archived: boolean }) {
             ) : null
           )}
           </div>
+        </Section>
+      )}
+      {!archived && visible.some((deck) => deck.displayDepth === 0) && (
+        <Section bare>
+          <DeckOverviewTiles
+            decks={visible.filter((deck) => deck.displayDepth === 0)}
+            allDecks={decks ?? []}
+            onChanged={reload}
+          />
         </Section>
       )}
       {deckActions.deleteDialog}

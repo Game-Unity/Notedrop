@@ -24,6 +24,7 @@ CREATE TABLE IF NOT EXISTS decks (
   description  TEXT NOT NULL DEFAULT '',
   instructions TEXT NOT NULL DEFAULT '',
   archived     INTEGER NOT NULL DEFAULT 0,
+  archived_at  TEXT,
   -- Order among sibling decks; NULL sorts after positioned decks, by name.
   position     INTEGER
 );
@@ -168,6 +169,14 @@ export class Db {
     this.sql.exec(SCHEMA);
     // Columns added after a table first shipped.
     if (!this.all("PRAGMA table_info(decks)").some((c) => c.name === "position")) this.sql.exec("ALTER TABLE decks ADD COLUMN position INTEGER");
+    if (!this.all("PRAGMA table_info(decks)").some((c) => c.name === "archived_at")) {
+      this.sql.exec("ALTER TABLE decks ADD COLUMN archived_at TEXT");
+      for (const op of ["insert", "update", "delete"]) this.sql.exec(`DROP TRIGGER IF EXISTS sync_decks_${op}`);
+    }
+    if (!this.all("PRAGMA table_info(decks)").some((c) => c.name === "thumbnail")) {
+      this.sql.exec("ALTER TABLE decks ADD COLUMN thumbnail TEXT");
+      for (const op of ["insert", "update", "delete"]) this.sql.exec(`DROP TRIGGER IF EXISTS sync_decks_${op}`);
+    }
     if (!this.all("PRAGMA table_info(cards)").some((c) => c.name === "sched_state")) this.sql.exec("ALTER TABLE cards ADD COLUMN sched_state TEXT");
     const itemCols = new Set(this.all("PRAGMA table_info(items)").map((c) => c.name));
     if (!itemCols.has("title")) this.sql.exec("ALTER TABLE items ADD COLUMN title TEXT NOT NULL DEFAULT ''");

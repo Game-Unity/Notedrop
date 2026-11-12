@@ -54,5 +54,8 @@ test("strict mastery boundary partitions cards across a deck and its subdecks", 
   assert.equal(etude.search(`deck:"Root" ${MASTERED_SEARCH}`, { limit: 1 }).total, mastered);
   assert.equal(learning, 2);
   assert.deepEqual(partitionProgress(total, newCards, mastered), { total: 6, new: 2, learning: 2, mastered: 2, percent: 33 });
+  etude.setDeckArchived("Root", true, { subdecks: true });
+  const archived = etude.deckTree({ archived: true }).find((deck) => deck.name === "Root")!;
+  assert.equal(partitionProgress(archived.cards, archived.unseen, etude.search(masterySearch("Root"), { limit: 1 }).total).percent, 33);
   etude.close();
 });
