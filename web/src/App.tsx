@@ -2,7 +2,7 @@ import { autoSync } from "@/lib/sync";
 import { Archive, BarChart3, Blocks, Layers, Settings, Sparkles, Store, X } from "lucide-react";
 import { Fragment, useEffect, useRef, useState } from "react";
 import { Toaster } from "@/components/ui/sonner";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipHint, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { SidebarIcon } from "@/components/sidebar-icon";
@@ -72,6 +72,7 @@ type PanelDestination = { mode: "overview" | "create" } | { mode: "edit"; itemId
 type SidePanelContext = {
   path: string;
   deckName: string;
+  onTypeSidebarHost(host: HTMLDivElement | null): void;
   dataKey: number;
   mode: DeckPanelMode;
   itemId: string | null;
@@ -96,6 +97,11 @@ const SIDE_PANEL_CONTENTS: {
     id: "agent-chat",
     matches: ({ chatOpen }) => chatOpen,
     render: ({ onCloseChat, onAgentChanged }) => <AgentPanel embedded onClose={onCloseChat} onChanged={onAgentChanged} />,
+  },
+  {
+    id: "type-library",
+    matches: ({ path, chatOpen }) => !chatOpen && path === "/types",
+    render: ({ onTypeSidebarHost }) => <div ref={onTypeSidebarHost} className="nd-types-sidebar-host" />,
   },
   {
     id: "notedrop-tree",
@@ -130,9 +136,9 @@ function DeckCardPanel({ deckName, mode, itemId, saveRef, onChanged, onClose, on
   if (mode === "create") {
     return (
       <div className="nd-card-create-panel flex h-full min-h-0 flex-col">
-        <div className="nd-card-create-title flex shrink-0 items-center justify-between border-b pb-3">
-          <h2 className="text-lg font-semibold">Add a card</h2>
-          <Button variant="ghost" size="icon" aria-label="Close card editor" onClick={onClose}><X className="size-4" /></Button>
+        <div className="nd-card-create-title nd-item-editor-tabs-nav shrink-0">
+          <h2 className="min-w-0 flex-1 text-sm font-semibold">Add a card</h2>
+          <TooltipHint label="Close card editor"><Button variant="ghost" size="icon" className="nd-types-sidebar-add size-8 transition-colors" aria-label="Close card editor" onClick={onClose}><X className="size-4" /></Button></TooltipHint>
         </div>
         <NewItemDialog open inline onOpenChange={(open) => !open && onClose()} decks={decks} types={types} defaultDeck={deckName} onCreated={onChanged} />
       </div>
@@ -219,6 +225,7 @@ export function App() {
   const phone = usePhone();
   // Bumped after the assistant changed something, so the page remounts and reloads its data.
   const [dataKey, setDataKey] = useState(0);
+  const [typeSidebarHost, setTypeSidebarHost] = useState<HTMLDivElement | null>(null);
   const [onboarding, setOnboarding] = useOnboarding(path === "/embed");
   const deckName = params.get("name") ?? "";
   const [panel, setPanel] = useState<{ mode: DeckPanelMode; itemId: string | null }>(() => ({
@@ -322,6 +329,7 @@ export function App() {
   const sidePanelContext: SidePanelContext = {
     path,
     deckName,
+    onTypeSidebarHost: setTypeSidebarHost,
     dataKey,
     mode: panel.mode,
     itemId: panel.itemId,
@@ -380,7 +388,7 @@ export function App() {
     />
   );
   else if (path === "/browse") page = <BrowsePage initialQuery={params.get("q") ?? ""} openItem={params.get("item")} />;
-  else if (path.startsWith("/types")) page = <TypesPage id={path.split("/")[2] ? decodeURIComponent(path.split("/")[2]) : null} />;
+  else if (path.startsWith("/types")) page = <TypesPage id={path.split("/")[2] ? decodeURIComponent(path.split("/")[2]) : null} panelHost={typeSidebarHost} />;
   else if (path === "/stats") page = <StatsPage deck={params.get("deck") ?? undefined} />;
   else if (path === "/settings") page = <SettingsPage />;
   else if (path === "/market") page = <MarketPage />;
@@ -404,13 +412,11 @@ export function App() {
         {!collapsed && !phone && <span className="nd-primary-sidebar-label whitespace-nowrap">{n.label}</span>}
       </button>
     );
-    return collapsed ? (
+    return (
       <Tooltip key={n.to}>
         <TooltipTrigger asChild>{btn}</TooltipTrigger>
         <TooltipContent side="right">{n.label}</TooltipContent>
       </Tooltip>
-    ) : (
-      btn
     );
   };
 
@@ -446,8 +452,8 @@ export function App() {
         page
       ) : (
         <div
-          className={cn("nd-app-shell flex min-h-dvh", path === "/deck" && "nd-app-shell--deck")}
-          data-panel-mode={chatVisible ? "chat" : panel.mode === "overview" ? "overview" : "editor"}
+          className={cn("nd-app-shell flex min-h-dvh", path === "/deck" && "nd-app-shell--deck", path === "/types" && "nd-app-shell--types")}
+          data-panel-mode={chatVisible ? "chat" : path === "/types" ? "types" : panel.mode === "overview" ? "overview" : "editor"}
           data-sidebar-collapsed={collapsed}
         >
           <aside
@@ -488,7 +494,7 @@ export function App() {
             </div>
           </aside>
           <main key={path === "/deck" ? `deck:${deckName}` : dataKey} className="nd-app-content min-w-0 flex-1 pb-16">{page}</main>
-          <NoteDropSidePanel visible={chatVisible || (path === "/deck" && Boolean(sidePanelContext.deckName))} mode={chatVisible ? "chat" : panel.mode === "overview" ? "overview" : "editor"}>
+          <NoteDropSidePanel visible={chatVisible || path === "/types" || (path === "/deck" && Boolean(sidePanelContext.deckName))} mode={chatVisible ? "chat" : path === "/types" ? "types" : panel.mode === "overview" ? "overview" : "editor"}>
             {sidePanelContents}
           </NoteDropSidePanel>
           {!phone && <PhoneTabBar path={path} updateDot={updateDot} onAsk={() => agent.setOpen(true)} />}

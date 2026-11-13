@@ -29,11 +29,12 @@ export function Breadcrumb({ items, className }: { items: Crumb[]; className?: s
 }
 
 /** Title, one line of context and the page's actions. Actions drop below the title when the row is too narrow. */
-export function PageHeader({ title, description, actions, crumbs, titleAside, className }: {
+export function PageHeader({ title, description, actions, crumbs, breadcrumb, titleAside, className }: {
   title: React.ReactNode;
   description?: React.ReactNode;
   actions?: React.ReactNode;
   crumbs?: Crumb[];
+  breadcrumb?: React.ReactNode;
   titleAside?: React.ReactNode;
   className?: string;
 }) {
@@ -45,7 +46,7 @@ export function PageHeader({ title, description, actions, crumbs, titleAside, cl
             <h1 className={cn("min-w-0 text-2xl font-semibold tracking-tight break-words", PHONE_H1)}>{title}</h1>
             {titleAside}
           </div>
-          {crumbs && crumbs.length > 0 && <Breadcrumb items={crumbs} />}
+          {breadcrumb !== undefined ? breadcrumb : crumbs && crumbs.length > 0 && <Breadcrumb items={crumbs} />}
           {description && <div className="mt-1 text-sm text-pretty text-muted-foreground">{description}</div>}
         </div>
         {actions && <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div>}

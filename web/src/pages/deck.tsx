@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Archive, ArchiveRestore, ArrowUpToLine, BarChart3, CalendarClock, Check, ChevronDown, Download, Eye, FastForward, FolderInput, Library, Pencil, Play, Plus, Search, Trash2, X } from "lucide-react";
+import { Archive, ArchiveRestore, ArrowUpToLine, BarChart3, CalendarClock, Check, ChevronDown, Download, Eye, FastForward, FolderInput, Pencil, Play, Plus, Search, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,7 +20,7 @@ import { childrenOf, clashes, leafOf, moveDeck, MoveDeckDialog, parentOf } from 
 import { usePhone } from "@/lib/phone";
 import { PhoneTitle } from "@/components/phone-shell";
 import { useDeckActions } from "@/components/deck-actions";
-import { dueSearch, invalidateProgress, loadDeckList, onProgressInvalidated, relatedDecks } from "@/lib/notedrop-progress";
+import { invalidateProgress, loadDeckList, onProgressInvalidated, relatedDecks } from "@/lib/notedrop-progress";
 
 const enc = encodeURIComponent;
 
@@ -144,8 +144,8 @@ export function DeckPage({ name, dataKey, activeItemId, onOpenCard, onCreateCard
   const overviewText = (
     <>
           <TextSection
-            title="Description"
-            empty="No description. Add notes about what this deck covers, sources, or how to study it."
+            title="Notes"
+            empty="No notes yet. Add notes about what this deck covers, sources, or how to study it."
             value={deck.description}
             markdown
             onSave={async (description) => {
@@ -272,46 +272,6 @@ export function DeckPage({ name, dataKey, activeItemId, onOpenCard, onCreateCard
         </TabsContent>
       </Tabs>
     </Page>
-  );
-}
-
-function DueBadge({ deck }: { deck: string }) {
-  const [due, setDue] = useState<number | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let live = true;
-    let requestId = 0;
-    const refresh = async () => {
-      const id = ++requestId;
-      try {
-        const result = await api.search(dueSearch(deck), { limit: 1 });
-        if (!Number.isInteger(result.total) || result.total < 0) throw new Error("Invalid due card count");
-        if (live && id === requestId) {
-          setDue(result.total);
-          setError(null);
-        }
-      } catch (e) {
-        if (live && id === requestId) setError((e as Error).message);
-      }
-    };
-    const onVisibility = () => document.visibilityState === "visible" && void refresh();
-    void refresh();
-    window.addEventListener("focus", refresh);
-    document.addEventListener("visibilitychange", onVisibility);
-    return () => {
-      live = false;
-      window.removeEventListener("focus", refresh);
-      document.removeEventListener("visibilitychange", onVisibility);
-    };
-  }, [deck]);
-
-  if (due === 0 && !error) return null;
-  if (due == null && !error) return null;
-  return (
-    <span id="nd-due-badge" className="nd-due-badge" role={error ? "status" : undefined} title={error ?? undefined}>
-      {error ? "Due unavailable" : `${due} due`}
-    </span>
   );
 }
 
@@ -603,11 +563,11 @@ function DeckStudyActions({ deck, node, work, tags, phone }: { deck: DeckFull; n
           <CustomStudy deck={deck.name} tags={tags} disabled={!node?.cards} phone={phone} adaptive={deck.resolved.adaptiveChallenge || deck.resolved.adaptivePace} />
           {work || !node?.cards ? (
             <Button size="lg" className={cn("flex-1 gap-2 px-6 sm:flex-none", phone && "h-[3.25rem] rounded-full text-[16px] pointer-coarse:h-[3.25rem]")} disabled={!work} onClick={() => navigate(`/study?deck=${enc(deck.name)}`)}>
-              <Play className="size-4" />Practice<DueBadge deck={deck.name} />
+              <Play className="size-4" />Practice
             </Button>
           ) : (
             <Button size="lg" className={cn("flex-1 gap-2 px-6 sm:flex-none", phone && "h-[3.25rem] rounded-full text-[16px] pointer-coarse:h-[3.25rem]")} title="Nothing due right now: review early. FSRS counts an early review for less." onClick={() => navigate(`/study?deck=${enc(deck.name)}&ahead=1`)}>
-              <FastForward className="size-4" />Practice ahead<DueBadge deck={deck.name} />
+              <FastForward className="size-4" />Practice ahead
             </Button>
           )}
         </>
@@ -900,7 +860,6 @@ function DangerZone({ deck, decks, hasChildren, onMoved }: { deck: DeckFull; dec
   return (
     <div className="flex flex-col gap-8">
       <Section title="Elsewhere">
-        <LinkRow icon={Library} title="Browse cards" description="List, search and edit every card in this deck." onClick={() => navigate(`/browse?q=${enc(`deck:"${deck.name}"`)}`)} />
         <LinkRow icon={BarChart3} title="Statistics" description="Retention, forecast and weakest tags for this deck." onClick={() => navigate(`/stats?deck=${enc(deck.name)}`)} />
       </Section>
       <Section title="Place in the tree">

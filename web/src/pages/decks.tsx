@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { TooltipHint } from "@/components/ui/tooltip";
 import { api, relative, type DeckNode } from "@/lib/api";
 import { ARCHIVE_ORDERS, archiveRoot, archiveRootSearch, matchesArchiveSearch, sortArchiveDecks, type ArchiveOrder } from "@/lib/archive-search";
 import { navigate } from "@/lib/router";
@@ -13,7 +14,7 @@ import { childrenOf, clashes, leafOf, moveDeck, MoveDeckDialog, parentOf } from 
 import { usePhone } from "@/lib/phone";
 import { PhoneDecks } from "@/components/phone-decks";
 import { DeckContextMenu, type DeckMenuEntry, useDeckActions } from "@/components/deck-actions";
-import { invalidateProgress } from "@/lib/notedrop-progress";
+import { cachedProgress, invalidateProgress, loadProgress, onProgressInvalidated, relatedDecks, type NoteDropProgress } from "@/lib/notedrop-progress";
 import { useDeckTreeDrag } from "@/components/deck-tree-drag";
 import { NewDeckDialog } from "@/components/new-deck-dialog";
 import { DeckOverviewTiles } from "@/components/deck-overview-tiles";
@@ -74,6 +75,17 @@ function DesktopDecks({ archived }: { archived: boolean }) {
 
   const archiveRoots = useMemo(() => [...new Set((decks ?? []).map((deck) => archiveRoot(deck.name)))], [decks]);
   const archiveResults = sortArchiveDecks(visible.filter((deck) => matchesArchiveSearch(deck.name, archiveQuery)), archiveOrder);
+  const archiveSubdeckCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const deck of decks ?? []) {
+      let ancestor = parentOf(deck.name);
+      while (ancestor) {
+        counts.set(ancestor, (counts.get(ancestor) ?? 0) + 1);
+        ancestor = parentOf(ancestor);
+      }
+    }
+    return counts;
+  }, [decks]);
   const due = (decks ?? []).filter((d) => d.displayDepth === 0).reduce((a, d) => a + d.new + d.learning + d.review, 0);
 
   // ------------------------------------------------------------ moving
@@ -118,7 +130,7 @@ function DesktopDecks({ archived }: { archived: boolean }) {
       )}
 
       {archived && (
-        <div className={cn("flex flex-col", decks && decks.length > 0 && "mb-3 gap-2.5")}>
+        <div className={cn("flex flex-col", decks && decks.length > 0 && "mb-6 gap-2.5")}>
           <div className="flex items-center gap-2">
             <div className="relative min-w-0 flex-1">
               <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -146,18 +158,21 @@ function DesktopDecks({ archived }: { archived: boolean }) {
       {archived && decks && (
         <Section bare={archived}>
           <div ref={(element) => { listRef.current = element; treeDrag.setListRef(element); }} className={cn("relative", archived && "flex flex-col gap-3")}>
-          {decks.length > 0 && <div className={cn("items-center text-xs font-medium text-muted-foreground", archived ? "nd-deck-cards-toolbar grid min-h-11 grid-cols-[minmax(0,1fr)_3rem] gap-3 sm:grid-cols-[minmax(0,3fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)]" : "hidden gap-2 border-b px-5 py-2.5 sm:grid grid-cols-[1fr_4rem_repeat(3,3.5rem)_8.5rem]")}>
+          {decks.length > 0 && !archived && <div className="hidden items-center gap-2 border-b px-5 py-2.5 text-xs font-medium text-muted-foreground sm:grid sm:grid-cols-[1fr_4rem_repeat(3,3.5rem)_8.5rem]">
             <span>Deck</span>
-            <span className={cn(!archived && "text-right")}>Cards</span>
-            {archived && <><span className="hidden sm:block">Path</span><span className="hidden sm:block">Archived on</span></>}
-            {!archived && <><span className="text-right">New</span>
+            <span className="text-right">Cards</span>
+            <span className="text-right">New</span>
             <span className="text-right">Learn</span>
-            <span className="text-right">Due</span></>}
-            {!archived && <span />}
+            <span className="text-right">Due</span>
+            <span />
           </div>}
           <div className={cn(archived && "nd-deck-cards-list nd-deck-cards-list--small grid gap-3")}>
           {archiveResults.map((d, i) => {
             const name = d.name.split("::").pop()!;
+            const path = parentOf(d.name) || "Root deck";
+            const subdecks = archiveSubdeckCounts.get(d.name) ?? 0;
+            const archivedAt = d.archivedAt ? new Date(d.archivedAt).toLocaleDateString("de-DE") : "—";
+            const lastStudied = d.lastReview ? new Date(d.lastReview).toLocaleDateString("de-DE") : null;
             const work = d.new + d.learning + d.review;
             const soon = d.displayDepth === 0 && d.deadline && new Date(d.deadline) > new Date();
             const watch = d.mode === "watch";
@@ -191,7 +206,7 @@ function DesktopDecks({ archived }: { archived: boolean }) {
                 }}
                 className={cn(
                   archived
-                    ? "nd-deck-card-tile group relative grid grid-cols-[minmax(0,1fr)_3rem] items-center gap-3 rounded-xl border bg-card/40 px-4 py-4 data-[state=open]:bg-accent/40 sm:grid-cols-[minmax(0,3fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)]"
+                    ? "nd-deck-card-tile group flex min-w-0 items-center gap-3 rounded-xl border bg-card/40 px-4 py-4 hover:border-foreground/20 hover:bg-accent/40 data-[state=open]:bg-accent/40"
                     : "group relative flex min-h-14 items-stretch gap-2 pr-3 pl-0.5 hover:bg-accent/40 data-[state=open]:bg-accent/40 sm:grid sm:min-h-12 sm:grid-cols-[1fr_4rem_repeat(3,3.5rem)_8.5rem] sm:pr-5 sm:pl-1",
                   !archived && i > 0 && "border-t",
                   !archived && groupStart && "border-t-foreground/15",
@@ -228,9 +243,21 @@ function DesktopDecks({ archived }: { archived: boolean }) {
                       <ChevronRight className={cn("size-4 transition-transform", !collapsed.has(d.name) && "rotate-90")} />
                     </button>
                   </div>}
-                  <div className={cn("flex min-w-0 flex-1 flex-col justify-center", !archived && "py-2")}>
+                  <div className={cn("flex min-w-0 flex-1 flex-col", !archived && "justify-center py-2")}>
                     {archived ? (
-                      <span className="nd-deck-card-title text-sm leading-snug font-medium max-md:text-[15px]">{name}</span>
+                      <>
+                        <div className="flex min-w-0 items-baseline gap-2">
+                          <span className="truncate text-sm leading-snug font-medium">{name}</span>
+                          <code className="hidden shrink-0 font-mono text-xs text-muted-foreground/70 sm:inline" title={path}>{path}</code>
+                        </div>
+                        <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5 text-[13px] text-muted-foreground">
+                          <code className="font-mono sm:hidden">{path}</code>
+                          <span className="sm:hidden" aria-hidden="true">·</span>
+                          <span className="tabular">Archived {archivedAt}</span>
+                          {subdecks > 0 && <><span aria-hidden="true">·</span><span>{subdecks} subdeck{subdecks === 1 ? "" : "s"}</span></>}
+                          {lastStudied && <><span aria-hidden="true">·</span><span className="tabular">Last studied {lastStudied}</span></>}
+                        </div>
+                      </>
                     ) : <button
                       className={cn("text-left text-[0.95rem] leading-snug hover:underline sm:truncate", d.displayDepth === 0 ? "font-medium" : "text-foreground/90")}
                       onClick={() => navigate(`/deck?name=${encodeURIComponent(d.name)}`)}
@@ -255,11 +282,16 @@ function DesktopDecks({ archived }: { archived: boolean }) {
                     </div>}
                   </div>
                 </div>
-                <span className={cn("items-center tabular text-sm text-muted-foreground", archived ? "flex" : "hidden justify-end sm:flex")} title={`${d.cards} card${d.cards === 1 ? "" : "s"} in this deck`}>{d.cards}</span>
-                {archived && <>
-                  <span className="col-span-2 min-w-0 truncate text-sm text-muted-foreground sm:col-span-1" title={parentOf(d.name) || undefined}><span className="sm:hidden">Path: </span>{parentOf(d.name) || "—"}</span>
-                  <span className="col-span-2 tabular text-sm text-muted-foreground sm:col-span-1"><span className="sm:hidden">Archived on: </span>{d.archivedAt ? new Date(d.archivedAt).toLocaleDateString("de-DE") : "—"}</span>
-                </>}
+                {archived ? (
+                  <div className="flex shrink-0 items-center gap-3">
+                    <ArchiveMastery deck={d} />
+                    <TooltipHint label={`${d.cards} card${d.cards === 1 ? "" : "s"} in this deck`}>
+                      <span className="w-8 text-right tabular text-sm text-muted-foreground">{d.cards}</span>
+                    </TooltipHint>
+                  </div>
+                ) : (
+                  <span className="hidden items-center justify-end tabular text-sm text-muted-foreground sm:flex" title={`${d.cards} card${d.cards === 1 ? "" : "s"} in this deck`}>{d.cards}</span>
+                )}
                 {!archived && (watch ? (
                   <span className="hidden items-center justify-end text-xs text-muted-foreground sm:col-span-3 sm:flex">tour</span>
                 ) : (
@@ -348,6 +380,39 @@ function DesktopDecks({ archived }: { archived: boolean }) {
       <MoveDeckDialog deck={moving} decks={decks ?? []} onOpenChange={(o) => !o && setMoving(null)} onMoved={(n) => after(n)} />
       <NewDeckDialog open={creating} onOpenChange={setCreating} onDone={reload} />
     </Page>
+  );
+}
+
+function ArchiveMastery({ deck }: { deck: DeckNode }) {
+  const [progress, setProgress] = useState<NoteDropProgress | null>(() => cachedProgress(deck.name, deck.cards, deck.unseen));
+
+  useEffect(() => {
+    let live = true;
+    const refresh = async (force = false) => {
+      try {
+        const value = await loadProgress(deck.name, deck.cards, deck.unseen, force);
+        if (live) setProgress(value);
+      } catch (error) {
+        if (live) toast.error(`Couldn't load mastery for ${deck.name}`, { description: (error as Error).message });
+      }
+    };
+    const unsubscribe = onProgressInvalidated((changedDeck) => {
+      if (!changedDeck || relatedDecks(deck.name, changedDeck)) void refresh(true);
+    });
+    const onFocus = () => void refresh(true);
+    window.addEventListener("focus", onFocus);
+    void refresh();
+    return () => {
+      live = false;
+      unsubscribe();
+      window.removeEventListener("focus", onFocus);
+    };
+  }, [deck.cards, deck.name, deck.unseen]);
+
+  return (
+    <span className="shrink-0 rounded-md border px-1.5 py-0.5 text-[11px] text-muted-foreground">
+      {progress ? `${progress.percent}% mastered` : "…% mastered"}
+    </span>
   );
 }
 

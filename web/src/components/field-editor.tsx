@@ -5,6 +5,7 @@ import { ArrowDown, ArrowUp, Check, EyeOff, MoreVertical, Plus, Trash2 } from "l
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { TooltipHint } from "@/components/ui/tooltip";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { CodeEditor } from "@/components/code-editor";
@@ -91,9 +92,9 @@ function FieldRow({ spec, children, containerGap }: { spec: FieldSpec; children:
         <label className="text-sm font-medium">{spec.label ?? spec.name}</label>
         {spec.required && <span className="text-xs text-muted-foreground">required</span>}
         {spec.private && (
-          <span className="flex items-center gap-1 text-xs text-muted-foreground" title="Hidden from the card until it's graded">
+          <TooltipHint label="Hidden from the card until it's graded"><span className="flex items-center gap-1 text-xs text-muted-foreground">
             <EyeOff className="size-3" /> hidden until answered
-          </span>
+          </span></TooltipHint>
         )}
       </div>
       {spec.description && <p className="-mt-1 text-xs text-muted-foreground">{spec.description}</p>}
@@ -211,14 +212,14 @@ function Rows<T>({ items, onChange, render, empty, add }: { items: T[]; onChange
           <div className="min-w-0 flex-1">{render(it, (v) => onChange(items.map((x, k) => (k === i ? v : x))), i)}</div>
           {/* Desktop: inline icons. Phone: one menu button, so rows stay one line tall. */}
           <div className="hidden shrink-0 gap-0.5 pt-1 opacity-40 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100 sm:flex">
-            <Button variant="ghost" size="icon" className="size-7" onClick={() => move(i, -1)} disabled={i === 0} aria-label="Move up"><ArrowUp className="size-3.5" /></Button>
-            <Button variant="ghost" size="icon" className="size-7" onClick={() => move(i, 1)} disabled={i === items.length - 1} aria-label="Move down"><ArrowDown className="size-3.5" /></Button>
-            <Button variant="ghost" size="icon" className="size-7" onClick={() => remove(i)} aria-label="Remove"><Trash2 className="size-3.5" /></Button>
+            <TooltipHint label="Move up"><Button variant="ghost" size="icon" className="size-7" onClick={() => move(i, -1)} disabled={i === 0} aria-label="Move up"><ArrowUp className="size-3.5" /></Button></TooltipHint>
+            <TooltipHint label="Move down"><Button variant="ghost" size="icon" className="size-7" onClick={() => move(i, 1)} disabled={i === items.length - 1} aria-label="Move down"><ArrowDown className="size-3.5" /></Button></TooltipHint>
+            <TooltipHint label="Remove"><Button variant="ghost" size="icon" className="size-7" onClick={() => remove(i)} aria-label="Remove"><Trash2 className="size-3.5" /></Button></TooltipHint>
           </div>
           <DropdownMenu>
-            <DropdownMenuTrigger asChild>
+            <TooltipHint label="Row actions"><DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon" className="size-9 shrink-0 text-muted-foreground sm:hidden" aria-label="Row actions"><MoreVertical className="size-4" /></Button>
-            </DropdownMenuTrigger>
+            </DropdownMenuTrigger></TooltipHint>
             <DropdownMenuContent align="end">
               <DropdownMenuItem disabled={i === 0} onClick={() => move(i, -1)}><ArrowUp />Move up</DropdownMenuItem>
               <DropdownMenuItem disabled={i === items.length - 1} onClick={() => move(i, 1)}><ArrowDown />Move down</DropdownMenuItem>
@@ -248,14 +249,14 @@ function ChoicesEditor({ value, onChange }: { value: { text: string; correct?: b
       render={(o, set) => (
         <div className={cn("flex flex-col gap-1.5 rounded-md border p-2", o.correct && "border-good/50 bg-good/5")}>
           <div className="flex items-start gap-2">
-            <button
+            <TooltipHint label={o.correct ? "Correct" : "Mark as correct"}><button
               type="button"
               onClick={() => set({ ...o, correct: !o.correct || undefined })}
               className={cn("mt-1.5 flex size-5 shrink-0 items-center justify-center rounded border", o.correct ? "border-good bg-good text-background" : "border-input")}
-              title={o.correct ? "Correct" : "Mark as correct"}
+              aria-label={o.correct ? "Correct" : "Mark as correct"}
             >
               {o.correct && <Check className="size-3.5" />}
-            </button>
+            </button></TooltipHint>
             <LiveMarkdown className="min-w-0 flex-1 border-0 shadow-none focus-within:shadow-none" minLines={1} value={o.text} onChange={(t) => set({ ...o, text: t })} placeholder="Option text (markdown and $math$)" />
           </div>
           <Input className="h-8 border-dashed text-sm" value={o.why ?? ""} onChange={(e) => set({ ...o, why: e.target.value || undefined })} placeholder="Why (shown after answering, optional)" />

@@ -5,7 +5,7 @@ import { Copy, Group, Hand, ImageUp, Loader2, Maximize, Redo2, SquareDashed, Tra
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { TooltipHint as Tip } from "@/components/ui/tooltip";
 import { api } from "@/lib/api";
 import { EtudeImg } from "@/lib/local-url";
 import { cn } from "@/lib/utils";
@@ -60,15 +60,6 @@ function nextGroup(boxes: OcclusionBox[]) {
   const used = new Set(boxes.flatMap((b) => [b.group, b.id]));
   while (used.has(`g${n}`)) n++;
   return `g${n}`;
-}
-
-function Tip({ label, children }: { label: string; children: React.ReactElement }) {
-  return (
-    <Tooltip>
-      <TooltipTrigger asChild>{children}</TooltipTrigger>
-      <TooltipContent>{label}</TooltipContent>
-    </Tooltip>
-  );
 }
 
 export function OcclusionEditor({ image, boxes: propBoxes, mode, onChange, onPendingChange }: { image: string; boxes: OcclusionBox[]; mode: string; onChange(p: Patch): void; onPendingChange?(pending: boolean): void }) {
@@ -501,7 +492,7 @@ export function OcclusionEditor({ image, boxes: propBoxes, mode, onChange, onPen
         <Tip label="Delete (Del)"><Button type="button" size="icon-sm" variant="ghost" disabled={!sel.length} onClick={remove} aria-label="Delete box"><Trash2 /></Button></Tip>
         <span className="mx-1 hidden h-5 w-px bg-border sm:block" />
         <Tip label="Zoom out (−)"><Button type="button" size="icon-sm" variant="ghost" disabled={z <= 1} onClick={() => zoomAt(z / 1.4, size.W / 2, size.H / 2)} aria-label="Zoom out"><ZoomOut /></Button></Tip>
-        <button type="button" className="h-8 min-w-12 rounded-md px-1 text-xs tabular text-muted-foreground hover:text-foreground" onClick={() => setView({ z: 1, tx: 0, ty: 0 })} title="Fit (0)">{Math.round(z * 100)}%</button>
+        <Tip label="Fit (0)"><button type="button" className="h-8 min-w-12 rounded-md px-1 text-xs tabular text-muted-foreground hover:text-foreground" onClick={() => setView({ z: 1, tx: 0, ty: 0 })}>{Math.round(z * 100)}%</button></Tip>
         <Tip label="Zoom in (+, Ctrl + scroll, pinch)"><Button type="button" size="icon-sm" variant="ghost" disabled={z >= MAX_Z} onClick={() => zoomAt(z * 1.4, size.W / 2, size.H / 2)} aria-label="Zoom in"><ZoomIn /></Button></Tip>
         <Tip label="Fit the image"><Button type="button" size="icon-sm" variant="ghost" className="hidden sm:inline-flex" disabled={z <= 1} onClick={() => setView({ z: 1, tx: 0, ty: 0 })} aria-label="Fit"><Maximize /></Button></Tip>
         <div className="flex-1" />
@@ -598,7 +589,7 @@ export function OcclusionEditor({ image, boxes: propBoxes, mode, onChange, onPen
             <div className="flex-1" />
             <div className="flex rounded-md border p-0.5 text-xs" role="radiogroup" aria-label="What a card covers">
               {[["hide-all", "Hide all"], ["hide-one", "Hide one"]].map(([v, l]) => (
-                <button key={v} type="button" role="radio" aria-checked={(mode || "hide-all") === v} title={v === "hide-all" ? "Every box is covered and one is asked" : "Only the asked box is covered; the others stay visible"} onClick={() => onChange({ mode: v })} className={cn("h-6 rounded px-2 pointer-coarse:h-8", (mode || "hide-all") === v ? "bg-accent text-foreground" : "text-muted-foreground hover:text-foreground")}>{l}</button>
+                <Tip key={v} label={v === "hide-all" ? "Every box is covered and one is asked" : "Only the asked box is covered; the others stay visible"}><button type="button" role="radio" aria-checked={(mode || "hide-all") === v} onClick={() => onChange({ mode: v })} className={cn("h-6 rounded px-2 pointer-coarse:h-8", (mode || "hide-all") === v ? "bg-accent text-foreground" : "text-muted-foreground hover:text-foreground")}>{l}</button></Tip>
               ))}
             </div>
           </div>
@@ -616,9 +607,8 @@ export function OcclusionEditor({ image, boxes: propBoxes, mode, onChange, onPen
                   }}
                   data-occlusion-row={f.face}
                 >
-                  <button
+                  <Tip label="Add to the selection or take it out (to group boxes)"><button
                     type="button"
-                    title="Add to the selection or take it out (to group boxes)"
                     aria-pressed={on}
                     aria-label={`Select box ${i + 1} along with others`}
                     onClick={() => {
@@ -628,7 +618,7 @@ export function OcclusionEditor({ image, boxes: propBoxes, mode, onChange, onPen
                     className={cn("relative mt-1.5 flex h-5 min-w-5 shrink-0 items-center justify-center rounded px-1 text-[11px] font-semibold tabular after:absolute after:-inset-2 after:content-['']", on ? "bg-highlight text-background" : "bg-foreground text-background hover:bg-foreground/80")}
                   >
                     {i + 1}
-                  </button>
+                  </button></Tip>
                   <div className="flex min-w-0 flex-1 flex-col gap-1">
                     {f.boxes.map((b, j) => (
                       <Input
@@ -657,7 +647,7 @@ export function OcclusionEditor({ image, boxes: propBoxes, mode, onChange, onPen
                     ))}
                     {f.boxes.length > 1 && <span className="px-0.5 text-xs text-muted-foreground">{f.boxes.length} boxes, asked together as one card</span>}
                   </div>
-                  <Button type="button" size="icon-sm" variant="ghost" className="size-8 shrink-0 text-muted-foreground" aria-label={`Delete box ${i + 1}`} onClick={() => { commit({ boxes: boxes.filter((b) => !f.boxes.some((x) => x.id === b.id)) }); setSel([]); }}><Trash2 className="size-3.5" /></Button>
+                  <Tip label={`Delete box ${i + 1}`}><Button type="button" size="icon-sm" variant="ghost" className="size-8 shrink-0 text-muted-foreground" aria-label={`Delete box ${i + 1}`} onClick={() => { commit({ boxes: boxes.filter((b) => !f.boxes.some((x) => x.id === b.id)) }); setSel([]); }}><Trash2 className="size-3.5" /></Button></Tip>
                 </div>
               );
             })}

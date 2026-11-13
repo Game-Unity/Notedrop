@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Check, Dices, Eye, EyeOff, Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { TooltipHint } from "@/components/ui/tooltip";
 import { CardFrame, type CardFrameHandle, type CardResult } from "@/components/card-frame";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import type { Grade } from "@/lib/api";
@@ -84,9 +85,9 @@ export function CardPreview({
         )}
         <div className="flex-1" />
         {grade && !result && data && !error && (
-          <Button variant="outline" size="sm" className="gap-1.5" onClick={() => frame.current?.collect()} title="Grade a test answer (Ctrl Enter)">
+          <TooltipHint label="Grade a test answer (Ctrl Enter)"><Button variant="outline" size="sm" className="gap-1.5" onClick={() => frame.current?.collect()}>
             <Check className="size-4" /> Check answer
-          </Button>
+          </Button></TooltipHint>
         )}
         {onTry && (
           <Button variant="ghost" size="sm" className="gap-1.5" onClick={onTry}><Play className="size-4" /> Practice this card</Button>

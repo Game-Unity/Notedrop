@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { FolderInput, GripVertical, Pencil, Plus } from "lucide-react";
+import { FolderInput, GripVertical, LayersPlus, Pencil, Plus } from "lucide-react";
 import { api, type DeckNode } from "@/lib/api";
 import { childrenOf, clashes, leafOf, moveDeck, MoveDeckDialog, parentOf } from "@/components/move-deck";
 import { navigate } from "@/lib/router";
@@ -8,12 +8,10 @@ import { cn } from "@/lib/utils";
 import { DeckContextMenu, useDeckActions, type DeckMenuEntry } from "@/components/deck-actions";
 import { NewDeckDialog } from "@/components/new-deck-dialog";
 import { useDeckTreeDrag } from "@/components/deck-tree-drag";
-
-const RADIUS = 63;
-const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
+import { TooltipHint } from "@/components/ui/tooltip";
 
 function formatCount(value: number | null) {
-  return value == null ? "–" : value.toLocaleString("de-DE");
+  return (value ?? 0).toLocaleString("de-DE");
 }
 
 export function NoteDropTree({ deckName, dataKey }: { deckName: string; dataKey: number }) {
@@ -176,46 +174,42 @@ export function NoteDropTree({ deckName, dataKey }: { deckName: string; dataKey:
   if (!deckName || (!activeDeck && !deckError && decks)) return null;
 
   return (
-    <nav id="notedrop-tree" ref={treeDrag.setListRef} className="nd-tree-shell" aria-label="Deck navigation">
+    <nav id="notedrop-tree" className="nd-tree-shell" aria-label="Deck navigation">
       {deckError ? (
         <p role="alert" className="nd-tree-error">Deck navigation could not be loaded: {deckError}</p>
       ) : !decks || !root || !activeDeck ? (
         <div className="nd-tree-loading" aria-label="Loading deck navigation" />
       ) : (
         <>
-          <MasteryProgress progress={progress?.deck === deckName ? progress.value : null} error={progressError?.deck === deckName ? progressError.message : null} />
-          <div className="nd-tree-header nd-tree-header-row">
-            <button
+          <div className="nd-item-editor-tabs-nav mb-3 shrink-0">
+            <h2 className="min-w-0 flex-1 text-sm font-semibold">Deck</h2>
+            <TooltipHint label={`Create subdeck in ${leafOf(root.name)}`}><button
               type="button"
-              className={cn("nd-tree-row nd-tree-root", activeDeck.name === root.name && "is-active")}
-              title={root.name}
-              aria-label={`Open ${leafOf(root.name)}`}
-              aria-current={activeDeck.name === root.name ? "page" : undefined}
-              onClick={() => navigate(`/deck?name=${encodeURIComponent(root.name)}`)}
-            >
-              <span className="nd-tree-badge nd-tree-root-icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="m12 2 8 4-8 4-8-4 8-4Z" />
-                  <path d="m4 10 8 4 8-4" />
-                  <path d="m4 14 8 4 8-4" />
-                </svg>
-              </span>
-              <span className="nd-tree-label">Chapters {leafOf(root.name)}</span>
-            </button>
-            <button
-              type="button"
-              className="nd-tree-create"
+              className="nd-types-sidebar-add flex size-8 items-center justify-center rounded-md transition-colors"
               aria-label={`Create subdeck in ${leafOf(root.name)}`}
-              title={`Create subdeck in ${leafOf(root.name)}`}
-              onClick={(event) => {
-                event.stopPropagation();
-                setCreating(root.name);
-              }}
+              onClick={() => setCreating(root.name)}
             >
-              <Plus aria-hidden="true" />
-            </button>
+              <LayersPlus className="size-4" aria-hidden="true" />
+            </button></TooltipHint>
           </div>
-          <div className="nd-tree-content">
+          <TooltipHint label={root.name} side="left"><button
+            type="button"
+            className={cn("nd-tree-row nd-tree-root shrink-0", activeDeck.name === root.name && "is-active")}
+            aria-label={`Open ${leafOf(root.name)}`}
+            aria-current={activeDeck.name === root.name ? "page" : undefined}
+            onClick={() => navigate(`/deck?name=${encodeURIComponent(root.name)}`)}
+          >
+            <span className="nd-tree-badge nd-tree-root-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <path d="m12 2 8 4-8 4-8-4 8-4Z" />
+                <path d="m4 10 8 4 8-4" />
+                <path d="m4 14 8 4 8-4" />
+              </svg>
+            </span>
+            <span className="nd-tree-label">{leafOf(root.name)}</span>
+          </button></TooltipHint>
+          <h3 className="mt-4 mb-1.5 shrink-0 text-sm font-medium">Chapters</h3>
+          <div className="nd-tree-content" ref={treeDrag.setListRef}>
             {childrenOf(decks, root.name).map((name, index) => {
               const child = deckByName.get(name);
               return child ? (
@@ -236,16 +230,17 @@ export function NoteDropTree({ deckName, dataKey }: { deckName: string; dataKey:
                 />
               ) : null;
             })}
+            {treeDrag.drag?.drop && !treeDrag.isNoop(treeDrag.drag.name, treeDrag.drag.drop) && treeDrag.drag.drop.kind === "line" && (
+              <div
+                aria-hidden
+                className={cn("nd-tree-drop-line", treeDrag.blocked(treeDrag.drag.name, treeDrag.drag.drop) && "is-blocked")}
+                style={{ top: treeDrag.dropTop(treeDrag.drag.drop), left: `calc(1.75rem + ${treeDrag.drag.drop.depth * 1.75}rem)` }}
+              >
+                <span />
+              </div>
+            )}
           </div>
-          {treeDrag.drag?.drop && !treeDrag.isNoop(treeDrag.drag.name, treeDrag.drag.drop) && treeDrag.drag.drop.kind === "line" && (
-            <div
-              aria-hidden
-              className={cn("nd-tree-drop-line", treeDrag.blocked(treeDrag.drag.name, treeDrag.drag.drop) && "is-blocked")}
-              style={{ top: treeDrag.dropTop(treeDrag.drag.drop), left: `calc(1.75rem + ${treeDrag.drag.drop.depth * 1.75}rem)` }}
-            >
-              <span />
-            </div>
-          )}
+          <MasteryProgress progress={progress?.deck === deckName ? progress.value : null} error={progressError?.deck === deckName ? progressError.message : null} />
         </>
       )}
       {treeDrag.drag && (
@@ -333,21 +328,22 @@ function TreeNode({ deck, decks, activeName, path, rootName, treeDrag, rowElemen
           }}
           className={cn("nd-tree-row", active && "is-active", dragged && "is-dragged", target && !targetBlocked && "is-drop-target", targetBlocked && "is-drop-blocked")}
         >
-          <button type="button" className="nd-tree-row-link" title={deck.name} aria-current={active ? "page" : undefined} onClick={open}>
-            <span className="nd-tree-badge" aria-hidden="true">{path.join(".")}</span>
-            <span className="nd-tree-label">{leafOf(deck.name)}</span>
-          </button>
-          <button
+          <TooltipHint label={deck.name} side="left"><button
             type="button"
             data-grip
-            className={cn("nd-tree-grip", treeDrag.drag?.name === deck.name && "is-grabbing", (treeDrag.drag && treeDrag.drag.name !== deck.name) && "is-hidden")}
-            onPointerDown={(event) => treeDrag.startDrag(deck.name, event)}
+            className="nd-tree-row-link"
+            aria-current={active ? "page" : undefined}
+            aria-description="Drag onto a chapter or between rows. Arrow keys reorder, Alt+arrows change level."
+            onPointerDown={(event) => treeDrag.startDrag(deck.name, event, 5)}
             onKeyDown={(event) => treeDrag.keyMove(deck.name, event)}
-            aria-label={`Move ${leafOf(deck.name)}: drag it onto a chapter or between rows. Arrow keys reorder, Alt+arrows change level.`}
-            title="Drag onto a chapter to put it inside, or between rows to place it"
+            onClick={(event) => {
+              if (treeDrag.consumeDragClick()) event.preventDefault();
+              else open();
+            }}
           >
-            <GripVertical aria-hidden="true" />
-          </button>
+            <span className="nd-tree-badge" aria-hidden="true">{path.join(".")}</span>
+            <span className="nd-tree-label">{leafOf(deck.name)}</span>
+          </button></TooltipHint>
         </div>
       </DeckContextMenu>
       {children.length > 0 && (
@@ -379,26 +375,13 @@ function TreeNode({ deck, decks, activeName, path, rootName, treeDrag, rowElemen
 }
 
 function MasteryProgress({ progress, error }: { progress: NoteDropProgress | null; error: string | null }) {
-  const masteredLength = progress ? (progress.percent / 100) * CIRCUMFERENCE : 0;
   return (
     <section className="nd-progress" aria-label="Deck mastery">
-      <div className="nd-progress-chart">
-        <svg viewBox="0 0 160 160" aria-hidden="true">
-          <circle className="nd-progress-track" cx="80" cy="80" r={RADIUS} />
-          <circle
-            className="nd-progress-fill"
-            cx="80"
-            cy="80"
-            r={RADIUS}
-            transform="rotate(-90 80 80)"
-            style={{ strokeDasharray: `${masteredLength} ${CIRCUMFERENCE}` }}
-          />
-        </svg>
-        <div className="nd-progress-center">
-          <span className="nd-progress-value">{progress ? `${progress.percent}%` : "–%"}</span>
-          <span className="nd-progress-label">Mastered</span>
-        </div>
+      <div className="nd-progress-heading">
+        <span className="nd-progress-label">Mastery Progress</span>
+        <span className="nd-progress-value">{progress?.percent ?? 0}%</span>
       </div>
+      <progress className="nd-progress-bar" max={100} value={progress?.percent ?? 0} aria-label="Mastery Progress" />
       <div className="nd-progress-metrics">
         <Metric name="new" value={formatCount(progress?.new ?? null)} />
         <Metric name="learning" value={formatCount(progress?.learning ?? null)} />

@@ -4,6 +4,7 @@ import { Archive, ArchiveRestore, ArrowLeft, Check, Copy, Dices, FolderInput, Im
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { TooltipHint } from "@/components/ui/tooltip";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -87,7 +88,7 @@ export function ItemRow({ row: r, active, checked, onOpen, onToggle, className, 
       className={cn(
         "group flex cursor-pointer items-start gap-3 transition-colors max-md:select-none max-md:[-webkit-touch-callout:none]",
         variant === "tile"
-          ? "nd-deck-card-tile relative min-h-24 rounded-xl border bg-card/40 px-4 py-4"
+          ? "nd-deck-card-tile relative rounded-xl border bg-card/40 px-4 py-4"
           : "border-b px-3 py-3 hover:bg-accent/40 max-md:min-h-[4.25rem] max-md:py-3.5",
         phone && checked && "bg-highlight/[0.07]",
         (r.suspended || r.archived) && "opacity-55",
@@ -112,7 +113,7 @@ export function ItemRow({ row: r, active, checked, onOpen, onToggle, className, 
       )}
       <div className={cn("min-w-0 flex-1 self-center", variant === "tile" && "pr-12")}>
         <div className={cn("line-clamp-2 text-sm leading-snug max-md:text-[15px]", variant === "tile" && "nd-deck-card-title", active && "font-medium text-highlight")} aria-current={active || undefined}>{r.title || <span className="text-muted-foreground">{r.itemId}</span>}</div>
-        <div className={cn("mt-1 flex items-center gap-2 text-xs text-muted-foreground", variant === "tile" && "nd-deck-card-meta")}>
+        <div className={cn(variant === "tile" ? "mt-0.5" : "mt-1", "flex items-center gap-2 text-xs text-muted-foreground", variant === "tile" && "nd-deck-card-meta")}>
           {!hideDeck && <><span className="truncate">{r.deck.split("::").slice(-1)[0]}</span><span>·</span></>}
           <span className="shrink-0">{r.type}</span>
           {variant === "tile" && r.tags.map((tag, index) => (
@@ -124,7 +125,7 @@ export function ItemRow({ row: r, active, checked, onOpen, onToggle, className, 
           {variant !== "tile" && (
             <span className={cn("shrink-0", STATE_CLS[r.state])}>{r.suspended ? "suspended" : STATE_NAMES[r.state].toLowerCase()}</span>
           )}
-          {r.state !== 0 && <span className="tabular shrink-0">{new Date(r.due) <= new Date() ? "due" : humanInterval(r.due)}</span>}
+          {variant !== "tile" && r.state !== 0 && <span className="tabular shrink-0">{new Date(r.due) <= new Date() ? "due" : humanInterval(r.due)}</span>}
         </div>
       </div>
       {variant === "tile" && (
@@ -379,7 +380,7 @@ export function ItemEditor({ id, decks, tags, onSaved, onSaveSuccess, onDirtyCha
           </TabsList>
           <div className="flex shrink-0 items-center gap-1">
             <DropdownMenu>
-              <DropdownMenuTrigger asChild><Button size="icon" variant="ghost" className="size-8" aria-label="Card actions"><MoreHorizontal className="size-4" /></Button></DropdownMenuTrigger>
+              <TooltipHint label="Card actions"><DropdownMenuTrigger asChild><Button size="icon" variant="ghost" className="nd-types-sidebar-add size-8 transition-colors" aria-label="Card actions"><MoreHorizontal className="size-4" /></Button></DropdownMenuTrigger></TooltipHint>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem onClick={() => navigate(`/study?card=${item.cards[0]?.id}&deck=${encodeURIComponent(item.deck)}`)}><Play />Practice</DropdownMenuItem>
                 <DropdownMenuSeparator />
@@ -394,18 +395,18 @@ export function ItemEditor({ id, decks, tags, onSaved, onSaveSuccess, onDirtyCha
                 <DropdownMenuItem variant="destructive" onClick={del}><Trash2 />Delete</DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-            <Button size="icon" variant="ghost" className="size-8" onClick={onBack} aria-label="Close card editor"><X className="size-4" /></Button>
+            <TooltipHint label="Close card editor"><Button size="icon" variant="ghost" className="nd-types-sidebar-add size-8 transition-colors" onClick={onBack} aria-label="Close card editor"><X className="size-4" /></Button></TooltipHint>
           </div>
         </div>
       ) : (
         <>
           <div className="flex items-start gap-2 sm:gap-3">
-            <Button size="icon" variant="ghost" className="-ml-2 size-9 md:hidden" onClick={onBack} aria-label="Back to list"><ArrowLeft className="size-4" /></Button>
+            <TooltipHint label="Back to list"><Button size="icon" variant="ghost" className="-ml-2 size-9 md:hidden" onClick={onBack} aria-label="Back to list"><ArrowLeft className="size-4" /></Button></TooltipHint>
             <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2 pt-1.5 md:pt-0">
               <Badge variant="outline" className="font-normal">{type.name}</Badge>
               {item.archived && <Badge variant="outline" className="font-normal text-muted-foreground">archived</Badge>}
               {allSuspended && <Badge variant="outline" className="font-normal text-muted-foreground">suspended</Badge>}
-              <button className="truncate font-mono text-xs text-muted-foreground hover:text-foreground" title="Copy id" onClick={() => { navigator.clipboard.writeText(item.id); toast("Copied id"); }}>{item.id}</button>
+              <TooltipHint label="Copy id"><button className="truncate font-mono text-xs text-muted-foreground hover:text-foreground" onClick={() => { navigator.clipboard.writeText(item.id); toast("Copied id"); }}>{item.id}</button></TooltipHint>
             </div>
             <Button size="sm" variant="ghost" className="gap-1.5" onClick={() => navigate(`/study?card=${item.cards[0]?.id}&deck=${encodeURIComponent(item.deck)}`)}><Play className="size-4" />Practice</Button>
             <DropdownMenu>
@@ -578,7 +579,7 @@ export function TagInput({ value, known, onChange }: { value: string[]; known: s
       {value.map((t) => (
         <span key={t} className="flex items-center gap-1 rounded bg-secondary px-1.5 py-0.5 font-mono text-xs">
           {t}
-          <button onClick={() => onChange(value.filter((x) => x !== t))} className="text-muted-foreground hover:text-foreground" aria-label={`Remove ${t}`}><X className="size-3" /></button>
+          <TooltipHint label={`Remove ${t}`}><button onClick={() => onChange(value.filter((x) => x !== t))} className="text-muted-foreground hover:text-foreground" aria-label={`Remove ${t}`}><X className="size-3" /></button></TooltipHint>
         </span>
       ))}
       <input

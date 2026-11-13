@@ -49,6 +49,7 @@
 
 html:root {
     --nd-side-panel-width: 270px;
+    --nd-side-panel-card-types-width: 270px;
     --nd-side-panel-editor-width: 450px;
     --nd-side-panel-chat-width: 370px;
     --nd-deck-tile-min-width: 320px;
@@ -452,51 +453,6 @@ color-mix(in oklab, var(--highlight) 50%, transparent) transparent;
   display: none !important;
 }
 
-/* Header */
-
-#notedrop-tree .nd-tree-header {
-  padding: 0 !important;
-  margin: 0 0 9px !important;
-}
-
-#notedrop-tree .nd-tree-header-row {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-#notedrop-tree .nd-tree-header-row .nd-tree-root {
-  flex: 1;
-  width: auto;
-  min-width: 0;
-}
-
-.nd-tree-create {
-  display: inline-flex;
-  flex: 0 0 40px;
-  width: 40px;
-  height: 38px;
-  align-items: center;
-  justify-content: center;
-  border: 0;
-  border-radius: 7px;
-  background: transparent;
-  color: rgb(229 229 233 / 65%);
-  cursor: pointer;
-  transition: background 120ms ease, color 120ms ease;
-}
-
-.nd-tree-create svg {
-  width: 17px;
-  height: 17px;
-}
-
-.nd-tree-create:hover,
-.nd-tree-create:focus-visible {
-  background: rgb(255 255 255 / 12%);
-  color: #fff;
-}
-
 .nd-tree-caption {
     font-size: 12px;
     font-weight: 900;
@@ -521,8 +477,8 @@ color-mix(in oklab, var(--highlight) 50%, transparent) transparent;
   gap: 10px;
   padding-left: calc(var(--depth) * 10px);
   padding-right: 4px;
-  border-radius: 6px;
-  transition: background 120ms ease;
+  border-radius: 10px;
+  transition: background-color 200ms ease, color 200ms ease;
 }
 
 .nd-tree-row-link {
@@ -537,6 +493,17 @@ color-mix(in oklab, var(--highlight) 50%, transparent) transparent;
   font: inherit;
   text-align: left;
   cursor: pointer;
+}
+
+.nd-side-panel :is(#notedrop-tree, .nd-types-sidebar) .nd-tree-row-link {
+  min-height: 38px;
+  align-self: stretch;
+  padding-inline: 10px;
+}
+
+#notedrop-tree .nd-tree-row-link {
+  touch-action: none;
+  user-select: none;
 }
 
 .nd-tree-grip {
@@ -559,10 +526,6 @@ color-mix(in oklab, var(--highlight) 50%, transparent) transparent;
 .nd-tree-grip svg {
   width: 16px;
   height: 16px;
-}
-
-#notedrop-tree .nd-tree-row.is-active svg {
-    stroke: var(--primary) !important;
 }
 
 .nd-tree-grip:hover,
@@ -686,7 +649,8 @@ color-mix(in oklab, var(--highlight) 50%, transparent) transparent;
    ========================================== */
 
 /* Nummern-Badges */
-#notedrop-tree .nd-tree-badge {
+#notedrop-tree .nd-tree-badge,
+.nd-types-sidebar .nd-tree-badge {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -704,20 +668,32 @@ color-mix(in oklab, var(--highlight) 12%, transparent);
 }
 
 /* Aktives Badge */
-#notedrop-tree .nd-tree-row.is-active .nd-tree-badge {
+#notedrop-tree .nd-tree-row:hover .nd-tree-badge,
+.nd-types-sidebar .nd-tree-row:hover .nd-tree-badge {
   background: rgb(0 0 0 / 8%);
   color: inherit;
 }
 
+#notedrop-tree .nd-tree-row:hover .nd-tree-label {
+    font-weight: 700;
+}
+
+#notedrop-tree .nd-tree-row:hover span.nd-tree-badge {
+    -webkit-text-stroke: 0.18px currentColor;
+}
+
+
 /* Verbindungsbereiche */
-#notedrop-tree .nd-tree-children {
+#notedrop-tree .nd-tree-children,
+.nd-types-sidebar .nd-tree-children {
   position: relative;
   margin-left: 22.5px;
   padding-left: 8px;
   border-left: none;
 }
 
-#notedrop-tree .nd-tree-children::before {
+#notedrop-tree .nd-tree-children::before,
+.nd-types-sidebar .nd-tree-children::before {
   content: "";
   position: absolute;
   left: 0;
@@ -729,23 +705,27 @@ color-mix(in oklab, var(--highlight) 12%, transparent);
 }
 
 /* Ein einziges Kind: die Linie endet am Kurvenanfang (Zeilenmitte - 10px Radius). */
-#notedrop-tree .nd-tree-children:has(> .nd-tree-group:only-child)::before {
+#notedrop-tree .nd-tree-children:has(> .nd-tree-group:only-child)::before,
+.nd-types-sidebar .nd-tree-children:has(> .nd-tree-group:only-child)::before {
   bottom: auto;
   height: 25px;
 }
 
 /* Die Linie endet in der Zeilenmitte des letzten Kindes, auch wenn dieses selbst Kinder hat. */
-#notedrop-tree .nd-tree-children:has(> .nd-tree-group:last-child > .nd-tree-children)::before {
+#notedrop-tree .nd-tree-children:has(> .nd-tree-group:last-child > .nd-tree-children)::before,
+.nd-types-sidebar .nd-tree-children:has(> .nd-tree-group:last-child > .nd-tree-children)::before {
   bottom: auto;
   height: calc(100% - 47px - 13px);
 }
 
 /* Horizontale Verbindungslinien: von oben mit 10px-Radius in die Zeile */
-#notedrop-tree .nd-tree-children > .nd-tree-group > .nd-tree-row {
+#notedrop-tree .nd-tree-children > .nd-tree-group > .nd-tree-row,
+.nd-types-sidebar .nd-tree-children > .nd-tree-group > .nd-tree-row {
   position: relative;
 }
 
-#notedrop-tree .nd-tree-children > .nd-tree-group > .nd-tree-row::before {
+#notedrop-tree .nd-tree-children > .nd-tree-group > .nd-tree-row::before,
+.nd-types-sidebar .nd-tree-children > .nd-tree-group > .nd-tree-row::before {
   content: "";
   position: absolute;
   left: -8px;
@@ -761,7 +741,8 @@ color-mix(in oklab, var(--highlight) 12%, transparent);
   pointer-events: none;
 }
 
-#notedrop-tree .nd-tree-children > .nd-tree-group > .nd-tree-row.is-active::before {
+#notedrop-tree .nd-tree-children > .nd-tree-group > .nd-tree-row.is-active::before,
+.nd-types-sidebar .nd-tree-children > .nd-tree-group > .nd-tree-row.is-active::before {
     width: 8px;
 }
 
@@ -1015,78 +996,68 @@ color-mix(in oklab, var(--highlight) 12%, transparent);
 
 
 /* ============================================
-   NoteDrop - Mastery Donut
+   NoteDrop - Mastery Footer
    ============================================ */
 
 #notedrop-tree .nd-progress {
     display: flex;
     flex-direction: column;
-    align-items: center;
-    gap: 12px;
-    padding: 5px 0 32px;
-    background: rgb(52 52 52 / 63%) !important;
-    border-radius: 6px;
-    margin-bottom: 30px;
+    gap: 16px;
+    flex-shrink: 0;
+    padding-top: 22px;
+    border-top: 1px solid var(--border);
 }
 
-#notedrop-tree .nd-progress-chart {
-    width: 170px;
-    height: 170px;
-    position: relative;
-}
-
-#notedrop-tree .nd-progress-chart svg {
-    width: 100%;
-    height: 100%;
-    display: block;
-}
-
-#notedrop-tree .nd-progress-track,
-#notedrop-tree .nd-progress-fill {
-    fill: none;
-    stroke-width: 4px;
-}
-
-#notedrop-tree .nd-progress-track {
-    stroke: 
-color-mix(in oklab, var(--highlight) 15%, transparent);
-}
-
-#notedrop-tree .nd-progress-fill {
-    stroke: white;
-    stroke-linecap: round;
-}
-
-#notedrop-tree .nd-progress-center {
-    position: absolute;
-    inset: 0;
-
+#notedrop-tree .nd-progress-heading {
     display: flex;
-    flex-direction: column;
     align-items: center;
-    justify-content: center;
+    justify-content: space-between;
+    gap: 8px;
+}
 
-    gap: 5px;
+#notedrop-tree .nd-progress-bar {
+    display: block;
+    width: 100%;
+    height: 5px;
+    appearance: none;
+    overflow: hidden;
+    border: 0;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--color-main-app) 2%, transparent);
+    color: #fff;
+    scrollbar-gutter: auto !important;
+}
+
+#notedrop-tree .nd-progress-bar::-webkit-progress-bar {
+    background: var(--input);
+    border-radius: 999px;
+}
+
+#notedrop-tree .nd-progress-bar::-webkit-progress-value {
+    background: #fff;
+    border-radius: 999px;
+}
+
+#notedrop-tree .nd-progress-bar::-moz-progress-bar {
+    background: #fff;
+    border-radius: 999px;
+}
+
+#notedrop-tree .nd-progress-bar:indeterminate {
+    opacity: 0.5;
 }
 
 #notedrop-tree .nd-progress-value {
-    font-size: 24px;
+    font-size: 14px;
     font-weight: 400;
-    line-height: 1;
-    color: #1c1c1c;
+    font-variant-numeric: tabular-nums;
+    color: var(--foreground);
 }
 
 #notedrop-tree .nd-progress-label {
-    font-size: 12px;
-    font-weight: 500;
-    color: #a8a8b0;
-}
-
-#notedrop-tree .nd-progress-detail {
-    font-size: 12px;
-    text-align: center;
-    font-variant-numeric: tabular-nums;
-    color: color-mix(in oklab, var(--highlight) 70%, transparent);
+    font-size: 13px;
+    font-weight: 400;
+    color: var(--muted-foreground);
 }
 
 .nd-deck-actions {
@@ -1118,21 +1089,6 @@ color-mix(in oklab, var(--highlight) 15%, transparent);
     .nd-deck-study-bar .nd-deck-actions {
         width: 100%;
     }
-}
-
-
-#nd-due-badge {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    background: #404040;
-    color: white;
-    border-radius: 999px;
-    padding: 4px 10px;
-    margin-left: 4px;
-    font-size: 12px;
-    font-weight: 500;
-    white-space: nowrap;
 }
 
 
@@ -1234,9 +1190,79 @@ color-mix(in oklab, var(--highlight) 15%, transparent);
     --nd-panel-width: var(--nd-side-panel-chat-width);
 }
 
+.nd-side-panel[data-mode="types"] {
+    --nd-panel-width: var(--nd-side-panel-card-types-width);
+}
+
 .nd-side-panel[data-mode="editor"]:not([hidden]),
-.nd-side-panel[data-mode="chat"]:not([hidden]) {
+.nd-side-panel[data-mode="chat"]:not([hidden]),
+.nd-side-panel[data-mode="types"]:not([hidden]) {
     height: calc(100dvh - 42px);
+}
+
+.nd-types-sidebar-host {
+    height: 100%;
+    min-height: 0;
+}
+
+.nd-side-panel .nd-types-sidebar {
+    color: var(--foreground);
+}
+
+.nd-side-panel .nd-types-sidebar-scroll {
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in oklab, var(--foreground) 10%, transparent) transparent;
+}
+
+.nd-side-panel .nd-types-sidebar-item,
+.nd-side-panel .nd-types-sidebar-folder {
+    color: var(--foreground);
+    min-height: 38px;
+    border-radius: 10px;
+    transition: background-color 200ms ease, color 200ms ease;
+}
+
+.nd-types-sidebar-scroll {
+    width: calc(100% + 17px);
+    padding-right: 6px;
+    overflow-x: hidden;
+}
+
+.nd-side-panel .nd-types-sidebar-item {
+    padding-inline: 10px;
+}
+
+.nd-side-panel .nd-types-sidebar-folder {
+    padding: 0;
+}
+
+.nd-side-panel .nd-types-sidebar-item.is-active,
+.nd-side-panel .nd-types-sidebar-folder.is-active {
+    background: #343434;
+    color: #fff;
+}
+
+.nd-side-panel .nd-types-sidebar-item.is-drop-target,
+.nd-side-panel .nd-types-sidebar-folder.is-drop-target {
+    background: color-mix(in oklab, var(--highlight) 12%, transparent);
+    outline: 1px solid color-mix(in oklab, var(--foreground) 70%, transparent);
+    outline-offset: -1px;
+}
+
+.nd-side-panel .nd-types-sidebar-add {
+    color: #85858d;
+}
+
+.nd-side-panel .nd-types-sidebar-add:hover,
+.nd-side-panel .nd-types-sidebar-add:focus-visible {
+    background: var(--accent);
+    color: var(--foreground);
+}
+
+.nd-side-panel .nd-types-sidebar-divider {
+    background: var(--border);
+    margin-top: 0;
 }
 
 .nd-item-editor-panel,
@@ -1265,12 +1291,8 @@ color-mix(in oklab, var(--highlight) 15%, transparent);
     box-shadow: none;
 }
 
-.nd-side-panel:not([hidden]) #notedrop-tree > .nd-progress,
-.nd-side-panel:not([hidden]) #notedrop-tree > .nd-tree-header {
-    flex: 0 0 auto;
-}
-
 .nd-side-panel:not([hidden]) #notedrop-tree > .nd-tree-content {
+    position: relative;
     min-height: 0;
     flex: 1 1 auto;
     overflow-x: hidden;
@@ -1281,7 +1303,8 @@ color-mix(in oklab, var(--highlight) 15%, transparent);
     scrollbar-gutter: stable !important;
 }
 
-.nd-app-shell--deck > .nd-app-content {
+.nd-app-shell--deck > .nd-app-content,
+.nd-app-shell--types > .nd-app-content {
     flex: 1 1 550px !important;
     min-width: 550px !important;
     margin-right: 3px;
@@ -1327,6 +1350,11 @@ color-mix(in oklab, var(--highlight) 15%, transparent);
         display: none;
     }
 
+    .nd-app-shell--types[data-panel-mode="types"] > .nd-side-panel,
+    .nd-app-shell--types[data-panel-mode="chat"] > .nd-side-panel {
+        display: none;
+    }
+
     .nd-app-shell--deck[data-panel-mode="editor"] > .nd-app-content {
         display: none;
     }
@@ -1364,8 +1392,7 @@ color-mix(in oklab, var(--highlight) 15%, transparent);
 
 #notedrop-tree .nd-tree-row {
     width: 100%;
-    padding-left: 10px;
-    padding-right: 10px;
+    padding: 0;
     border: 0;
     background: transparent;
     color: #d2d2dc;
@@ -1391,62 +1418,63 @@ color-mix(in oklab, var(--highlight) 15%, transparent);
     background: rgb(52 52 52 / 45%);
 }
 
-.nd-side-panel #notedrop-tree .nd-progress-value {
-    color: #fff !important;
-}
-
-.nd-side-panel #notedrop-tree .nd-progress-track {
-    stroke: #444 !important;
-}
-
 .nd-side-panel #notedrop-tree .nd-tree-row {
     color: white;
 }
 
-.nd-side-panel #notedrop-tree .nd-tree-row:hover {
-    background: #343434 !important;
+.nd-side-panel #notedrop-tree .nd-tree-row,
+.nd-side-panel .nd-types-sidebar-item,
+.nd-side-panel .nd-types-sidebar-folder,
+.nd-side-panel #notedrop-tree .nd-tree-badge,
+.nd-side-panel .nd-types-sidebar .nd-tree-badge,
+.nd-side-panel #notedrop-tree .nd-tree-grip {
+    transition: background-color 200ms ease, color 200ms ease;
 }
 
 .nd-side-panel #notedrop-tree .nd-tree-row.is-active {
-    background: #fff !important;
-    color: var(--primary) !important;
+    background: #343434 !important;
+    color: #fff !important;
     -webkit-text-stroke: 0.1px currentColor;
 }
 
-.nd-side-panel #notedrop-tree .nd-tree-badge {
+.nd-side-panel #notedrop-tree .nd-tree-badge,
+.nd-side-panel .nd-types-sidebar .nd-tree-badge {
     background: #36363d;
     color: #e6e6eb;
 }
 
-.nd-side-panel #notedrop-tree .nd-tree-children::before {
+.nd-side-panel #notedrop-tree .nd-tree-row:hover,
+.nd-side-panel .nd-types-sidebar-item:hover,
+.nd-side-panel .nd-types-sidebar-folder:hover {
+    background: #fff !important;
+    color: var(--primary) !important;
+    font-weight: 700;
+    z-index: 1;
+}
+
+.nd-side-panel #notedrop-tree .nd-tree-row:hover .nd-tree-badge,
+.nd-side-panel .nd-types-sidebar .nd-tree-row:hover .nd-tree-badge {
+    background: #fff;
+    color: var(--primary);
+}
+
+.nd-side-panel #notedrop-tree .nd-tree-row:hover .nd-tree-grip {
+    color: var(--primary);
+}
+
+.nd-side-panel #notedrop-tree .nd-tree-children::before,
+.nd-side-panel .nd-types-sidebar .nd-tree-children::before {
     background: #484850 !important;
 }
 
-.nd-side-panel #notedrop-tree .nd-tree-children > .nd-tree-group > .nd-tree-row::before {
+.nd-side-panel #notedrop-tree .nd-tree-children > .nd-tree-group > .nd-tree-row::before,
+.nd-side-panel .nd-types-sidebar .nd-tree-children > .nd-tree-group > .nd-tree-row::before {
     border-color: #484850 !important;
 }
-
-.nd-due-badge {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 999px;
-    margin-left: 4px;
-    padding: 4px 10px;
-    background: #404040;
-    color: white;
-    font-size: 12px;
-    font-weight: 500;
-    white-space: nowrap;
-}
-
-
 
 /* ============================================
    NoteDrop - Progress Metrics
    ============================================ */
-
-/* Drei gleich breite Spalten */
 
 #notedrop-tree .nd-progress-metrics {
     display: grid;
@@ -1455,11 +1483,7 @@ color-mix(in oklab, var(--highlight) 15%, transparent);
     width: 100%;
     gap: 4px;
 
-    padding: 0 6px;
-    box-sizing: border-box;
 }
-
-/* Einzelne Metrik */
 
 #notedrop-tree .nd-metric {
     display: flex;
@@ -1467,34 +1491,25 @@ color-mix(in oklab, var(--highlight) 15%, transparent);
     align-items: center;
     justify-content: center;
 
-    gap: 7px;
+    gap: 6px;
     min-width: 0;
 }
 
-/* Zahlen */
-
 #notedrop-tree .nd-metric-value {
-    color: #ffffff;
+    color: var(--foreground);
 
-    font-size: 18px;
-    font-weight: 500;
+    font-size: 14px;
+    font-weight: 400;
     line-height: 1;
 
     font-variant-numeric: tabular-nums;
 }
 
-/* Beschriftungen */
-
 #notedrop-tree .nd-metric-label {
-    color: #a8a8b0;
-
+    color: var(--muted-foreground);
     font-size: 12px;
-    font-weight: 500;
+    font-weight: 400;
     line-height: 1.2;
-}
-
-#notedrop-tree .nd-progress-detail {
-    display: none !important;
 }
 
 
@@ -1514,12 +1529,12 @@ color-mix(in oklab, var(--highlight) 15%, transparent);
     gap: 10px;
     background: transparent;
     border: none;
-    border-radius: 7px;
+    border-radius: 10px;
     color: #d2d2dc;
     text-align: left;
     cursor: pointer;
     font-family: inherit;
-    transition: background 120ms ease, color 120ms ease;
+    transition: background-color 200ms ease, color 200ms ease;
 }
 
 /* Hover */
@@ -1533,8 +1548,58 @@ color-mix(in oklab, var(--highlight) 15%, transparent);
 /* Active root deck */
 
 #notedrop-tree .nd-tree-root.is-active {
-    background: #ffffff !important;
-    color: #1c1c1c !important;
+    background: #343434 !important;
+    color: #fff !important;
+}
+
+.nd-side-panel :is(#notedrop-tree, .nd-types-sidebar) .nd-tree-row {
+    position: relative;
+    isolation: isolate;
+    background: transparent !important;
+}
+
+.nd-side-panel :is(#notedrop-tree, .nd-types-sidebar) .nd-tree-row::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    border-radius: inherit;
+    background: var(--nd-tree-row-surface, transparent);
+    pointer-events: none;
+    transition: background-color 200ms ease;
+}
+
+.nd-side-panel :is(#notedrop-tree, .nd-types-sidebar) .nd-tree-row > * {
+    position: relative;
+    z-index: 2;
+}
+
+.nd-side-panel :is(#notedrop-tree, .nd-types-sidebar) .nd-tree-children > .nd-tree-group > .nd-tree-row::before {
+    z-index: 0;
+    width: 18px;
+}
+
+.nd-side-panel #notedrop-tree .nd-tree-row.is-drop-target {
+    --nd-tree-row-surface: rgb(255 255 255 / 12%);
+}
+
+.nd-side-panel #notedrop-tree .nd-tree-row.is-drop-blocked {
+    --nd-tree-row-surface: rgb(239 68 68 / 14%);
+}
+
+.nd-side-panel #notedrop-tree .nd-tree-row.is-active,
+.nd-side-panel .nd-types-sidebar .nd-tree-row.is-active {
+    --nd-tree-row-surface: #343434;
+    z-index: 1;
+}
+
+.nd-side-panel .nd-types-sidebar .nd-tree-row.is-drop-target {
+    --nd-tree-row-surface: color-mix(in oklab, var(--highlight) 12%, transparent);
+}
+
+.nd-side-panel #notedrop-tree .nd-tree-row:hover,
+.nd-side-panel .nd-types-sidebar .nd-tree-row:hover {
+    --nd-tree-row-surface: #fff;
 }
 
 /* Icon badge */
@@ -1559,14 +1624,6 @@ color-mix(in oklab, var(--highlight) 15%, transparent);
     height: 16px;
 }
 
-/* Active icon */
-
-#notedrop-tree .nd-tree-root.is-active
-.nd-tree-root-icon {
-    background: #ececec !important;
-    color: #1c1c1c !important;
-}
-
 /* Title */
 
 #notedrop-tree .nd-tree-root .nd-tree-label {
@@ -1576,7 +1633,6 @@ color-mix(in oklab, var(--highlight) 15%, transparent);
 /* Prevent tree-specific connection styling
    from being applied to the header */
 
-#notedrop-tree .nd-tree-header::before,
 #notedrop-tree .nd-tree-root::before {
     display: none !important;
 }
@@ -1606,15 +1662,15 @@ color-mix(in oklab, var(--highlight) 15%, transparent);
 }
 
 .nd-deck-card-tile {
-    min-height: 74px;
     padding-top: 23px;
     padding-bottom: 23px;
     width: 100%;
     overflow: hidden;
 }
 
-.nd-deck-cards-list--small .nd-deck-card-tile {
-    min-height: 67px;
+.nd-deck-card-tile.nd-type-card-tile,
+.nd-deck-cards-list .nd-deck-card-tile {
+    padding: 20px 20px;
 }
 
 .nd-deck-overview-container {
@@ -1646,9 +1702,9 @@ color-mix(in oklab, var(--highlight) 15%, transparent);
     justify-content: center;
     position: relative;
     width: 100%;
-    height: 220px;
+    height: 200px;
     min-width: 0;
-    flex: 0 0 220px;
+    flex: 0 0 200px;
     overflow: hidden;
     border-radius: var(--radius);
     background: var(--muted);
@@ -1775,7 +1831,9 @@ p.-mt-1.text-xs.text-muted-foreground {}
 
 .nd-side-panel .nd-card-create-panel,
 .nd-side-panel .nd-item-editor-panel,
-.nd-side-panel .nd-agent-embedded {
+.nd-side-panel .nd-agent-embedded,
+.nd-side-panel #notedrop-tree,
+.nd-side-panel .nd-types-sidebar {
     --background: var(--background-app);
     --foreground: var(--color-main-app);
     --card: var(--background-app-sidebar);
@@ -1806,6 +1864,11 @@ p.-mt-1.text-xs.text-muted-foreground {}
     --code-punct: color-mix(in oklab, var(--foreground) 62%, transparent);
     color: var(--foreground);
     color-scheme: dark;
+}
+
+.nd-side-panel .nd-types-sidebar {
+    font-size: 16px;
+    font-weight: 500;
 }
 
 .nd-side-panel .nd-card-create-title {
@@ -2098,6 +2161,12 @@ p.-mt-1.text-xs.text-muted-foreground {}
 
 .nd-side-panel .nd-card-create-panel .text-muted-foreground,
 .nd-side-panel .nd-item-editor-panel .text-muted-foreground {
+    color: var(--muted-foreground);
+    font-size: 13px;
+    font-weight: 400;
+}
+
+.nd-side-panel .nd-types-sidebar .text-muted-foreground {
     color: var(--muted-foreground);
     font-size: 13px;
     font-weight: 400;

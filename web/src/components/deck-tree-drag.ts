@@ -31,6 +31,7 @@ export function useDeckTreeDrag({
   const listElement = useRef<HTMLElement | null>(null);
   const expandTimer = useRef<{ name: string; t: number } | null>(null);
   const [drag, setDrag] = useState<DragState | null>(null);
+  const draggedClick = useRef(false);
 
   const setListRef = (element: HTMLElement | null) => {
     listElement.current = element;
@@ -88,13 +89,16 @@ export function useDeckTreeDrag({
   const blocked = (name: string, drop: DeckTreeDrop) =>
     !canMoveTo(name, drop.parent) || (drop.parent !== parentOf(name) && clashes(decks, name, drop.parent));
 
-  const startDrag = (name: string, event: React.PointerEvent<HTMLButtonElement>) => {
+  const startDrag = (name: string, event: React.PointerEvent<HTMLButtonElement>, activationDistance = 0) => {
     if (event.button !== 0 || !inScope(name, scopeRoot)) return;
-    event.preventDefault();
+    draggedClick.current = false;
+    let active = activationDistance === 0;
+    if (active) event.preventDefault();
+    const x0 = event.clientX;
     const y0 = event.clientY;
     const grip = event.currentTarget;
     grip.setPointerCapture(event.pointerId);
-    document.body.style.userSelect = "none";
+    if (active) document.body.style.userSelect = "none";
     let drop: DeckTreeDrop | null = null;
     let lastY = y0;
     let lastX = event.clientX;
@@ -111,8 +115,18 @@ export function useDeckTreeDrag({
       } else expandTimer.current = null;
       setDrag({ name, x, y, drop });
     };
-    const move = (event: PointerEvent) => update(event.clientY, event.clientX);
+    const move = (event: PointerEvent) => {
+      if (!active) {
+        if (Math.hypot(event.clientX - x0, event.clientY - y0) < activationDistance) return;
+        active = true;
+        document.body.style.userSelect = "none";
+      }
+      draggedClick.current = true;
+      event.preventDefault();
+      update(event.clientY, event.clientX);
+    };
     const auto = window.setInterval(() => {
+      if (!active) return;
       const list = listElement.current;
       if (list && list.scrollHeight > list.clientHeight) {
         const rect = list.getBoundingClientRect();
@@ -133,14 +147,18 @@ export function useDeckTreeDrag({
         }
       }
     }, 16);
-    const end = () => {
+    const end = (event: PointerEvent) => {
       window.clearInterval(auto);
       grip.removeEventListener("pointermove", move);
       grip.removeEventListener("pointerup", end);
       grip.removeEventListener("pointercancel", end);
-      document.body.style.userSelect = "";
+      if (active) document.body.style.userSelect = "";
       expandTimer.current = null;
       setDrag(null);
+      if (event.type === "pointercancel") {
+        draggedClick.current = false;
+        return;
+      }
       if (drop && !isNoop(name, drop) && !blocked(name, drop)) void onMove(name, drop.parent, drop.index);
       else if (drop && blocked(name, drop)) {
         toast.error(drop.parent ? `${drop.parent.split("::").at(-1)} already has a deck called ${name.split("::").at(-1)}` : `The top level already has a deck called ${name.split("::").at(-1)}`);
@@ -149,7 +167,13 @@ export function useDeckTreeDrag({
     grip.addEventListener("pointermove", move);
     grip.addEventListener("pointerup", end);
     grip.addEventListener("pointercancel", end);
-    setDrag({ name, x: event.clientX, y: y0, drop: null });
+    if (active) setDrag({ name, x: event.clientX, y: y0, drop: null });
+  };
+
+  const consumeDragClick = () => {
+    const value = draggedClick.current;
+    draggedClick.current = false;
+    return value;
   };
 
   const keyMove = (name: string, event: React.KeyboardEvent<HTMLButtonElement>) => {
@@ -181,5 +205,5 @@ export function useDeckTreeDrag({
     return list ? drop.y - list.getBoundingClientRect().top + list.scrollTop : 0;
   };
 
-  return { drag, setListRef, setRowRef, startDrag, keyMove, isDragged, isTarget, isNoop, blocked, dropTop };
+  return { drag, setListRef, setRowRef, startDrag, consumeDragClick, keyMove, isDragged, isTarget, isNoop, blocked, dropTop };
 }

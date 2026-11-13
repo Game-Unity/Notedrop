@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipHint, TooltipTrigger } from "@/components/ui/tooltip";
 import { Markdown } from "@/components/markdown";
 import { Logo } from "@/components/logo";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -84,7 +84,6 @@ function useReadableOn(cssVar: string) {
   return color;
 }
 
-/** Quiet 28 px header button. */
 function HeaderButton({ label, tip, onClick, disabled, children, ...rest }: { label: string; tip?: React.ReactNode; onClick?(): void; disabled?: boolean; children: React.ReactNode } & Omit<React.ComponentProps<"button">, "onClick">) {
   const btn = (
     <button
@@ -93,7 +92,7 @@ function HeaderButton({ label, tip, onClick, disabled, children, ...rest }: { la
       disabled={disabled}
       onClick={onClick}
       {...rest}
-      className="flex size-8 shrink-0 items-center justify-center rounded-md text-foreground transition-colors outline-ring hover:bg-accent/70 focus-visible:outline-2 disabled:pointer-events-none disabled:opacity-40 pointer-coarse:size-10 [&_svg]:size-4"
+      className="nd-types-sidebar-add flex size-8 shrink-0 items-center justify-center rounded-md text-foreground transition-colors outline-ring hover:bg-accent/70 focus-visible:outline-2 disabled:pointer-events-none disabled:opacity-40 pointer-coarse:size-10 [&_svg]:size-4"
     >
       {children}
     </button>
@@ -496,9 +495,11 @@ export function AgentPanel({ width, setWidth, onClose, onChanged, embedded }: { 
           <HistoryMenu convs={convs} active={conv?.id ?? null} title={conv?.title || "New chat"} onPick={openConv} onDelete={removeConv} />
         )}
         <div className="flex-1" />
-        <HeaderButton label="New chat" disabled={busy || !conv} onClick={() => openConv(null)}>
-          <SquarePen />
-        </HeaderButton>
+        {!busy && conv && (
+          <HeaderButton label="New chat" onClick={() => openConv(null)}>
+            <SquarePen />
+          </HeaderButton>
+        )}
         <DropdownMenu>
           <Tooltip>
             <TooltipTrigger asChild>
@@ -506,7 +507,7 @@ export function AgentPanel({ width, setWidth, onClose, onChanged, embedded }: { 
                 <button
                   type="button"
                   aria-label="More"
-                  className="flex size-8 shrink-0 items-center justify-center rounded-md text-foreground transition-colors outline-ring hover:bg-accent/70 focus-visible:outline-2 data-[state=open]:bg-accent/70 pointer-coarse:size-10 [&_svg]:size-4"
+                  className="nd-types-sidebar-add flex size-8 shrink-0 items-center justify-center rounded-md text-foreground transition-colors outline-ring hover:bg-accent/70 focus-visible:outline-2 data-[state=open]:bg-accent/70 pointer-coarse:size-10 [&_svg]:size-4"
                 >
                   <Ellipsis />
                 </button>
@@ -635,11 +636,11 @@ export function AgentPanel({ width, setWidth, onClose, onChanged, embedded }: { 
             <div className="flex-1" />
             <ModelPicker models={models} value={model} onPick={pickModel} />
             {busy ? (
-              <button type="button" aria-label="Stop" onClick={stop} className="flex size-7 items-center justify-center rounded-full bg-foreground text-background transition-opacity outline-ring hover:opacity-85 focus-visible:outline-2 pointer-coarse:size-9">
+              <TooltipHint label="Stop"><button type="button" aria-label="Stop" onClick={stop} className="flex size-7 items-center justify-center rounded-full bg-foreground text-background transition-opacity outline-ring hover:opacity-85 focus-visible:outline-2 pointer-coarse:size-9">
                 <Square className="size-2.5 fill-current" />
-              </button>
+              </button></TooltipHint>
             ) : (
-              <button
+              <TooltipHint label="Send"><button
                 type="button"
                 aria-label="Send"
                 disabled={!canSend}
@@ -651,7 +652,7 @@ export function AgentPanel({ width, setWidth, onClose, onChanged, embedded }: { 
                 )}
               >
                 <ArrowUp className="size-4" strokeWidth={2.25} />
-              </button>
+              </button></TooltipHint>
             )}
           </div>
         </div>
@@ -802,14 +803,14 @@ function AttachmentChip({ a, conv, onRemove }: { a: Attachment | { uploading: st
     );
   const Icon = a.kind === "image" ? ImageIcon : a.kind === "anki" ? Package : FileText;
   return (
-    <span data-agent-attachment className="flex h-7 max-w-full items-center gap-1.5 rounded-lg border bg-background pr-1 pl-2 text-xs" title={a.name}>
+    <span data-agent-attachment className="flex h-7 max-w-full items-center gap-1.5 rounded-lg border bg-background pr-1 pl-2 text-xs">
       {a.kind === "image" && conv ? <EtudeImg src={agentApi.attachmentUrl(conv, a.id)} alt="" className="size-4 rounded-sm object-cover" /> : <Icon className="size-3.5 text-muted-foreground" />}
-      <span className="max-w-40 truncate">{a.name}</span>
+      <TooltipHint label={a.name}><span className="max-w-40 truncate">{a.name}</span></TooltipHint>
       <span className="text-muted-foreground">{a.pages ? `${a.pages} p` : fmtBytes(a.bytes)}</span>
       {onRemove ? (
-        <button onClick={onRemove} aria-label={`Remove ${a.name}`} className="rounded p-0.5 text-muted-foreground hover:text-foreground">
+        <TooltipHint label={`Remove ${a.name}`}><button onClick={onRemove} aria-label={`Remove ${a.name}`} className="rounded p-0.5 text-muted-foreground hover:text-foreground">
           <X className="size-3" />
-        </button>
+        </button></TooltipHint>
       ) : (
         <span className="w-1" />
       )}
@@ -852,10 +853,10 @@ function MessageView({ m, conv, last, groups, onUndo }: { m: Message; conv: stri
           )}
         >
           {undo ? (
-            <button type="button" onClick={onUndo} title={undoLabel} className="flex h-6 max-w-full min-w-0 items-center gap-1.5 rounded-md px-1.5 transition-colors outline-ring hover:bg-accent/70 hover:text-foreground focus-visible:outline-2">
+            <TooltipHint label={undoLabel}><button type="button" onClick={onUndo} className="flex h-6 max-w-full min-w-0 items-center gap-1.5 rounded-md px-1.5 transition-colors outline-ring hover:bg-accent/70 hover:text-foreground focus-visible:outline-2">
               <RotateCcw className="size-3 shrink-0" />
               <span className="truncate">{undoLabel}</span>
-            </button>
+            </button></TooltipHint>
           ) : c.changed && m.undone ? (
             <span className="px-1.5">Undone{c.changes?.length ? `: ${c.changes.join(", ")}` : ""}</span>
           ) : null}
@@ -1124,9 +1125,9 @@ function ConfirmCard({ item, onAnswer }: { item: ToolItem; onAnswer(item: ToolIt
               <div className="text-foreground/80">{affected.label}</div>
               <ul className="mt-0.5 flex max-h-40 flex-col overflow-auto">
                 {affected.names.map((n) => (
-                  <li key={n} className="truncate text-foreground" title={n}>
+                  <TooltipHint key={n} label={n}><li className="truncate text-foreground">
                     {n.split("::").join(" › ")}
-                  </li>
+                  </li></TooltipHint>
                 ))}
               </ul>
             </div>
@@ -1153,7 +1154,7 @@ function HistoryMenu({ convs, active, title, onPick, onDelete }: { convs: Conver
   const [open, setOpen] = useState(false);
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
+      <TooltipHint label="Chat history"><PopoverTrigger asChild>
         <button
           type="button"
           aria-label="History"
@@ -1163,7 +1164,7 @@ function HistoryMenu({ convs, active, title, onPick, onDelete }: { convs: Conver
           <span className="truncate">{title}</span>
           <ChevronDown className="size-3.5 shrink-0 text-muted-foreground" />
         </button>
-      </PopoverTrigger>
+      </PopoverTrigger></TooltipHint>
       <PopoverContent align="start" sideOffset={6} className="w-[min(20rem,calc(100vw-1.5rem))] rounded-xl p-1">
         <div className="px-2.5 pt-1.5 pb-1 text-xs text-muted-foreground">Chats</div>
         {convs.length === 0 ? (
@@ -1183,9 +1184,9 @@ function HistoryMenu({ convs, active, title, onPick, onDelete }: { convs: Conver
                   <span className="min-w-0 flex-1 truncate text-sm">{c.title || "New chat"}</span>
                   <span className="shrink-0 text-xs text-muted-foreground">{relative(c.updated)}</span>
                 </button>
-                <button aria-label={`Delete ${c.title}`} onClick={() => onDelete(c.id)} className="mr-1 rounded-md p-1.5 text-muted-foreground opacity-0 group-hover:opacity-100 hover:text-destructive focus-visible:opacity-100 pointer-coarse:opacity-100">
+                <TooltipHint label={`Delete ${c.title || "chat"}`}><button aria-label={`Delete ${c.title}`} onClick={() => onDelete(c.id)} className="mr-1 rounded-md p-1.5 text-muted-foreground opacity-0 group-hover:opacity-100 hover:text-destructive focus-visible:opacity-100 pointer-coarse:opacity-100">
                   <Trash2 className="size-3.5" />
-                </button>
+                </button></TooltipHint>
               </li>
             ))}
           </ul>

@@ -1,11 +1,14 @@
+import { createPortal } from "react-dom";
 import { useEffect, useMemo, useState } from "react";
 import { Check, ChevronRight, Copy, Download, Folder, FolderInput, FolderOpen, FolderPlus, Inbox, MoreHorizontal, Package, Pencil, Plus, Search, Trash2, Upload, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { TooltipHint } from "@/components/ui/tooltip";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuTrigger } from "@/components/ui/context-menu";
 import { Skeleton } from "@/components/ui/skeleton";
 import { TypeEditor, Kind } from "@/components/type-editor/editor";
 import { ImportTypesDialog, NewTypeDialog } from "@/components/type-editor/dialogs";
@@ -13,17 +16,16 @@ import { download, exportShape, GRADER_LABEL } from "@/components/type-editor/st
 import { api, type TypeSummary } from "@/lib/api";
 import { navigate, useLocation } from "@/lib/router";
 import { cn } from "@/lib/utils";
-import { PHONE_H1 } from "@/components/page";
+import { Page, PageHeader } from "@/components/page";
 
-export function TypesPage({ id }: { id: string | null }) {
+export function TypesPage({ id, panelHost }: { id: string | null; panelHost?: HTMLElement | null }) {
   if (id) return <TypeEditor key={id} id={id} />;
-  return <TypeLibrary />;
+  return <TypeLibrary panelHost={panelHost ?? null} />;
 }
 
-// The page is a small file browser: the left rail (desktop) is the folder tree, the main column shows
+// The page is a small file browser: the side panel is the folder tree, while the main column shows
 // one place at a time (everything at the top level, a folder, or the built-ins), and search goes flat.
 
-const COLLAPSED_KEY = "etude.typeFolders.collapsed";
 const DRAG_TYPE = "application/x-etude-type";
 const DRAG_FOLDER = "application/x-etude-folder";
 /** The `folder` URL value for the built-in types, which aren't a real folder. */
@@ -45,10 +47,11 @@ const open = (folder: string) => navigate(folder ? `/types?folder=${encodeURICom
 
 type MoveTarget = { kind: "type"; id: string; name: string; folder: string } | { kind: "folder"; path: string };
 type FolderDialog = { mode: "create"; parent: string } | { mode: "rename"; path: string };
+type FolderActions = { onNewType(): void; onNewFolder(): void; onRename(): void; onMove(): void; onDelete(): void };
 type DragProps = { draggable: boolean; onDragStart(e: React.DragEvent): void; onDragEnd(): void };
 type DropProps = { onDragOver(e: React.DragEvent): void; onDragLeave(e: React.DragEvent): void; onDrop(e: React.DragEvent): void };
 
-function TypeLibrary() {
+function TypeLibrary({ panelHost }: { panelHost: HTMLElement | null }) {
   const { params } = useLocation();
   const here = params.get("folder") ?? "";
   const [types, setTypes] = useState<TypeSummary[] | null>(null);
@@ -56,7 +59,6 @@ function TypeLibrary() {
   const [creating, setCreating] = useState<{ source?: string; folder?: string } | null>(null);
   const [importing, setImporting] = useState(false);
   const [query, setQuery] = useState("");
-  const [collapsed, setCollapsed] = useState<Set<string>>(() => new Set(JSON.parse(localStorage.getItem(COLLAPSED_KEY) ?? "[]")));
   const [moving, setMoving] = useState<MoveTarget | null>(null);
   const [folderDialog, setFolderDialog] = useState<FolderDialog | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
@@ -89,26 +91,6 @@ function TypeLibrary() {
   useEffect(() => {
     if (types && here && here !== BUILT_IN && !folders.includes(here)) open("");
   }, [types, here, folders.join()]);
-
-  const saveCollapsed = (next: Set<string>) => {
-    setCollapsed(next);
-    localStorage.setItem(COLLAPSED_KEY, JSON.stringify([...next]));
-  };
-  const toggle = (path: string) => {
-    const next = new Set(collapsed);
-    next.has(path) ? next.delete(path) : next.add(path);
-    saveCollapsed(next);
-  };
-  // The current folder is always visible in the rail.
-  useEffect(() => {
-    if (!here || here === BUILT_IN) return;
-    const hidden = ancestors(parentOf(here) || "").filter((p) => p && collapsed.has(p));
-    if (parentOf(here) && hidden.length) {
-      const next = new Set(collapsed);
-      hidden.forEach((p) => next.delete(p));
-      saveCollapsed(next);
-    }
-  }, [here]);
 
   const exportType = async (t: TypeSummary) => {
     try {
@@ -201,17 +183,36 @@ function TypeLibrary() {
   const listed = inBuiltIn ? builtins : typesIn(here);
   const crumbs = here && !inBuiltIn ? ancestors(here) : [];
   const title = inBuiltIn ? "Built in" : here ? leaf(here) : "Card types";
+  const typeSidebar = (
+    <nav aria-label="Card type folders" className="nd-types-sidebar flex h-full min-h-0 flex-col gap-0.5 text-sm">
+      <div className="nd-types-sidebar-header nd-item-editor-tabs-nav mb-3 shrink-0">
+        <h2 className="min-w-0 flex-1 text-sm font-semibold">Card types</h2>
+        <TooltipHint label="New folder"><button className="nd-types-sidebar-add flex size-8 items-center justify-center rounded-md transition-colors" onClick={() => setFolderDialog({ mode: "create", parent: here && !inBuiltIn ? here : "" })} aria-label="New folder">
+          <FolderPlus className="size-4" />
+        </button></TooltipHint>
+      </div>
+      <RailItem icon={Inbox} label="Not in a folder" active={!here && !q} onClick={() => { setQuery(""); open(""); }} drop={drop("")} dropping={dropAt === ""} />
+      <h3 className="nd-types-sidebar-heading mt-4 mb-1.5 shrink-0 text-sm font-medium">Folders</h3>
+      <div className="nd-types-sidebar-scroll min-h-0 flex-1 overflow-y-auto">
+        {folders.length ? (
+          <RailTree parent="" childFolders={childFolders} here={q ? null : here} drag={drag} drop={drop} dropAt={dropAt} folderActions={folderActions} onOpen={(f) => { setQuery(""); open(f); }} />
+        ) : (
+          <p className="py-1 pr-2.5 pl-[1.625rem] text-[13px] leading-relaxed text-pretty text-muted-foreground/80">No folders yet. Make one, then drag types onto it.</p>
+        )}
+      </div>
+      <div className="nd-types-sidebar-divider my-3 h-px shrink-0" />
+      <RailItem icon={Package} label="Built in" active={inBuiltIn && !q} onClick={() => { setQuery(""); open(BUILT_IN); }} />
+    </nav>
+  );
 
   return (
-    <div className="w-full py-6 sm:py-10">
-      {/* header */}
-      <header className="mb-6 sm:mb-8">
-        <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-4">
-          <div className="min-w-0 flex-1 basis-56">
-            <div className="flex min-w-0 items-center gap-1">
-              <h1 className={cn("min-w-0 truncate text-2xl font-semibold tracking-tight", PHONE_H1)}>{title}</h1>
-              {here && !inBuiltIn && <FolderMenu name={leaf(here)} {...folderActions(here)} className="size-9" />}
-            </div>
+    <>
+      {panelHost && createPortal(typeSidebar, panelHost)}
+      <Page className="nd-types-page">
+        <PageHeader
+          title={title}
+          titleAside={here && !inBuiltIn ? <FolderMenu name={leaf(here)} {...folderActions(here)} className="size-9" /> : undefined}
+          breadcrumb={(
             <nav aria-label="Breadcrumb" className="-ml-1.5 mb-1 flex min-w-0 flex-wrap items-center text-sm text-muted-foreground">
               <Crumb label="Card types" onClick={() => open("")} drop={drop("")} active={dropAt === ""} />
               {crumbs.slice(0, -1).map((c) => (
@@ -220,24 +221,21 @@ function TypeLibrary() {
                   <Crumb label={leaf(c)} onClick={() => open(c)} drop={drop(c)} active={dropAt === c} />
                 </span>
               ))}
-              {here && (
-                <ChevronRight className="size-3.5 shrink-0 opacity-50" />
-              )}
+              {here && <ChevronRight className="size-3.5 shrink-0 opacity-50" />}
             </nav>
-            <p className="mt-1 max-w-xl text-sm text-pretty text-muted-foreground">
-              {inBuiltIn
-                ? "These ship with Etude. Open one to see how it's made, or duplicate it to start your own."
-                : here
-                  ? [plural(listed.length, "type"), subfolders.length ? plural(subfolders.length, "folder") : ""].filter(Boolean).join(" · ")
-                  : "Fields, an HTML/CSS/JS template and a grader. Built\u2011in types are written the same way, so any of them can be copied or changed."}
-            </p>
-          </div>
-          <div className="flex shrink-0 gap-2">
-            <Button variant="outline" size="sm" className="h-9 gap-1.5" onClick={() => setImporting(true)}><Upload className="size-4" />Import</Button>
-            <Button size="sm" className="h-9 gap-1.5" onClick={() => setCreating(here && !inBuiltIn ? { folder: here } : {})}><Plus className="size-4" />New type</Button>
-          </div>
-        </div>
-      </header>
+          )}
+          description={inBuiltIn
+            ? "These ship with Etude. Open one to see how it's made, or duplicate it to start your own."
+            : here
+              ? [plural(listed.length, "type"), subfolders.length ? plural(subfolders.length, "folder") : ""].filter(Boolean).join(" · ")
+              : "Fields, an HTML/CSS/JS template and a grader. Built\u2011in types are written the same way, so any of them can be copied or changed."}
+          actions={(
+            <>
+              <Button variant="outline" size="sm" className="h-9 gap-1.5" onClick={() => setImporting(true)}><Upload className="size-4" />Import</Button>
+              <Button size="sm" className="h-9 gap-1.5" onClick={() => setCreating(here && !inBuiltIn ? { folder: here } : {})}><Plus className="size-4" />New type</Button>
+            </>
+          )}
+        />
 
       {!types && (
         <div className="flex flex-col gap-2">
@@ -246,28 +244,7 @@ function TypeLibrary() {
       )}
 
       {types && (
-        <div className="lg:grid lg:grid-cols-[15rem_minmax(0,1fr)] lg:gap-8">
-          {/* the folder rail */}
-          <aside className="hidden lg:block">
-            <div className="sticky top-6 flex flex-col gap-0.5 text-sm">
-              <RailItem icon={Inbox} label="Not in a folder" count={typesIn("").length} active={!here && !q} onClick={() => { setQuery(""); open(""); }} drop={drop("")} dropping={dropAt === ""} />
-              <div className="mt-5 mb-1 flex items-center justify-between pr-1 pl-[1.625rem]">
-                <span className="text-xs font-medium text-muted-foreground">Folders</span>
-                <button className="flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground" onClick={() => setFolderDialog({ mode: "create", parent: here && !inBuiltIn ? here : "" })} aria-label="New folder" title="New folder">
-                  <FolderPlus className="size-4" />
-                </button>
-              </div>
-              {folders.length ? (
-                <RailTree parent="" depth={0} childFolders={childFolders} count={(f) => typesIn(f).length} here={q ? null : here} collapsed={collapsed} toggle={toggle} drag={drag} drop={drop} dropAt={dropAt} onOpen={(f) => { setQuery(""); open(f); }} />
-              ) : (
-                <p className="py-1 pr-2.5 pl-[1.625rem] text-[13px] leading-relaxed text-pretty text-muted-foreground/80">No folders yet. Make one, then drag types onto it.</p>
-              )}
-              <div className="my-3 h-px bg-border" />
-              <RailItem icon={Package} label="Built in" count={builtins.length} active={inBuiltIn && !q} onClick={() => { setQuery(""); open(BUILT_IN); }} />
-            </div>
-          </aside>
-
-          <main className="min-w-0">
+        <div className="min-w-0">
             <div className="mb-6 flex gap-2">
               <div className="relative flex-1">
                 <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -278,11 +255,6 @@ function TypeLibrary() {
                   </button>
                 )}
               </div>
-              {!inBuiltIn && (
-                <Button variant="outline" className="h-10 gap-1.5 lg:hidden" onClick={() => setFolderDialog({ mode: "create", parent: here })} aria-label="New folder">
-                  <FolderPlus className="size-4" /><span className="hidden sm:inline">New folder</span>
-                </Button>
-              )}
             </div>
 
             {q ? (
@@ -295,27 +267,6 @@ function TypeLibrary() {
               </Group>
             ) : (
               <div className="flex flex-col gap-8">
-                {subfolders.length > 0 && (
-                  <div className="lg:hidden">
-                    <Group label="Folders">
-                      <List>
-                        {subfolders.map((f) => (
-                          <FolderCard
-                            key={f}
-                            path={f}
-                            count={typesIn(f).length}
-                            folders={childFolders(f).length}
-                            dropping={dropAt === f}
-                            drag={drag({ folder: f })}
-                            drop={drop(f)}
-                            {...folderActions(f)}
-                          />
-                        ))}
-                      </List>
-                    </Group>
-                  </div>
-                )}
-
                 <Group label={inBuiltIn ? undefined : here ? (subfolders.length ? "Types" : undefined) : "Not in a folder"}>
                   {listed.length ? (
                     <List drop={inBuiltIn ? undefined : drop(here)} dropping={!inBuiltIn && dropAt === here}>
@@ -338,14 +289,8 @@ function TypeLibrary() {
                     </div>
                   )}
                 </Group>
-                {!here && (
-                  <div className="lg:hidden">
-                    <List><BuiltInCard count={builtins.length} /></List>
-                  </div>
-                )}
               </div>
             )}
-          </main>
         </div>
       )}
 
@@ -390,7 +335,8 @@ function TypeLibrary() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+      </Page>
+    </>
   );
 }
 
@@ -419,95 +365,108 @@ function Group({ label, aside, children }: { label?: React.ReactNode; aside?: Re
 }
 
 function List({ children, drop, dropping }: { children: React.ReactNode; drop?: DropProps; dropping?: boolean }) {
-  return <div className={cn("divide-y overflow-hidden rounded-xl border bg-card/40 transition-colors", dropping && "border-highlight/70")} {...drop}>{children}</div>;
+  return <div className={cn("grid gap-3 rounded-xl transition-colors", dropping && "border border-highlight/70 bg-highlight/5 p-1.5")} {...drop}>{children}</div>;
 }
 
 function Empty({ children }: { children: React.ReactNode }) {
   return <p className="rounded-xl border border-dashed px-6 py-10 text-center text-sm text-muted-foreground">{children}</p>;
 }
 
-function RailItem({ icon: Icon, label, count, active, onClick, drop, dropping }: {
+function RailItem({ icon: Icon, label, active, onClick, drop, dropping }: {
   icon: React.ComponentType<{ className?: string }>;
   label: string;
-  count: number;
   active: boolean;
   onClick(): void;
   drop?: DropProps;
   dropping?: boolean;
 }) {
   return (
-    <button
+    <TooltipHint label={label} side="left"><button
       className={cn(
-        "flex h-9 items-center gap-2 rounded-lg pr-2.5 pl-[1.625rem] text-left transition-colors hover:bg-accent/60",
-        active ? "bg-accent font-medium text-foreground" : "text-foreground/80",
-        dropping && "bg-highlight/10 text-highlight",
+        "nd-tree-row nd-types-sidebar-item pl-2.5 text-left",
+        active && "is-active font-medium",
+        dropping && "is-drop-target",
       )}
       onClick={onClick}
+      aria-current={active ? "page" : undefined}
       {...drop}
     >
-      <Icon className={cn("size-4 shrink-0", active ? "text-foreground/80" : "text-muted-foreground")} />
+      <span className="nd-tree-badge" aria-hidden="true"><Icon className="size-4 shrink-0" /></span>
       <span className="min-w-0 flex-1 truncate">{label}</span>
-      <span className="tabular w-6 text-right text-xs text-muted-foreground">{count}</span>
-    </button>
+    </button></TooltipHint>
   );
 }
 
 function RailTree(p: {
   parent: string;
-  depth: number;
   childFolders(parent: string): string[];
-  count(folder: string): number;
   here: string | null;
-  collapsed: Set<string>;
-  toggle(path: string): void;
   drag(d: { folder: string }): DragProps;
   drop(folder: string): DropProps;
   dropAt: string | null;
+  folderActions(path: string): FolderActions;
   onOpen(folder: string): void;
 }) {
   return (
-    <>
+    <div className={p.parent ? "nd-tree-children" : "nd-tree-content"}>
       {p.childFolders(p.parent).map((f) => {
         const kids = p.childFolders(f).length > 0;
-        const expanded = kids && !p.collapsed.has(f);
         const active = p.here === f;
         return (
-          <div key={f}>
-            <div
-              data-rail={f}
-              className={cn(
-                "group flex h-9 items-center rounded-lg pr-2.5 transition-colors hover:bg-accent/60",
-                active ? "bg-accent font-medium text-foreground" : "text-foreground/80",
-                p.dropAt === f && "bg-highlight/10 text-highlight",
-              )}
-              style={{ paddingLeft: `${0.125 + p.depth * 1.25}rem` }}
-              {...p.drag({ folder: f })}
-              {...p.drop(f)}
-            >
-              <button
-                className={cn("flex size-6 shrink-0 items-center justify-center rounded text-muted-foreground hover:text-foreground", !kids && "invisible")}
-                onClick={() => p.toggle(f)}
-                aria-label={expanded ? `Collapse ${leaf(f)}` : `Expand ${leaf(f)}`}
-                aria-expanded={expanded}
-                tabIndex={kids ? 0 : -1}
+          <div key={f} className="nd-tree-group">
+            <FolderContextMenu {...p.folderActions(f)}>
+              <div
+                data-rail={f}
+                className={cn(
+                  "nd-tree-row nd-types-sidebar-folder group",
+                  active && "is-active font-medium",
+                  p.dropAt === f && "is-drop-target",
+                )}
+                {...p.drag({ folder: f })}
+                {...p.drop(f)}
               >
-                <ChevronRight className={cn("size-3.5 transition-transform", expanded && "rotate-90")} />
-              </button>
-              <button className="flex h-full min-w-0 flex-1 items-center gap-2 text-left" onClick={() => p.onOpen(f)}>
-                {p.dropAt === f ? <FolderOpen className="size-4 shrink-0 text-highlight" /> : active ? <FolderOpen className="size-4 shrink-0 text-foreground/80" /> : <Folder className="size-4 shrink-0 text-muted-foreground" />}
-                <span className="min-w-0 flex-1 truncate">{leaf(f)}</span>
-                <span className="tabular w-6 text-right text-xs text-muted-foreground">{p.count(f)}</span>
-              </button>
-            </div>
-            {expanded && <RailTree {...p} parent={f} depth={p.depth + 1} />}
+                <TooltipHint label={f} side="left"><button className="nd-tree-row-link min-w-0 flex-1" onClick={() => p.onOpen(f)} aria-current={active ? "page" : undefined}>
+                  <span className="nd-tree-badge" aria-hidden="true">
+                    {p.dropAt === f || active ? <FolderOpen className="size-4 shrink-0" /> : <Folder className="size-4 shrink-0" />}
+                  </span>
+                  <span className="min-w-0 flex-1 truncate">{leaf(f)}</span>
+                </button></TooltipHint>
+              </div>
+            </FolderContextMenu>
+            {kids && <RailTree {...p} parent={f} />}
           </div>
         );
       })}
-    </>
+    </div>
   );
 }
 
-function FolderMenu(p: { name: string; onNewType(): void; onNewFolder(): void; onRename(): void; onMove(): void; onDelete(): void; className?: string }) {
+function folderMenuEntries(p: FolderActions) {
+  return [
+    { icon: <Plus />, label: "New type here…", onSelect: p.onNewType },
+    { icon: <FolderPlus />, label: "New folder inside…", onSelect: p.onNewFolder },
+    null,
+    { icon: <Pencil />, label: "Rename…", onSelect: p.onRename },
+    { icon: <FolderInput />, label: "Move to…", onSelect: p.onMove },
+    null,
+    { icon: <Trash2 />, label: "Delete folder…", onSelect: p.onDelete, destructive: true },
+  ];
+}
+
+function FolderContextMenu(p: FolderActions & { children: React.ReactNode }) {
+  return (
+    <ContextMenu>
+      <ContextMenuTrigger asChild>{p.children}</ContextMenuTrigger>
+      <ContextMenuContent className="w-56">
+        {folderMenuEntries(p).map((entry, i) => entry
+          ? <ContextMenuItem key={entry.label} className="h-9" variant={entry.destructive ? "destructive" : "default"} onSelect={entry.onSelect}>{entry.icon}{entry.label}</ContextMenuItem>
+          : <ContextMenuSeparator key={i} />)}
+      </ContextMenuContent>
+    </ContextMenu>
+  );
+}
+
+function FolderMenu(p: { name: string; className?: string } & FolderActions) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -516,66 +475,11 @@ function FolderMenu(p: { name: string; onNewType(): void; onNewFolder(): void; o
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-        <DropdownMenuItem onClick={p.onNewType}><Plus />New type here…</DropdownMenuItem>
-        <DropdownMenuItem onClick={p.onNewFolder}><FolderPlus />New folder inside…</DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={p.onRename}><Pencil />Rename…</DropdownMenuItem>
-        <DropdownMenuItem onClick={p.onMove}><FolderInput />Move to…</DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem variant="destructive" onClick={p.onDelete}><Trash2 />Delete folder…</DropdownMenuItem>
+        {folderMenuEntries(p).map((entry, i) => entry
+          ? <DropdownMenuItem key={entry.label} variant={entry.destructive ? "destructive" : "default"} onSelect={entry.onSelect}>{entry.icon}{entry.label}</DropdownMenuItem>
+          : <DropdownMenuSeparator key={i} />)}
       </DropdownMenuContent>
     </DropdownMenu>
-  );
-}
-
-function FolderCard(p: {
-  path: string;
-  count: number;
-  folders: number;
-  dropping: boolean;
-  drag: DragProps;
-  drop: DropProps;
-  onNewType(): void;
-  onNewFolder(): void;
-  onRename(): void;
-  onMove(): void;
-  onDelete(): void;
-}) {
-  const name = leaf(p.path);
-  return (
-    <div
-      data-folder={p.path}
-      role="button"
-      tabIndex={0}
-      onClick={() => open(p.path)}
-      onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && (e.preventDefault(), open(p.path))}
-      className={cn(
-        "group flex min-h-14 cursor-pointer items-center gap-3 py-2 pr-1.5 pl-4 outline-none transition-colors hover:bg-accent/40 focus-visible:bg-accent/40",
-        p.dropping && "bg-highlight/10",
-      )}
-      {...p.drag}
-      {...p.drop}
-    >
-      {p.dropping ? <FolderOpen className="size-5 shrink-0 text-highlight" /> : <Folder className="size-5 shrink-0 text-muted-foreground" />}
-      <div className="min-w-0 flex-1">
-        <div className="truncate text-[0.95rem] font-medium">{name}</div>
-        <div className="truncate text-xs text-muted-foreground">{p.count || p.folders ? [p.count ? plural(p.count, "type") : "", p.folders ? plural(p.folders, "folder") : ""].filter(Boolean).join(" · ") : "Empty"}</div>
-      </div>
-      <FolderMenu name={name} {...p} className="size-9" />
-    </div>
-  );
-}
-
-function BuiltInCard({ count }: { count: number }) {
-  return (
-    <button className="flex min-h-14 w-full items-center gap-3 py-2 pr-2.5 pl-4 text-left transition-colors hover:bg-accent/40" onClick={() => open(BUILT_IN)}>
-      <Package className="size-5 shrink-0 text-muted-foreground" />
-      <span className="min-w-0 flex-1">
-        <span className="block truncate text-[0.95rem] font-medium">Built in</span>
-        <span className="block truncate text-xs text-muted-foreground">{plural(count, "type")} that ship with Etude</span>
-      </span>
-      <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
-    </button>
   );
 }
 
@@ -592,42 +496,43 @@ function TypeRow({ t, onExport, onDuplicate, onMove, drag, showPlace }: {
   // Most types are script-graded; only say so when it's something else.
   const grader = t.grader !== "script" ? GRADER_LABEL[t.grader] ?? t.grader : null;
   return (
-    <div data-type={t.id} className="group flex min-h-16 items-center gap-3 pr-1.5 pl-4 transition-colors hover:bg-accent/40" {...drag}>
-      <button className="flex min-w-0 flex-1 flex-col gap-0.5 py-2.5 text-left" onClick={() => navigate(`/types/${encodeURIComponent(t.id)}`)}>
-        <div className="flex min-w-0 items-baseline gap-2">
-          <span className="truncate text-[0.95rem] font-medium">{t.name}</span>
-          <code className="hidden shrink-0 font-mono text-xs text-muted-foreground/70 sm:inline">{t.id}</code>
-          {t.edited && <Kind summary={t} />}
-        </div>
-        {t.description && <p className="line-clamp-2 max-w-[68ch] text-[13px] leading-snug text-muted-foreground sm:line-clamp-1">{t.description.replace(/\.$/, "")}</p>}
-        {showPlace && (
-          <div className="flex items-center gap-1 text-xs text-muted-foreground/80">
-            {t.folder ? <Folder className="size-3 shrink-0" /> : t.shipped ? <Package className="size-3 shrink-0" /> : <Inbox className="size-3 shrink-0" />}
-            <span className="truncate">{place}</span>
+    <ContextMenu>
+      <ContextMenuTrigger asChild>
+        <div data-type={t.id} className="nd-deck-card-tile nd-type-card-tile group flex items-center gap-3 rounded-xl border bg-card/40 px-4 py-4 transition-colors hover:border-foreground/20 hover:bg-accent/40" {...drag}>
+          <button className="flex min-w-0 flex-1 flex-col gap-0.5 text-left" onClick={() => navigate(`/types/${encodeURIComponent(t.id)}`)}>
+            <div className="flex min-w-0 items-baseline gap-2">
+              <span className="truncate text-sm leading-snug font-medium">{t.name}</span>
+              <code className="hidden shrink-0 font-mono text-xs text-muted-foreground/70 sm:inline">{t.id}</code>
+              {t.edited && <Kind summary={t} />}
+            </div>
+            {t.description && <p className="line-clamp-2 max-w-[68ch] text-[13px] leading-snug text-muted-foreground sm:line-clamp-1">{t.description.replace(/\.$/, "")}</p>}
+            {showPlace && (
+              <div className="flex items-center gap-1 text-xs text-muted-foreground/80">
+                {t.folder ? <Folder className="size-3 shrink-0" /> : t.shipped ? <Package className="size-3 shrink-0" /> : <Inbox className="size-3 shrink-0" />}
+                <span className="truncate">{place}</span>
+              </div>
+            )}
+            <div className="flex items-center gap-1.5 text-[13px] text-muted-foreground sm:hidden">
+              <code className="font-mono">{t.id}</code>
+              <span aria-hidden>·</span>
+              <span className="tabular">{plural(t.items, "item")}</span>
+              {grader && <><span aria-hidden>·</span><span>{grader}</span></>}
+            </div>
+          </button>
+          <div className="hidden shrink-0 items-center gap-3 text-[13px] text-muted-foreground sm:flex">
+            {grader && <span className="rounded-md border px-1.5 py-0.5 text-[11px]">{grader}</span>}
+            <TooltipHint label={plural(t.items, "item")}>
+              <span className="tabular w-8 text-right">{t.items}</span>
+            </TooltipHint>
           </div>
-        )}
-        <div className="flex items-center gap-1.5 text-xs text-muted-foreground sm:hidden">
-          <code className="font-mono">{t.id}</code>
-          <span aria-hidden>·</span>
-          <span className="tabular">{plural(t.items, "item")}</span>
-          {grader && <><span aria-hidden>·</span><span>{grader}</span></>}
         </div>
-      </button>
-      <div className="hidden shrink-0 items-center gap-3 text-xs text-muted-foreground sm:flex">
-        {grader && <span className="rounded-md border px-1.5 py-0.5 text-[11px]">{grader}</span>}
-        <span className="tabular w-8 text-right" title={plural(t.items, "item")}>{t.items}</span>
-      </div>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon" className="size-9 shrink-0 text-muted-foreground transition-opacity sm:opacity-0 sm:group-hover:opacity-100 sm:focus-visible:opacity-100 sm:data-[state=open]:opacity-100" aria-label={`Actions for ${t.name}`}><MoreHorizontal className="size-4" /></Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          <DropdownMenuItem onClick={onMove}><FolderInput />Move to folder…</DropdownMenuItem>
-          <DropdownMenuItem onClick={onDuplicate}><Copy />Duplicate…</DropdownMenuItem>
-          <DropdownMenuItem onClick={() => onExport(t)}><Download />Export JSON</DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-    </div>
+      </ContextMenuTrigger>
+      <ContextMenuContent className="w-56">
+        <ContextMenuItem className="h-9" onSelect={onMove}><FolderInput />Move to folder…</ContextMenuItem>
+        <ContextMenuItem className="h-9" onSelect={onDuplicate}><Copy />Duplicate…</ContextMenuItem>
+        <ContextMenuItem className="h-9" onSelect={() => onExport(t)}><Download />Export JSON</ContextMenuItem>
+      </ContextMenuContent>
+    </ContextMenu>
   );
 }
 
