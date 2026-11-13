@@ -477,29 +477,25 @@ export function OcclusionEditor({ image, boxes: propBoxes, mode, onChange, onPen
   }
 
   return (
-    <div ref={root} tabIndex={-1} className="flex flex-col gap-3 outline-none" onKeyDown={onKeyDown} onKeyUp={onKeyUp} data-occlusion-editor>
-      <div className="flex flex-wrap items-center gap-1">
+    <div ref={root} tabIndex={-1} className="flex flex-col gap-3 outline-none @container" onKeyDown={onKeyDown} onKeyUp={onKeyUp} data-occlusion-editor>
+      <div className="flex w-full flex-nowrap items-center justify-between gap-0.5 overflow-x-auto font-normal">
         <div className="flex rounded-md border p-0.5">
-          <Tip label="Draw boxes"><Button type="button" size="icon-sm" variant="ghost" aria-pressed={!panning} className={cn("size-7", !panning && "bg-accent text-foreground")} onClick={() => setTool("draw")} aria-label="Draw boxes"><SquareDashed /></Button></Tip>
-          <Tip label="Move the image (or hold Space)"><Button type="button" size="icon-sm" variant="ghost" aria-pressed={panning} className={cn("size-7", panning && "bg-accent text-foreground")} onClick={() => setTool("pan")} aria-label="Move the image"><Hand /></Button></Tip>
+          <Tip label="Draw boxes"><Button type="button" size="icon-sm" variant="ghost" aria-pressed={!panning} className={cn("size-7", !panning && "bg-muted text-foreground")} onClick={() => setTool("draw")} aria-label="Draw boxes"><SquareDashed /></Button></Tip>
+          <Tip label="Move the image (or hold Space)"><Button type="button" size="icon-sm" variant="ghost" aria-pressed={panning} className={cn("size-7", panning && "bg-muted text-foreground")} onClick={() => setTool("pan")} aria-label="Move the image"><Hand /></Button></Tip>
         </div>
-        <Tip label="Undo (Ctrl Z)"><Button type="button" size="icon-sm" variant="ghost" disabled={!past.length} onClick={undo} aria-label="Undo"><Undo2 /></Button></Tip>
-        <Tip label="Redo (Ctrl Shift Z)"><Button type="button" size="icon-sm" variant="ghost" disabled={!future.length} onClick={redo} aria-label="Redo"><Redo2 /></Button></Tip>
-        <span className="mx-1 h-5 w-px bg-border" />
-        <Tip label="Group: asked together as one card (Ctrl G)"><Button type="button" size="sm" variant="ghost" className="h-8 gap-1.5 px-2" disabled={sel.length < 2} onClick={group}><Group /><span className="hidden sm:inline">Group</span></Button></Tip>
-        <Tip label="Ungroup (Ctrl Shift G)"><Button type="button" size="sm" variant="ghost" className="h-8 gap-1.5 px-2" disabled={!selGrouped} onClick={ungroup}><Ungroup /><span className="hidden sm:inline">Ungroup</span></Button></Tip>
-        <Tip label="Duplicate (Ctrl D)"><Button type="button" size="icon-sm" variant="ghost" disabled={!sel.length} onClick={duplicate} aria-label="Duplicate"><Copy /></Button></Tip>
-        <Tip label="Delete (Del)"><Button type="button" size="icon-sm" variant="ghost" disabled={!sel.length} onClick={remove} aria-label="Delete box"><Trash2 /></Button></Tip>
-        <span className="mx-1 hidden h-5 w-px bg-border sm:block" />
-        <Tip label="Zoom out (−)"><Button type="button" size="icon-sm" variant="ghost" disabled={z <= 1} onClick={() => zoomAt(z / 1.4, size.W / 2, size.H / 2)} aria-label="Zoom out"><ZoomOut /></Button></Tip>
-        <Tip label="Fit (0)"><button type="button" className="h-8 min-w-12 rounded-md px-1 text-xs tabular text-muted-foreground hover:text-foreground" onClick={() => setView({ z: 1, tx: 0, ty: 0 })}>{Math.round(z * 100)}%</button></Tip>
-        <Tip label="Zoom in (+, Ctrl + scroll, pinch)"><Button type="button" size="icon-sm" variant="ghost" disabled={z >= MAX_Z} onClick={() => zoomAt(z * 1.4, size.W / 2, size.H / 2)} aria-label="Zoom in"><ZoomIn /></Button></Tip>
-        <Tip label="Fit the image"><Button type="button" size="icon-sm" variant="ghost" className="hidden sm:inline-flex" disabled={z <= 1} onClick={() => setView({ z: 1, tx: 0, ty: 0 })} aria-label="Fit"><Maximize /></Button></Tip>
-        <div className="flex-1" />
-        <span className="text-sm tabular" data-occlusion-count>{faces.length} card{faces.length === 1 ? "" : "s"}</span>
+        <Tip label="Undo (Ctrl Z)"><Button type="button" size="icon-sm" variant="ghost" className="size-7" disabled={!past.length} onClick={undo} aria-label="Undo"><Undo2 /></Button></Tip>
+        <Tip label="Redo (Ctrl Shift Z)"><Button type="button" size="icon-sm" variant="ghost" className="size-7" disabled={!future.length} onClick={redo} aria-label="Redo"><Redo2 /></Button></Tip>
+        <Tip label="Group: asked together as one card (Ctrl G)"><Button type="button" size="icon-sm" variant="ghost" className="size-7" disabled={sel.length < 2} onClick={group} aria-label="Group selected boxes"><Group /></Button></Tip>
+        <Tip label="Ungroup (Ctrl Shift G)"><Button type="button" size="icon-sm" variant="ghost" className="size-7" disabled={!selGrouped} onClick={ungroup} aria-label="Ungroup selected boxes"><Ungroup /></Button></Tip>
+        <Tip label="Duplicate (Ctrl D)"><Button type="button" size="icon-sm" variant="ghost" className="size-7" disabled={!sel.length} onClick={duplicate} aria-label="Duplicate"><Copy /></Button></Tip>
+        <Tip label="Delete (Del)"><Button type="button" size="icon-sm" variant="ghost" className="size-7" disabled={!sel.length} onClick={remove} aria-label="Delete box"><Trash2 /></Button></Tip>
+        <Tip label="Zoom out (−)"><Button type="button" size="icon-sm" variant="ghost" className="size-7" disabled={z <= 1} onClick={() => zoomAt(z / 1.4, size.W / 2, size.H / 2)} aria-label="Zoom out"><ZoomOut /></Button></Tip>
+        <Tip label="Fit (0)"><button type="button" className="h-7 min-w-10 rounded-md px-1 text-xs tabular text-muted-foreground hover:text-foreground" onClick={() => setView({ z: 1, tx: 0, ty: 0 })}>{Math.round(z * 100)}%</button></Tip>
+        <Tip label="Zoom in (+, Ctrl + scroll, pinch)"><Button type="button" size="icon-sm" variant="ghost" className="size-7" disabled={z >= MAX_Z} onClick={() => zoomAt(z * 1.4, size.W / 2, size.H / 2)} aria-label="Zoom in"><ZoomIn /></Button></Tip>
+        <Tip label="Fit the image"><Button type="button" size="icon-sm" variant="ghost" className="hidden size-7 sm:inline-flex" disabled={z <= 1} onClick={() => setView({ z: 1, tx: 0, ty: 0 })} aria-label="Fit"><Maximize /></Button></Tip>
       </div>
 
-      <div className="grid gap-3 @container lg:grid-cols-[minmax(0,1fr)_19rem]">
+      <div className="grid gap-3 @lg:grid-cols-[minmax(0,1fr)_19rem]">
         <div className="flex min-w-0 flex-col gap-2">
           <div ref={wrap} className="w-full">
             <div
@@ -537,12 +533,12 @@ export function OcclusionEditor({ image, boxes: propBoxes, mode, onChange, onPen
                       style={{
                         // Fixed, theme-independent fills: the image underneath is the same in every theme.
                         left: `${b.x * 100}%`, top: `${b.y * 100}%`, width: `${b.w * 100}%`, height: `${b.h * 100}%`,
-                        outline: `${(on ? 2 : 1) / z}px solid ${on ? "var(--highlight)" : "rgb(15 23 42 / 0.85)"}`,
+                        outline: `${(on ? 2 : 1) / z}px solid ${on ? "black" : "rgb(15 23 42 / 0.85)"}`,
                         outlineOffset: 0,
                       }}
                     >
                       <span
-                        className={cn("pointer-events-none absolute left-0 flex h-5 min-w-5 items-center justify-center rounded-[4px] px-1 text-[11px] font-semibold tabular", on ? "bg-highlight text-background" : "bg-foreground text-background")}
+                        className="pointer-events-none absolute left-0 flex h-5 min-w-5 items-center justify-center rounded bg-black px-1 text-[11px] font-normal tabular text-white"
                         // Just above the box, so it never covers what the box covers; below it at the image's top edge.
                         style={b.y * size.H * z + view.ty >= 22
                           ? { top: 0, transform: `translateY(calc(-100% - 2px)) scale(${1 / z})`, transformOrigin: "0 100%" }
@@ -563,7 +559,7 @@ export function OcclusionEditor({ image, boxes: propBoxes, mode, onChange, onPen
                       className="absolute flex size-6 items-center justify-center pointer-coarse:size-9"
                       style={{ left: `${x * 100}%`, top: `${y * 100}%`, transform: `translate(-50%, -50%) scale(${1 / z})`, cursor: `${h}-resize` }}
                     >
-                      <span className="size-2 rounded-[2px] border border-highlight bg-white pointer-coarse:size-3" />
+                      <span className="size-2 rounded-[2px] border border-black bg-black pointer-coarse:size-3" />
                     </div>
                   );
                 })}
@@ -589,7 +585,7 @@ export function OcclusionEditor({ image, boxes: propBoxes, mode, onChange, onPen
             <div className="flex-1" />
             <div className="flex rounded-md border p-0.5 text-xs" role="radiogroup" aria-label="What a card covers">
               {[["hide-all", "Hide all"], ["hide-one", "Hide one"]].map(([v, l]) => (
-                <Tip key={v} label={v === "hide-all" ? "Every box is covered and one is asked" : "Only the asked box is covered; the others stay visible"}><button type="button" role="radio" aria-checked={(mode || "hide-all") === v} onClick={() => onChange({ mode: v })} className={cn("h-6 rounded px-2 pointer-coarse:h-8", (mode || "hide-all") === v ? "bg-accent text-foreground" : "text-muted-foreground hover:text-foreground")}>{l}</button></Tip>
+                <Tip key={v} label={v === "hide-all" ? "Every box is covered and one is asked" : "Only the asked box is covered; the others stay visible"}><button type="button" role="radio" aria-checked={(mode || "hide-all") === v} onClick={() => onChange({ mode: v })} className={cn("h-6 rounded px-2 pointer-coarse:h-8", (mode || "hide-all") === v ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground")}>{l}</button></Tip>
               ))}
             </div>
           </div>
@@ -615,7 +611,7 @@ export function OcclusionEditor({ image, boxes: propBoxes, mode, onChange, onPen
                       const ids = f.boxes.map((b) => b.id);
                       setSel((cur) => (ids.every((id) => cur.includes(id)) ? cur.filter((id) => !ids.includes(id)) : [...new Set([...cur, ...ids])]));
                     }}
-                    className={cn("relative mt-1.5 flex h-5 min-w-5 shrink-0 items-center justify-center rounded px-1 text-[11px] font-semibold tabular after:absolute after:-inset-2 after:content-['']", on ? "bg-highlight text-background" : "bg-foreground text-background hover:bg-foreground/80")}
+                    className={cn("relative mt-1.5 flex h-5 min-w-5 shrink-0 items-center justify-center rounded bg-muted px-1 text-[11px] font-semibold tabular text-foreground after:absolute after:-inset-2 after:content-['']", on ? "" : "hover:bg-muted/80")}
                   >
                     {i + 1}
                   </button></Tip>
