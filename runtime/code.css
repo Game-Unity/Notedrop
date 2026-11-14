@@ -35,21 +35,46 @@ pre[data-lang]::before {
 /* An editor (code or markdown) in a field-like box */
 .e-editor {
   border: 1px solid var(--input); border-radius: calc(var(--radius) - 2px);
-  background: transparent; overflow: hidden;
+  background: var(--background); overflow: hidden;
+  font: 500 0.875rem/1.6 "Comfortaa", sans-serif;
   transition: border-color 0.15s, box-shadow 0.15s;
 }
-.e-editor:focus-within { border-color: var(--ring); box-shadow: 0 0 0 3px color-mix(in oklab, var(--ring) 25%, transparent); }
-.e-editor.is-readonly { border-color: var(--border); background: color-mix(in oklab, var(--muted) 45%, transparent); }
-.e-editor.is-readonly:focus-within { box-shadow: none; border-color: var(--border); }
-.e-editor .cm-editor { max-width: 100%; }
+.e-editor:focus-within { border-color: var(--ring); box-shadow: 0 0 0 3px color-mix(in oklab, var(--ring) 50%, transparent); }
+.e-editor.is-readonly { border-color: var(--input); }
+.e-editor.is-readonly:focus-within { box-shadow: none; border-color: var(--input); }
+.e-editor .cm-content[aria-label="Markdown"] { font: 500 0.875rem/1.25rem "Comfortaa", sans-serif; }
+.e-editor .cm-editor { max-width: 100%; font-size: inherit; }
 .e-editor .cm-scroller { overflow-x: auto; }
 .e-editor-head {
   display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;
   padding: 0.35rem 0.75rem; border-bottom: 1px solid var(--border);
-  font: 500 0.75rem var(--font-sans); color: var(--muted-foreground);
+  font: 500 0.75rem "Comfortaa", sans-serif; color: var(--muted-foreground);
   background: color-mix(in oklab, var(--foreground) 3%, transparent);
 }
 .e-editor-loading { padding: 0.75rem 0.85rem; color: var(--muted-foreground); font: 0.85rem var(--font-mono); white-space: pre-wrap; }
+
+.e-editor .cm-content[aria-label="Code"],
+.e-editor .cm-scroller,
+.e-editor .cm-gutters,
+.e-editor-loading,
+.e-reveal .code-ref,
+.e-reveal .code-ref code,
+.e-reveal .code-test,
+.e-reveal .code-test code {
+  font-family: "Comfortaa", sans-serif;
+  font-size: inherit;
+  line-height: 1.6;
+  white-space: pre;
+  letter-spacing: 0.02em;
+  font-feature-settings: "tnum";
+}
+
+.e-reveal .code-ref {
+  background: var(--background);
+  border-color: var(--input);
+  border-radius: calc(var(--radius) - 2px);
+  overflow-wrap: normal;
+}
 
 /* iOS zooms into focused text under 16px. */
 @media (max-width: 640px) { .cm-content { font-size: 16px !important; } }

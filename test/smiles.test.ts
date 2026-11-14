@@ -106,6 +106,25 @@ test("renderSmilesBlocks upgrades blocks and inline spans", async () => {
   assert.deepEqual(kept, ["keep me"], "ordinary inline code is untouched");
 });
 
+test("renderSmilesBlocks applies wrapper scale and colors before drawing", async (t) => {
+  const style = window.document.createElement("style");
+  style.textContent = ".e-smiles, .e-smiles-inline { --smiles-scale: 1.8; --smiles-color-o: #445566; }";
+  window.document.head.appendChild(style);
+  t.after(() => style.remove());
+  for (const inline of [false, true]) {
+    const baseline = window.document.createElement("div");
+    const root = window.document.createElement("div");
+    root.innerHTML = inline ? "<p><code>smiles:CCO</code></p>" : '<pre><code class="language-smiles">CCO</code></pre>';
+    window.document.body.append(baseline, root);
+    const unscaled = await renderSmiles("CCO", baseline, { inline });
+    await renderSmilesBlocks(root);
+    const scaled = root.querySelector("svg");
+    assert.ok(scaled);
+    assert.ok(Math.abs(parseFloat(scaled.style.width) - parseFloat(unscaled.style.width) * 1.8) <= 1, "wrapper scale controls the rendered dimensions");
+    assert.ok(scaled.outerHTML.includes("#445566"), "wrapper color reaches the renderer");
+  }
+});
+
 test("renderSmilesBlocks keeps invalid sources as code", async () => {
   const root = window.document.createElement("div");
   root.innerHTML = `<pre><code class="language-smiles">((broken</code></pre><p><code>smiles:((broken</code></p>`;

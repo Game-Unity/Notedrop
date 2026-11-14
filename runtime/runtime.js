@@ -317,6 +317,29 @@ export function boot(main, templateHtml, assets) {
   document.documentElement.lang ||= "en";
   let api = null;
   let blocks = [];
+  const explainAction = (available) => {
+    const reveal = api?.root.querySelector(".e-reveal");
+    const existing = reveal?.querySelector("[data-explain-action]");
+    if (!available) {
+      existing?.remove();
+      return;
+    }
+    if (!reveal) {
+      send("error", { message: "The card has no revealed answer for the explanation action." });
+      return;
+    }
+    if (existing) return;
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "e-btn e-explain";
+    button.dataset.explainAction = "";
+    button.textContent = "Explain my answer";
+    button.addEventListener("click", () => {
+      button.disabled = true;
+      send("explain");
+    });
+    reveal.append(button);
+  };
   const fillResultSlots = (data) => {
     for (const slot of api.root.querySelectorAll("[data-result-slot]")) {
       const i = Number(slot.dataset.resultSlot);
@@ -366,6 +389,7 @@ export function boot(main, templateHtml, assets) {
     else if (msg.type === "theme") applyTheme(msg.theme);
     else if (msg.type === "screen") api?._screen(msg.height);
     else if (msg.type === "focus") focusCard(api?.root);
+    else if (msg.type === "explain-action") explainAction(msg.available === true);
   });
   forwardKeys();
   send("loaded");

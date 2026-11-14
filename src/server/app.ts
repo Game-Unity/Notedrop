@@ -155,7 +155,6 @@ async function readBody(c: Context, max: number, message: string): Promise<Buffe
 
 export function createApp(etude: Etude, opts: AppOptions = {}) {
   const app = new Hono();
-  opts = { ...opts, kitDir: opts.kitDir ?? [opts.webDist && join(opts.webDist, "kit"), join(ROOT, "web", "dist", "kit")].find((d) => d && existsSync(join(d, "kit.js"))) ?? null };
 
   app.onError((err, c) => {
     if (err instanceof EtudeError) {
@@ -758,8 +757,10 @@ export function createApp(etude: Etude, opts: AppOptions = {}) {
   // The editor kit is built with the web app (web/dist/kit) and loaded by card frames on demand.
   app.get("/runtime/kit/:file", (c) => {
     const f = c.req.param("file");
-    if (!/^[\w.-]+\.js$/.test(f) || !opts.kitDir) return c.text("not found", 404);
-    return sendFile(c, join(opts.kitDir, f), { cors: true, cache: f === "kit.js" ? "no-cache" : "public, max-age=31536000, immutable" });
+    if (!/^[\w.-]+\.js$/.test(f)) return c.text("not found", 404);
+    const kitDir = opts.kitDir ?? [opts.webDist && join(opts.webDist, "kit"), join(ROOT, "web", "dist", "kit")].find((d) => d && existsSync(join(d, "kit.js")));
+    if (!kitDir) return c.text("not found", 404);
+    return sendFile(c, join(kitDir, f), { cors: true, cache: f === "kit.js" ? "no-cache" : "public, max-age=31536000, immutable" });
   });
   app.get("/runtime/:file", (c) => {
     const f = c.req.param("file");

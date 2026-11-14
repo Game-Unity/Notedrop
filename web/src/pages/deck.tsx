@@ -9,7 +9,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { LiveMarkdown } from "@/components/live-editor";
 import { MediaPasteProvider } from "@/components/media-paste";
-import { BulkBar, CheckBox, groupItems, ItemRow, OrderSelect, SearchHints } from "@/components/item-editor";
+import { BulkBar, CheckBox, groupItems, ItemRow, OrderSelect, SearchHints, useItemsDeckDrag } from "@/components/item-editor";
 import { DeckOptions, formatDeadline, type DeckFull } from "@/components/deck-options";
 import { api, type Counts, type DeckNode, type LearnerSummary, type Preset, type SearchRow } from "@/lib/api";
 import { etudeDownload } from "@/lib/local-url";
@@ -344,6 +344,14 @@ function DeckCards({ deck, dataKey, hasChildren, active, selected, onOpenCard, o
     reloadMeta();
     onChanged();
   };
+  const selectedDrag = useItemsDeckDrag(checked, (target, ids) => {
+    void api.bulkItems("move", ids, { deck: target }).then(() => {
+      toast.success(`${ids.length} item${ids.length === 1 ? "" : "s"} moved to ${target.split("::").at(-1)}`);
+      const moved = new Set(ids);
+      setChecked((current) => new Set([...current].filter((id) => !moved.has(id))));
+      changed();
+    }).catch((e) => toast.error((e as Error).message));
+  });
 
   const items = useMemo(() => groupItems(rows), [rows]);
   const allChecked = items.length > 0 && items.every((r) => checked.has(r.itemId));
@@ -405,6 +413,8 @@ function DeckCards({ deck, dataKey, hasChildren, active, selected, onOpenCard, o
                   hideDeck={!hasChildren}
                   variant="tile"
                   onOpen={() => open(r.itemId)}
+                  onDeckDragPointerDown={selectedDrag.onPointerDown}
+                  consumeDeckDragClick={selectedDrag.consumeDragClick}
                   onToggle={() =>
                     setChecked((prev) => {
                       const n = new Set(prev);

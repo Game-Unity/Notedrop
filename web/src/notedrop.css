@@ -1,51 +1,4 @@
-@font-face {
-  font-family: "Comfortaa";
-  font-style: normal italic;
-  font-weight: 300 700;
-  font-display: swap;
-  src: url("./assets/fonts/comfortaa-cyrillic-ext.woff2") format("woff2");
-  unicode-range: U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
-}
-@font-face {
-  font-family: "Comfortaa";
-  font-style: normal italic;
-  font-weight: 300 700;
-  font-display: swap;
-  src: url("./assets/fonts/comfortaa-cyrillic.woff2") format("woff2");
-  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
-}
-@font-face {
-  font-family: "Comfortaa";
-  font-style: normal italic;
-  font-weight: 300 700;
-  font-display: swap;
-  src: url("./assets/fonts/comfortaa-greek.woff2") format("woff2");
-  unicode-range: U+0370-0377, U+037A-037F, U+0384-038A, U+038C, U+038E-03A1, U+03A3-03FF;
-}
-@font-face {
-  font-family: "Comfortaa";
-  font-style: normal italic;
-  font-weight: 300 700;
-  font-display: swap;
-  src: url("./assets/fonts/comfortaa-vietnamese.woff2") format("woff2");
-  unicode-range: U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB;
-}
-@font-face {
-  font-family: "Comfortaa";
-  font-style: normal italic;
-  font-weight: 300 700;
-  font-display: swap;
-  src: url("./assets/fonts/comfortaa-latin-ext.woff2") format("woff2");
-  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;
-}
-@font-face {
-  font-family: "Comfortaa";
-  font-style: normal italic;
-  font-weight: 300 700;
-  font-display: swap;
-  src: url("./assets/fonts/comfortaa-latin.woff2") format("woff2");
-  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
-}
+@import "../../runtime/prose.css";
 
 html:root {
     --nd-side-panel-width: 270px;
@@ -116,43 +69,6 @@ select {
 }
 
 
-
-/* Description typography — single source for the rendered description (.prose-etude)
-   and the live editor when it carries the same class (.live-md.prose-etude). */
-.prose-etude {
-    --nd-prose-text-color: var(--muted-foreground);
-    --nd-prose-text-weight: 500;
-    --nd-prose-heading-size: 15px;
-    --nd-prose-heading-weight: 600;
-    --nd-prose-heading-leading: var(--tw-leading, var(--text-base--line-height));
-    --nd-prose-stroke: 0.2px currentColor;
-    --nd-prose-strong-weight: 900;
-    --nd-prose-code-bg: var(--muted);
-    --nd-prose-code-color: black;
-    --nd-prose-code-radius: 6px;
-    --nd-prose-code-padding: .4em 1.0em;
-    --nd-prose-pre-bg: var(--background);
-    --nd-prose-pre-padding-inline: 25px;
-    --nd-prose-pre-size: 14px;
-    --nd-prose-img-max: 300px;
-    --nd-prose-marker: #858585;
-}
-
-.prose-etude p, .prose-etude li,.prose-etude td {
-    color: var(--nd-prose-text-color);
-    font-weight: var(--nd-prose-text-weight);
-}
-
-.prose-etude h1, .prose-etude h2, .prose-etude h3, .prose-etude h4, .prose-etude h5, .prose-etude h6 {
-	line-height: var(--nd-prose-heading-leading);
-    --tw-tracking: var(--tracking-tight);
-    margin: 29px 0 20px;
-    font-size: var(--nd-prose-heading-size);
-    font-weight: var(--nd-prose-heading-weight);
-    letter-spacing: 0;
-    -webkit-text-stroke: var(--nd-prose-stroke);
-}
-
 h2, h3, h4, h5, h6 {
     -webkit-text-stroke: 0.2px currentColor;
     line-height: var(--tw-leading, var(--text-base--line-height));
@@ -163,126 +79,6 @@ h2, h3, h4, h5, h6 {
     -webkit-text-stroke: 0.2px currentColor;
 }
 
-.prose-etude strong {
-    font-weight: var(--nd-prose-strong-weight);
-    -webkit-text-stroke: var(--nd-prose-stroke);
-    color: var(--foreground);
-}
-
-.prose-etude table {
-    width: 100%;
-    border-radius: var(--radius);
-    outline: unset;
-    margin: 20px 0;
-    background: var(--background);
-    border: none !important;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02), -1px 2px 18px rgba(0, 0, 0, 0.06);
-}
-
-.prose-etude td, .prose-etude th {
-    padding: 14px 25px;
-    text-align: left;
-    border-bottom-style: var(--tw-border-style);
-    border-bottom-width: 1px;
-}
-
-.prose-etude tr:last-child td {
-    border: unset;
-}
-
-.prose-etude th {
-    font-weight: 600;
-    -webkit-text-stroke: 0.2px currentColor;
-}
-
-
-/* Etude – moderne Markdown-Listen */
-
-.prose-etude ul,
-.prose-etude ol {
-    margin: 8px 0 14px;
-    padding-left: 22px;
-}
-
-/* Einzelne Listeneinträge */
-.prose-etude li {
-    padding-left: 3px;
-    margin: 5px 0;
-    line-height: 1.65;
-    color: var(--nd-prose-text-color);
-}
-
-/* Hauptmarker */
-.prose-etude li::marker {
-    color: var(--nd-prose-marker);
-    font-size: 1.0em;
-}
-
-/* Verschachtelte Listen */
-.prose-etude li > ul,
-.prose-etude li > ol {
-    margin: 5px 0 8px;
-    padding-left: 22px;
-}
-
-/* Runde Marker */
-.prose-etude ul {
-    list-style-type: disc;
-}
-
-.prose-etude ul ul {
-    list-style-type: disc;
-}
-
-.prose-etude ul ul ul {
-    list-style-type: disc;
-}
-
-/* Verschachtelte Marker etwas dezenter */
-.prose-etude ul ul li::marker {
-    color: #686868;
-}
-
-/* Absätze innerhalb der Listen */
-.prose-etude li > p {
-    margin: 0;
-}
-
-/* Checkboxen */
-.prose-etude input[type="checkbox"] {
-    accent-color: #ec75ad;
-    width: 15px;
-    height: 15px;
-    margin-right: 7px;
-    vertical-align: middle;
-}
-
-.prose-etude pre {
-    margin: 20px 0;
-    padding: 20px var(--nd-prose-pre-padding-inline);
-    background: var(--nd-prose-pre-bg);
-    border: none !important;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02), -1px 2px 18px rgba(0, 0, 0, 0.06);
-    font-size: var(--nd-prose-pre-size);
-    font-weight: 500;
-}
-
-.prose-etude img {
-    background: var(--muted);
-    border-radius: var(--radius);
-    outline: unset;
-    display: block;
-    max-width: 100%;
-    width: auto;
-    max-height: var(--nd-prose-img-max);
-    height: auto;
-    object-fit: contain;
-    margin: 20px auto;
-}
-
-.katex-display>.katex>.katex-html {
-    margin: 20px 0;
-}
 
 #root {
     background-color: var(--background-app);
@@ -296,7 +92,7 @@ main {
     overflow-y: scroll;
     height: calc(100vH - 6px);
     margin: 3px;
-    padding: 16px clamp(34px, 7.4vw, 75px) 60px clamp(34px, 7.4vw, 70px);
+    padding: 16px clamp(34px, 7.4vw, 73px) 60px clamp(34px, 7.4vw, 70px);
 }
 
 aside.bg-sidebar {
@@ -400,8 +196,8 @@ h1.text-2xl {
 
 div[class~="bg-card/40"] {
     background: var(--background);
-    border: 1px solid transparent !important;
-    box-shadow: 0 1px 2px rgb(0 0 0 / 2%), -1px 2px 18px rgba(0, 0, 0, 0.06);
+    border: 1px solid var(--border);
+    border-radius: calc(var(--radius) - 2px);
 }
 
 div[class~="bg-card/40"]:has(.prose-etude), div.bg-card\/40:has(.field-sizing-content), .field-sizing-content {
@@ -419,12 +215,6 @@ div[class~="bg-card/40"]:has(.prose-etude), div[class~="bg-card/40"]:has(.field-
     box-shadow: none !important;
     padding: 4px;
 }
-
-.prose-etude hr {
-    margin: 30px 0;
-}
-
-
 
 
 /* ====================================
@@ -763,20 +553,6 @@ color-mix(in oklab, var(--highlight) 12%, transparent);
 }
 
 
-.prose-etude code {
-    font-family: var(--font-mono);
-    background: var(--nd-prose-code-bg);
-    color: var(--nd-prose-code-color);
-    border-radius: var(--nd-prose-code-radius);
-    padding: var(--nd-prose-code-padding);
-    font-weight: var(--nd-prose-text-weight);
-    -webkit-text-stroke: 0.1px currentColor;
-}
-
-.prose-etude>:first-child {
-    font-weight: var(--nd-prose-strong-weight);
-}
-
 /* Live markdown editor as description editor (.live-md.prose-etude): the same editor
    the card fields use, styled from the description source above so editing matches
    reading. Scoped to this class pair — card editors keep their own look. */
@@ -792,19 +568,6 @@ color-mix(in oklab, var(--highlight) 12%, transparent);
     overflow: visible;
 }
 
-/* Comfortaa where it has the glyph, KaTeX fonts for the rest (math symbols, fractions).
-   font-size-adjust matches Comfortaa's larger x-height to KaTeX_Main so both blend. */
-.katex {
-    font-family: "Comfortaa", KaTeX_Main, math, "Times New Roman", serif;
-    font-size-adjust: 0.48 !important;
-    font-weight: 600 !important;
-}
-
-.katex .mathnormal,
-.katex .mord,
-.katex .mord .mathnormal {
-    font-family: "Comfortaa", KaTeX_Math, KaTeX_Main, math, serif !important;
-}
 
 .live-md.prose-etude .cm-content {
     font-family: "Comfortaa", sans-serif;
@@ -866,20 +629,8 @@ color-mix(in oklab, var(--highlight) 12%, transparent);
     font-feature-settings: "tnum";
 }
 
-/* Code block widget: outer wrapper carries the spacing, inner box carries the look. */
 .live-md.prose-etude .cm-md-cb-widget {
-    padding: 20px 0;
-}
-
-.live-md.prose-etude .cm-md-cb-widget-inner {
-    padding: 20px var(--nd-prose-pre-padding-inline);
-    background: var(--nd-prose-pre-bg);
-    border-radius: var(--radius);
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02), -1px 2px 18px rgba(0, 0, 0, 0.06);
-    font-size: var(--nd-prose-pre-size);
-    overflow-x: auto;
-    font-size: 14px;
-    font-weight: 500;
+    padding: 0;
 }
 
 .live-md.prose-etude .cm-md-cb-widget-label {
@@ -893,6 +644,7 @@ color-mix(in oklab, var(--highlight) 12%, transparent);
 .live-md.prose-etude .cm-md-cb-widget-pre {
     margin: 0;
     padding: 0;
+    border: 0;
     background: none;
     box-shadow: none;
     font-family: "Comfortaa", sans-serif;
@@ -1513,7 +1265,6 @@ color-mix(in oklab, var(--highlight) 12%, transparent);
 }
 
 
-
 /* ============================================
    NoteDrop - Root Header
    ============================================ */
@@ -1661,6 +1412,29 @@ color-mix(in oklab, var(--highlight) 12%, transparent);
     /* Quadratische Bild-Preview in der Kartenliste */
 }
 
+.nd-deck-cards-list {
+    gap: 0;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    border-radius: calc(var(--radius) - 2px);
+    box-shadow: none;
+}
+
+.nd-deck-cards-list > .nd-deck-card-tile {
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+}
+
+.nd-deck-cards-list > .nd-deck-card-tile + .nd-deck-card-tile {
+    border-top: 1px solid var(--border);
+}
+
+.nd-deck-cards-list > .nd-deck-card-tile:hover,
+.nd-deck-overview-tile:hover {
+    background-color: color-mix(in oklab, var(--accent) 40%, transparent);
+}
+
 .nd-deck-card-tile {
     padding-top: 23px;
     padding-bottom: 23px;
@@ -1691,9 +1465,9 @@ color-mix(in oklab, var(--highlight) 12%, transparent);
     min-height: 164px;
     gap: 12px;
     padding: 8px;
-    border-color: transparent;
     background: var(--background);
-    box-shadow: 0 1px 2px rgb(0 0 0 / 2%), -1px 2px 18px rgb(0 0 0 / 6%);
+    border: 1px solid var(--border);
+    border-radius: calc(var(--radius) - 2px);
 }
 
 .nd-deck-overview-cover {
@@ -1873,6 +1647,43 @@ p.-mt-1.text-xs.text-muted-foreground {}
 
 .nd-side-panel .nd-card-create-title {
     border-color: var(--border);
+}
+
+.nd-study-page > main {
+    container: nd-study / inline-size;
+    padding-top: 60px;
+}
+
+@container nd-study (min-width: 900px) {
+    .nd-study-result-split {
+        margin-left: calc(50% + 1.5rem);
+    }
+}
+
+.nd-study-page > header,
+.nd-study-page > footer {
+    --background: var(--background-app);
+    --foreground: var(--color-main-app);
+    --card: var(--background-app-sidebar);
+    --card-foreground: var(--color-main-app);
+    --popover: var(--background-app-sidebar);
+    --popover-foreground: var(--color-main-app);
+    --primary: var(--color-main-app);
+    --primary-foreground: var(--background-app);
+    --secondary: color-mix(in srgb, var(--background-app-sidebar) 85%, var(--color-main-app));
+    --secondary-foreground: var(--color-main-app);
+    --muted: color-mix(in srgb, var(--background-app-sidebar) 90%, var(--color-main-app));
+    --muted-foreground: var(--color-app);
+    --accent: color-mix(in srgb, var(--background-app-sidebar) 82%, var(--color-main-app));
+    --accent-foreground: var(--color-main-app);
+    --destructive: oklch(0.68 0.19 22);
+    --border: color-mix(in srgb, var(--color-main-app) 12%, transparent);
+    --input: color-mix(in srgb, var(--color-main-app) 15%, transparent);
+    --ring: var(--color-app);
+    --highlight: var(--color-main-app);
+    background-color: var(--background);
+    color: var(--foreground);
+    color-scheme: dark;
 }
 
 /* Embedded chat: the composer's light-theme tint classes don't apply here, so give it the
@@ -2578,11 +2389,11 @@ p.-mt-1.text-xs.text-muted-foreground {}
 
 .live-md.prose-etude .cm-content > .cm-line {
     padding: 0;
-    line-height: 1.8;
+    line-height: var(--nd-prose-leading);
 }
 
 .live-md.prose-etude .cm-line:has(.cm-md-bullet, .cm-md-list-marker) {
-    line-height: 1.85 !important;
+    line-height: var(--nd-prose-list-leading) !important;
     color: var(--nd-prose-text-color);
 }
 
@@ -2617,48 +2428,12 @@ p.-mt-1.text-xs.text-muted-foreground {}
     padding: 0;
 }
 
-/* Blockformeln */
-.cm-md-smiles, .e-smiles, .cm-md-smiles tspan, .e-smiles tspan {
-    --nd-smiles-bond-width: 1.2;
-    --smiles-scale: 1.8;
-    --smiles-color: currentColor;
-    font-weight: 600;
-}
-
-/* Inline-Formeln */
-.cm-md-smiles-inline, .e-smiles-inline, .cm-md-smiles-inline tspan, .e-smiles-inline tspan {
-    --nd-smiles-bond-width: 1.5;
-    --smiles-scale: 1.8;
-    --smiles-color: currentColor;
-}
-
-:is(.cm-md-smiles-inline, .e-smiles-inline) svg tspan[fill] {
-  stroke: attr(fill type(<color>));
-  stroke-width: var(--nd-smiles-label-stroke, 0.25px);
-  paint-order: stroke fill;
-}
-
-/* Bindungen (line) und aromatische Ringe (circle) liegen im maskierten <g> des SVG;
-   die Kreise der Textmaske stecken in <mask> und bleiben ebenso unberührt wie die
-   gefüllten Stereo-Keile (polygon). */
-:is(.cm-md-smiles, .cm-md-smiles-inline, .e-smiles, .e-smiles-inline) svg > g[mask] > :is(line, circle) {
-    stroke-width: var(--nd-smiles-bond-width, 1.3);
-}
-
 .nd-side-panel .cm-md-smiles, .nd-side-panel .cm-md-smiles-inline, .nd-side-panel .e-smiles, .nd-side-panel .e-smiles-inline {
     --smiles-scale: 1.4;
 }
 
-:is(.cm-md-smiles, .cm-md-smiles-inline, .e-smiles, .e-smiles-inline) svg > g[mask] > :is(line, circle) {
-    stroke-width: var(--nd-smiles-bond-width, 1.3);
-}
-
 .nd-side-panel .cm-md-smiles, .nd-side-panel .cm-md-smiles-inline, .nd-side-panel .e-smiles, .nd-side-panel .e-smiles-inline {
     --smiles-scale: 1.4;
-}
-
-.cm-md-smiles svg * {
-    font-family: "Comfortaa", sans-serif;
 }
 
 .cm-md-math-preview {
@@ -2689,3 +2464,12 @@ p.-mt-1.text-xs.text-muted-foreground {}
 .agent-prose li {
     padding: 3px 0;
 }
+
+.blank .fix {
+    font: inherit !important;
+}
+
+.e-editor-head {
+    font: 500 0.75rem "Comfortaa", sans-serif;
+}
+

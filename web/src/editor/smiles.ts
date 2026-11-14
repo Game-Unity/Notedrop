@@ -190,11 +190,13 @@ export async function renderSmilesBlocks(root: ParentNode): Promise<void> {
     el.dataset.smiles = "1";
     const fig = document.createElement("figure");
     fig.className = "e-smiles";
+    el.parentElement?.before(fig);
     const lines = (el.textContent ?? "").split("\n").map((l) => l.trim()).filter(Boolean);
     try {
       for (const line of lines) await renderSmiles(line, fig);
-      el.parentElement?.replaceWith(fig);
+      el.parentElement?.remove();
     } catch (e) {
+      fig.remove();
       el.title = e instanceof Error ? e.message : String(e);
       el.parentElement?.classList.add("e-smiles-error");
     }
@@ -203,10 +205,12 @@ export async function renderSmilesBlocks(root: ParentNode): Promise<void> {
     el.dataset.smiles = "1";
     const span = document.createElement("span");
     span.className = "e-smiles-inline";
+    el.before(span);
     try {
       await renderSmiles(inlineSmiles(el.textContent ?? "") ?? "", span, { inline: true });
-      el.replaceWith(span);
+      el.remove();
     } catch (e) {
+      span.remove();
       el.title = e instanceof Error ? e.message : String(e);
       el.classList.add("e-smiles-error");
     }

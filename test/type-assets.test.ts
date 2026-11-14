@@ -163,12 +163,34 @@ test("assets: served with CORS, nosniff, sandbox CSP, MIME by extension and a ha
   }
 });
 
+test("runtime: discovers an editor kit built after server startup", async (t) => {
+  const e = await open(t);
+  const webDist = tmp(t);
+  const app = createApp(e, { webDist });
+  mkdirSync(join(webDist, "kit"));
+  const script = 'export const highlight = () => "highlighted";';
+  writeFileSync(join(webDist, "kit", "kit.js"), script);
+  const response = await app.request("/runtime/kit/kit.js");
+  assert.equal(response.status, 200);
+  assert.equal(await response.text(), script);
+  assert.equal(response.headers.get("access-control-allow-origin"), "*");
+});
+
 test("assets: the card frame hands the runtime each asset's hash", async (t) => {
   const e = await open(t);
   e.saveType(meshType({ "hello.json": b64(JSON_ASSET) }));
   const app = createApp(e, { webDist: null });
   const html = await (await app.request("/frame/mesh")).text();
   assert.ok(html.includes(`{"type":"mesh","files":{"hello.json":"${hashBytes(JSON_ASSET)}"}}`));
+  assert.ok(html.includes('runtime/prose.css'));
+  const prose = await app.request("/runtime/prose.css");
+  assert.equal(prose.status, 200);
+  assert.equal(prose.headers.get("access-control-allow-origin"), "*");
+  assert.match(await prose.text(), /:is\(\.prose-etude, \.prose\)/);
+  const font = await app.request("/runtime/comfortaa-latin.woff2");
+  assert.equal(font.status, 200);
+  assert.equal(font.headers.get("content-type"), "font/woff2");
+  assert.equal(font.headers.get("access-control-allow-origin"), "*");
   // Unsaved previews of a stored type reach its stored assets.
   const preview: any = await (await app.request("/api/frame", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ def: meshType() }) })).json();
   assert.ok(preview.html.includes(hashBytes(JSON_ASSET)));

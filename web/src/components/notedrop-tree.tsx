@@ -194,6 +194,7 @@ export function NoteDropTree({ deckName, dataKey }: { deckName: string; dataKey:
           </div>
           <TooltipHint label={root.name} side="left"><button
             type="button"
+            data-card-drop-target={root.name}
             className={cn("nd-tree-row nd-tree-root shrink-0", activeDeck.name === root.name && "is-active")}
             aria-label={`Open ${leafOf(root.name)}`}
             aria-current={activeDeck.name === root.name ? "page" : undefined}
@@ -273,10 +274,9 @@ export function NoteDropTree({ deckName, dataKey }: { deckName: string; dataKey:
         onOpenChange={(open) => !open && setCreating(null)}
         onDone={async (createdName) => {
           setCreating(null);
-          if (parentOf(createdName) === rootName) {
-            const order = [...childrenOf(decks ?? [], rootName), createdName];
-            await api.reorderDecks(rootName, order);
-          }
+          const parent = parentOf(createdName);
+          const order = [...childrenOf(decks ?? [], parent), createdName];
+          await api.reorderDecks(parent, order);
           invalidateProgress();
           await refreshDecks(true);
         }}
@@ -326,6 +326,7 @@ function TreeNode({ deck, decks, activeName, path, rootName, treeDrag, rowElemen
             else rowElements.current.delete(deck.name);
             treeDrag.setRowRef(deck.name, element);
           }}
+          data-card-drop-target={deck.name}
           className={cn("nd-tree-row", active && "is-active", dragged && "is-dragged", target && !targetBlocked && "is-drop-target", targetBlocked && "is-drop-blocked")}
         >
           <TooltipHint label={deck.name} side="left"><button

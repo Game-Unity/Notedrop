@@ -2,6 +2,7 @@
 // loaded into an iframe with `sandbox="allow-scripts"` (no same-origin), so a card's code can't
 // read the app, its cookies or the API. It talks to the app only through postMessage.
 import type { CardTypeDef } from "../core/model.ts";
+import { STUDY_SPLIT_LAYOUT } from "../study-layout.ts";
 
 /** What a card needs to find its type's assets: the type id and each asset's content hash. */
 export interface FrameAssets {
@@ -53,11 +54,12 @@ export function cardFrame(def: CardTypeDef, base: string, assets?: FrameAssets):
 <link rel="stylesheet" href="${base}runtime/vendor/katex.css">
 <link rel="stylesheet" href="${base}runtime/card.css">
 <link rel="stylesheet" href="${base}runtime/code.css">
+<link rel="stylesheet" href="${base}runtime/prose.css">
 <style id="etude-theme"></style>
 <style>${esc(def.template.css ?? "")}</style>
 </head>
 <body data-mode="answer">
-<div id="card"></div>
+<div id="card"${STUDY_SPLIT_LAYOUT && def.id === "basic" ? ' class="e-card-split"' : ""}></div>
 <script type="module">
 import { boot } from "${base}runtime/runtime.js";
 const template = ${JSON.stringify(def.template.html).replace(/</g, "\\u003c")};

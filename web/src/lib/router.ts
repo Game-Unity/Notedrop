@@ -4,7 +4,7 @@
 import { useSyncExternalStore } from "react";
 
 /** The path prefix the app is served under, "" at the root. Set at build time (VITE_APP_BASE=/app). */
-export const BASE = String(import.meta.env.VITE_APP_BASE ?? "").replace(/\/+$/, "");
+export const BASE = String(import.meta.env?.VITE_APP_BASE ?? "").replace(/\/+$/, "");
 
 /** The current screen's path, without the prefix. */
 export function appPath(pathname = location.pathname): string {
@@ -20,10 +20,21 @@ const listeners = new Set<() => void>();
 const notify = () => listeners.forEach((l) => l());
 window.addEventListener("popstate", notify);
 
+export function studyReturnTo(): string {
+  const state: unknown = history.state;
+  if (!state || typeof state !== "object" || !("studyReturnTo" in state)) return "/";
+  const to = state.studyReturnTo;
+  return typeof to === "string" && to.startsWith("/") && !to.startsWith("//") && to.split(/[?#]/)[0] !== "/study" ? to : "/";
+}
+
 export function navigate(to: string, opts: { replace?: boolean } = {}) {
-  if (to === appPath() + location.search) return;
-  if (opts.replace) history.replaceState(null, "", withBase(to));
-  else history.pushState(null, "", withBase(to));
+  const from = appPath() + location.search;
+  if (to === from) return;
+  const state = to.split(/[?#]/)[0] === "/study"
+    ? { studyReturnTo: appPath() === "/study" ? studyReturnTo() : from }
+    : null;
+  if (opts.replace) history.replaceState(state, "", withBase(to));
+  else history.pushState(state, "", withBase(to));
   notify();
   window.scrollTo(0, 0);
 }

@@ -147,9 +147,10 @@ The app posts its theme into the frame, and posts it again when the user switche
 
 `runtime/card.css` provides:
 
-- **Layout:** `#card` is a column with a 1.25rem gap.
+- **Layout:** `#card` is a column with a 1.25rem gap. The experimental basic-card split layout is currently disabled by `STUDY_SPLIT_LAYOUT` in `src/study-layout.ts`. When enabled, basic cards use `.e-card-split`: at frame widths of 900px or more, the front is on the left and the revealed back on the right, with equal column widths and a vertical separator. Each side is vertically centered independently when shorter than the available height; longer content starts at the top. Narrower frames keep the stacked layout and horizontal separator.
+- With the experimental split layout enabled, the Study view places the basic card's “Explain my answer” action inside `.e-reveal` and requests feedback through the frame's message channel. Otherwise, it uses the standard app button with an icon below the card.
 - **Text:**
-  - `.prose` for rendered markdown, including code, tables and KaTeX.
+  - `.prose` for rendered markdown, including code, tables and KaTeX. Its typography comes from `runtime/prose.css`, shared with the app's `.prose-etude` descriptions, including the bundled Comfortaa fonts.
   - `.e-muted`, `.e-label`, `.e-section-title`.
 - **Layout helpers:** `.e-row`, `.e-stack`.
 - **Inputs:**

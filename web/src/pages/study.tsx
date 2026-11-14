@@ -1,4 +1,5 @@
 import { autoSync } from "@/lib/sync";
+import { STUDY_SPLIT_LAYOUT } from "../../../src/study-layout.ts";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ArrowLeft, ArrowLeftToLine, ChevronLeft, Plus, X as XIcon, FastForward, CornerDownLeft, Dices, EyeOff, Loader2, Maximize2, MessageSquareText, Minimize2, MoreHorizontal, Pause, Pencil, RotateCcw, Undo2 } from "lucide-react";
 import { toast } from "sonner";
@@ -11,7 +12,7 @@ import { AnswerRetry } from "@/components/answer-retry";
 import { Markdown } from "@/components/markdown";
 import { api, humanInterval, relative, RATING_LABEL, type Counts, type LearnerSummary, type Rating, type Scope, type StudyCard } from "@/lib/api";
 import { cn } from "@/lib/utils";
-import { navigate } from "@/lib/router";
+import { navigate, studyReturnTo } from "@/lib/router";
 import { usePhone } from "@/lib/phone";
 import { ActionSheet, Tally } from "@/components/phone-shell";
 import { SketchBar, SketchLayer, sketchTransform, useSketch } from "@/components/sketch-pad";
@@ -66,8 +67,12 @@ export function StudyPage({ scope, title, startCard }: { scope: Scope; title: st
   const sk = useSketch(card ? `${card.cardId}:${card.seed}` : null);
 
   useEffect(() => {
-    if (phase === "result") setTimeout(() => resultRef.current?.scrollIntoView({ block: "nearest", behavior: "smooth" }), 60);
-  }, [phase, feedback?.text]);
+    if (phase !== "result") return;
+    const iframe = mainRef.current?.querySelector("iframe");
+    if (STUDY_SPLIT_LAYOUT && card?.type === "basic" && iframe && iframe.clientWidth >= 900) return;
+    const timer = setTimeout(() => resultRef.current?.scrollIntoView({ block: "nearest", behavior: "smooth" }), 60);
+    return () => clearTimeout(timer);
+  }, [phase, feedback?.text, card?.type]);
 
   const load = useCallback(async (exclude?: number) => {
     setPhase("loading");
@@ -303,7 +308,7 @@ export function StudyPage({ scope, title, startCard }: { scope: Scope; title: st
       if (e.repeat && (["u", "U", "=", "-", "@", "!"].includes(e.key) || ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z"))) return;
       const t = e.target as HTMLElement;
       if (t?.closest("input, textarea, [contenteditable]")) return;
-      if (e.key === "Escape") return focus ? setFocus(false) : navigate("/");
+      if (e.key === "Escape") return focus ? setFocus(false) : navigate(studyReturnTo());
       if ((e.ctrlKey || e.metaKey) && e.key === "Enter") return onKey("Mod+Enter");
       if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === "z") {
         e.preventDefault();
@@ -317,6 +322,8 @@ export function StudyPage({ scope, title, startCard }: { scope: Scope; title: st
 
   const suggested = result?.grade.suggested ?? null;
   const verdict = card?.showVerdict !== false && result?.grade.verdict && VERDICT_TEXT[result.grade.verdict];
+  const explainInFrame = STUDY_SPLIT_LAYOUT && card?.type === "basic";
+  const showResultDetails = !!(verdict || result?.grade.adaptive?.reason || feedback || card?.generated || card?.source || (!explainInFrame && attemptId && card?.showVerdict !== false));
   const total = counts ? counts.new + counts.learning + counts.review : 0;
   // In focus mode the header and the card's badges go, and the bottom bar only shows when it has
   // something to press: not while grading, nor while a card that submits by itself keeps Check disabled.
@@ -325,11 +332,11 @@ export function StudyPage({ scope, title, startCard }: { scope: Scope; title: st
   const showBar = !bare || !idleBar;
 
   return (
-    <div className={cn("mx-auto flex min-h-dvh w-full max-w-3xl flex-col px-4 sm:px-8", showBar ? "pb-44" : "pb-6", bare && "pt-[env(safe-area-inset-top)]", bare && phone && "px-0", bare && phone && !showBar && "pb-0", sk.on && "overflow-x-clip")}>
+    <div className={cn("nd-study-page flex h-dvh min-h-0 w-full flex-col overflow-hidden", bare && "pt-[env(safe-area-inset-top)]", sk.on && "overflow-x-clip")}>
       {bare ? null : phone ? (
-        <header className="sticky top-0 z-10 -mx-4 flex h-[calc(3.5rem+env(safe-area-inset-top))] items-end bg-background/92 px-1 pt-[env(safe-area-inset-top)] backdrop-blur">
+        <header className="sticky top-0 z-10 flex h-[calc(3.5rem+env(safe-area-inset-top))] items-end bg-background/92 px-1 pt-[env(safe-area-inset-top)] backdrop-blur">
           <div className="flex h-14 w-full items-center gap-1">
-            <button onClick={() => navigate("/")} className="flex size-11 shrink-0 items-center justify-center rounded-full text-muted-foreground active:bg-accent" aria-label="Back to decks"><ChevronLeft className="size-6" /></button>
+            <button onClick={() => navigate(studyReturnTo())} className="flex size-11 shrink-0 items-center justify-center rounded-full text-muted-foreground active:bg-accent" aria-label="Back"><ChevronLeft className="size-6" /></button>
             <div className="min-w-0 flex-1">
               <div className="score-serif truncate text-[1.15rem] leading-tight">{title}</div>
               {counts && <Tally n={counts.new} l={counts.learning} r={counts.review} className="mt-0.5 text-[12px]" />}
@@ -343,8 +350,8 @@ export function StudyPage({ scope, title, startCard }: { scope: Scope; title: st
           </div>
         </header>
       ) : (
-      <header className="sticky top-0 z-10 -mx-4 flex items-center gap-2 bg-background/90 px-4 py-3 pt-[max(0.75rem,env(safe-area-inset-top))] backdrop-blur sm:-mx-8 sm:gap-3 sm:px-8 sm:py-4">
-        <Button variant="ghost" size="icon" className="-ml-2" onClick={() => navigate("/")} aria-label="Back to decks">
+      <header className="sticky top-0 z-10 mx-auto flex w-full max-w-3xl items-center gap-2 bg-background/90 px-4 py-3 pt-[max(0.75rem,env(safe-area-inset-top))] backdrop-blur sm:gap-3 sm:px-8 sm:py-4">
+        <Button variant="ghost" size="icon" className="-ml-2" onClick={() => navigate(studyReturnTo())} aria-label="Back">
           <ArrowLeft />
         </Button>
         <div className="min-w-0 flex-1">
@@ -402,7 +409,7 @@ export function StudyPage({ scope, title, startCard }: { scope: Scope; title: st
       {phase === "done" && (scope.placement ? <PlacementDone deck={scope.deck ?? ""} /> : <Done counts={counts} scope={scope} />)}
 
       {card && phase !== "done" && (
-        <main ref={mainRef} style={phone ? sketchTransform(sk.view, mainRef.current) : undefined} className={cn("flex flex-1 flex-col gap-5 pt-3 sm:gap-6 sm:pt-6", bare && phone && "pt-0")}>
+        <main ref={mainRef} style={phone ? sketchTransform(sk.view, mainRef.current) : undefined} className="flex min-h-0 flex-1 flex-col gap-5 sm:gap-6">
           <div className={cn("flex flex-wrap items-center gap-2 text-xs text-muted-foreground", bare && "hidden")}>
             <Badge variant="outline" className="font-normal">{card.type}</Badge>
             {card.scheduler.id !== "fsrs" && <Badge variant="outline" className="font-normal">{card.scheduler.name.toLowerCase()}</Badge>}
@@ -431,6 +438,7 @@ export function StudyPage({ scope, title, startCard }: { scope: Scope; title: st
           {retry && phase === "answer" && <AnswerRetry hint={retry.hint} />}
           <CardFrame
             ref={frame}
+            className="shrink-0"
             src={`/frame/${encodeURIComponent(card.type)}?v=${encodeURIComponent(card.typeVersion)}`}
             frameKey={`${card.cardId}:${card.seed}:${card.typeVersion}:${retry?.count ?? 0}`}
             view={card.view}
@@ -438,12 +446,14 @@ export function StudyPage({ scope, title, startCard }: { scope: Scope; title: st
             onReady={setReady}
             onKey={onKey}
             onError={(m) => toast.error("Card error", { description: m })}
+            onExplain={explainInFrame && phase === "result" && !feedback && attemptId !== null && card.showVerdict !== false ? () => askFeedback(attemptId) : undefined}
             fitScreen={bare}
+            fitContainer={STUDY_SPLIT_LAYOUT && card.type === "basic"}
             fitMargin={bare && phone && !showBar ? PHONE_FOCUS_STRIP : undefined}
           />
 
-          {phase === "result" && result && (
-            <section ref={resultRef} className="flex scroll-mb-36 flex-col gap-3 pt-1">
+          {phase === "result" && result && showResultDetails && (
+            <section ref={resultRef} className={cn("flex min-w-0 scroll-mb-36 flex-col gap-3 pt-1", STUDY_SPLIT_LAYOUT && card.type === "basic" && "nd-study-result-split")}>
               {verdict && (
                 <div className="flex items-center gap-2 text-sm">
                   <span className={cn("font-medium", verdict.cls)}>{verdict.label}</span>
@@ -465,7 +475,7 @@ export function StudyPage({ scope, title, startCard }: { scope: Scope; title: st
               )}
               {feedback?.error && <div className="text-sm text-destructive">Feedback failed: {feedback.error}</div>}
               <div className="flex flex-wrap items-center gap-2">
-                {!feedback && attemptId && card.showVerdict !== false && (
+                {!explainInFrame && !feedback && attemptId && card.showVerdict !== false && (
                   <Button variant="outline" size="sm" className="gap-1.5" onClick={() => askFeedback(attemptId)}>
                     <MessageSquareText className="size-4" /> Explain my answer
                   </Button>
@@ -496,8 +506,8 @@ export function StudyPage({ scope, title, startCard }: { scope: Scope; title: st
         </button>
       )}
       {card && showBar && (phase === "answer" || phase === "grading" || phase === "result") && (
-        <footer className="fixed inset-x-0 bottom-0 z-20 border-t bg-background pb-[env(safe-area-inset-bottom)] max-md:border-t-0 max-md:pb-[max(0.5rem,env(safe-area-inset-bottom))]">
-          <div className="mx-auto flex max-w-3xl items-center justify-center gap-2 px-3 py-3 max-md:px-4 sm:px-8 sm:py-4">
+        <footer className="z-20 shrink-0 bg-background pb-[env(safe-area-inset-bottom)] max-md:pb-[max(0.5rem,env(safe-area-inset-bottom))]">
+          <div className="mx-auto flex h-24 max-w-3xl items-center justify-center gap-2 px-3 py-3 max-md:px-4 sm:h-22 sm:px-8 sm:py-4">
             {phone && sk.on ? (
               <SketchBar sk={sk} />
             ) : <>
@@ -523,7 +533,7 @@ export function StudyPage({ scope, title, startCard }: { scope: Scope; title: st
               </div>
             )}
             {phase !== "result" ? (
-              <Button size="lg" className="h-[3.25rem] flex-1 gap-2 rounded-full text-[16px] pointer-coarse:h-[3.25rem] sm:h-10 sm:w-auto sm:min-w-48 sm:flex-none sm:rounded-md sm:text-sm" disabled={phase === "grading" || (!ready && card.grader !== "self")} onClick={reveal}>
+              <Button size="lg" className="h-[3.25rem] flex-1 gap-2 rounded-full text-[16px] font-semibold pointer-coarse:h-[3.25rem] sm:h-10 sm:w-auto sm:min-w-48 sm:flex-none sm:rounded-md sm:text-sm" disabled={phase === "grading" || (!ready && card.grader !== "self")} onClick={reveal}>
                 {phase === "grading" ? <><Loader2 className="size-4 animate-spin" /> Grading…</> : card.grader === "self" ? <>Show answer <kbd className="hidden text-xs opacity-60 sm:inline">Space</kbd></> : <>Check <span className="hidden items-center gap-0.5 text-xs opacity-60 sm:flex"><kbd>Ctrl</kbd><CornerDownLeft className="size-3" /></span></>}
               </Button>
             ) : !card.scheduler.ratings ? (
@@ -554,15 +564,6 @@ export function StudyPage({ scope, title, startCard }: { scope: Scope; title: st
             )}
             </>}
           </div>
-          {phase === "result" && (
-            <div className="hidden pb-3 text-center text-xs text-muted-foreground sm:block">
-              {card.scheduler.ratings ? (
-                <><kbd>1</kbd>–<kbd>4</kbd> to rate{suggested ? <>, <kbd>Space</kbd> for {RATING_LABEL[suggested]}</> : null}</>
-              ) : (
-                <>Your result is saved either way. <kbd>Space</kbd> for next, <kbd>R</kbd> to go again</>
-              )}
-            </div>
-          )}
         </footer>
       )}
       {phone && card && <SketchLayer sk={sk} />}

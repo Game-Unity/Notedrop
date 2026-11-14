@@ -37,12 +37,15 @@ interface Props {
   autoFocus?: boolean;
   /** Tell the card how much screen height it can fill below its top (`etude.screen`), e.g. in focus mode. */
   fitScreen?: boolean;
+  /** Report the height left in the parent after its padding and other children. */
+  fitContainer?: boolean;
   /** Pixels kept free under the card when fitting the screen (default 16), e.g. for a button. */
   fitMargin?: number;
   onSubmit?(answer: unknown): void;
   onReady?(ready: boolean): void;
   onKey?(key: string): void;
   onError?(message: string): void;
+  onExplain?(): void;
 }
 
 // A type's saved preferences (etude.prefs), fetched once per type and kept current as cards save them.
@@ -90,20 +93,59 @@ export const CardFrame = forwardRef<CardFrameHandle, Props>(function CardFrame(p
     iframe.current?.contentWindow?.postMessage({ etude: 1, ...msg }, "*", transfer);
   }, []);
 
+  const explainAvailable = !!props.onExplain;
+  useEffect(() => {
+    if (loaded) post({ type: "explain-action", available: explainAvailable });
+  }, [loaded, explainAvailable, post]);
+
   // The height left on screen from the frame's top to the bottom of the window (less a margin), or null.
   const screenHeight = useCallback(() => {
     const el = iframe.current;
-    if (!latest.current.fitScreen || !el) return null;
+    if (!el) return null;
+    const parent = el.parentElement;
+    if (latest.current.fitContainer && parent) {
+      const style = getComputedStyle(parent);
+      const gap = style.rowGap === "normal" ? 0 : parseFloat(style.rowGap);
+      const siblings = [...parent.children].filter((child) => child !== el && getComputedStyle(child).display !== "none");
+      const occupied = siblings.reduce((total, child) => {
+        const css = getComputedStyle(child);
+        return total + child.getBoundingClientRect().height + parseFloat(css.marginTop) + parseFloat(css.marginBottom) + gap;
+      }, 0);
+      return Math.max(0, Math.floor(parent.clientHeight - parseFloat(style.paddingTop) - parseFloat(style.paddingBottom) - occupied));
+    }
+    if (!latest.current.fitScreen) return null;
     return Math.max(200, Math.floor(window.innerHeight - (el.getBoundingClientRect().top + window.scrollY) - (latest.current.fitMargin ?? 16)));
   }, []);
   useEffect(() => {
     if (!loaded) return;
     const send = () => post({ type: "screen", height: screenHeight() });
     send();
-    if (!props.fitScreen) return;
+    if (!props.fitScreen && !props.fitContainer) return;
     window.addEventListener("resize", send);
-    return () => window.removeEventListener("resize", send);
-  }, [loaded, props.fitScreen, post, screenHeight]);
+    const parent = iframe.current?.parentElement;
+    let resize: ResizeObserver | undefined;
+    let mutations: MutationObserver | undefined;
+    if (props.fitContainer && parent) {
+      const observer = new ResizeObserver(send);
+      resize = observer;
+      const observe = () => {
+        observer.disconnect();
+        observer.observe(parent);
+        for (const child of parent.children) {
+          if (child !== iframe.current) observer.observe(child);
+        }
+        send();
+      };
+      mutations = new MutationObserver(observe);
+      mutations.observe(parent, { childList: true });
+      observe();
+    }
+    return () => {
+      window.removeEventListener("resize", send);
+      resize?.disconnect();
+      mutations?.disconnect();
+    };
+  }, [loaded, props.fitScreen, props.fitContainer, props.fitMargin, post, screenHeight]);
 
   // With no server (the core runs in this tab), a served frame can't be loaded by URL: fetch its
   // HTML from the core and show it as srcdoc. The frame then asks for media over postMessage.
@@ -180,6 +222,9 @@ export const CardFrame = forwardRef<CardFrameHandle, Props>(function CardFrame(p
           break;
         case "submit":
           p.onSubmit?.(msg.answer);
+          break;
+        case "explain":
+          p.onExplain?.();
           break;
         case "ready-state":
           p.onReady?.(!!msg.ready);

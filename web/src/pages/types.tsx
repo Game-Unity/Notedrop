@@ -365,7 +365,7 @@ function Group({ label, aside, children }: { label?: React.ReactNode; aside?: Re
 }
 
 function List({ children, drop, dropping }: { children: React.ReactNode; drop?: DropProps; dropping?: boolean }) {
-  return <div className={cn("grid gap-3 rounded-xl transition-colors", dropping && "border border-highlight/70 bg-highlight/5 p-1.5")} {...drop}>{children}</div>;
+  return <div className={cn("nd-deck-cards-list grid gap-3 rounded-xl transition-colors", dropping && "outline outline-highlight/70 bg-highlight/5")} {...drop}>{children}</div>;
 }
 
 function Empty({ children }: { children: React.ReactNode }) {

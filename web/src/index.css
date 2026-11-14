@@ -136,17 +136,6 @@
 .tabular { font-variant-numeric: tabular-nums; }
 @media (prefers-reduced-motion: reduce) { .viz-anim { transition: none !important; } }
 
-.prose-etude { line-height: 1.6; }
-.prose-etude > :first-child { margin-top: 0; }
-.prose-etude > :last-child { margin-bottom: 0; }
-.prose-etude p { margin: 0.5em 0; }
-.prose-etude ul, .prose-etude ol { padding-left: 1.3em; margin: 0.4em 0; list-style: revert; }
-.prose-etude code { font-family: var(--font-mono); font-size: 0.88em; background: var(--muted); padding: 0.1em 0.35em; border-radius: 0.35em; }
-.prose-etude pre { background: var(--muted); padding: 0.75em 1em; border-radius: var(--radius); overflow-x: auto; line-height: 1.55; }
-.prose-etude pre code { background: none; padding: 0; }
-.prose-etude strong { font-weight: 600; }
-.prose-etude a { text-decoration: underline; text-underline-offset: 2px; }
-.prose-etude .katex-display { margin: 0.5em 0; overflow-x: auto; overflow-y: hidden; }
 
 /* SMILES structures (```smiles blocks and inline `smiles:…` spans), drawn by the editor kit.
    --smiles-font, --smiles-stroke and --smiles-scale on an ancestor set the label font,

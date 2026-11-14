@@ -38,7 +38,11 @@ katexCss = katexCss.replace(/src:url\(fonts\/([\w-]+)\.woff2\) format\("woff2"\)
   const b64 = readFileSync(join(katexDist, "fonts", `${f}.woff2`)).toString("base64");
   return `src:url(data:font/woff2;base64,${b64}) format("woff2")`;
 });
-const css = [katexCss, readFileSync(join(root, "runtime", "card.css"), "utf8"), readFileSync(join(root, "runtime", "code.css"), "utf8")].join("\n");
+const proseCss = readFileSync(join(root, "runtime", "prose.css"), "utf8").replace(/url\("\.\/(comfortaa-[\w-]+\.woff2)"\)/g, (_, file) => {
+  const b64 = readFileSync(join(root, "runtime", file)).toString("base64");
+  return `url("data:font/woff2;base64,${b64}")`;
+});
+const css = [katexCss, readFileSync(join(root, "runtime", "card.css"), "utf8"), readFileSync(join(root, "runtime", "code.css"), "utf8"), proseCss].join("\n");
 writeFileSync(join(out, "frame.css"), css);
 const js = readFileSync(join(out, "frame-runtime.js"), "utf8");
 console.log(`frame runtime ${(js.length / 1024).toFixed(0)} KB, css ${(css.length / 1024).toFixed(0)} KB, fonts left as urls: ${(katexCss.match(/url\(fonts/g) ?? []).length}`);

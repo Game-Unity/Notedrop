@@ -1,5 +1,5 @@
 // The card list rows, bulk actions and item editor shared by Browse and the deck page's Cards tab.
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Archive, ArchiveRestore, ArrowLeft, Check, Copy, Dices, FolderInput, Image, Loader2, MoreHorizontal, Pause, Play, RotateCcw, Save, Tag, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -70,7 +70,7 @@ export function CheckBox({ checked, onClick, label, className }: { checked: bool
   );
 }
 
-export function ItemRow({ row: r, active, checked, onOpen, onToggle, className, hideDeck, selecting, variant = "list" }: { row: ItemRowData; active: boolean; checked: boolean; onOpen(): void; onToggle(): void; className?: string; hideDeck?: boolean; selecting?: boolean; variant?: "list" | "tile" }) {
+export function ItemRow({ row: r, active, checked, onOpen, onToggle, className, hideDeck, selecting, variant = "list", onDeckDragPointerDown, consumeDeckDragClick }: { row: ItemRowData; active: boolean; checked: boolean; onOpen(): void; onToggle(): void; className?: string; hideDeck?: boolean; selecting?: boolean; variant?: "list" | "tile"; onDeckDragPointerDown?(id: string, event: React.PointerEvent<HTMLDivElement>): void; consumeDeckDragClick?(id: string): boolean }) {
   // Phones: no checkbox column until you press and hold a row; then taps select.
   const phone = usePhone();
   const { handlers, held } = useLongPress(onToggle);
@@ -79,7 +79,9 @@ export function ItemRow({ row: r, active, checked, onOpen, onToggle, className, 
   return (
     <div
       data-item-row
+      onPointerDown={onDeckDragPointerDown ? (event) => onDeckDragPointerDown(r.itemId, event) : undefined}
       onClick={() => {
+        if (consumeDeckDragClick?.(r.itemId)) return;
         if (held()) return;
         if (phone && selecting) onToggle();
         else onOpen();
@@ -111,7 +113,7 @@ export function ItemRow({ row: r, active, checked, onOpen, onToggle, className, 
           {r.image ? <EtudeImg src={r.image} alt="" className="size-full object-cover" /> : <Image className="size-5 text-muted-foreground" />}
         </div>
       )}
-      <div className={cn("min-w-0 flex-1 self-center", variant === "tile" && "pr-12")}>
+      <div className={cn("min-w-0 flex-1 self-center", variant === "tile" && "pr-24")}>
         <div className={cn("line-clamp-2 text-sm leading-snug max-md:text-[15px]", variant === "tile" && "nd-deck-card-title", active && "font-medium text-highlight")} aria-current={active || undefined}>{r.title || <span className="text-muted-foreground">{r.itemId}</span>}</div>
         <div className={cn(variant === "tile" ? "mt-0.5" : "mt-1", "flex items-center gap-2 text-xs text-muted-foreground", variant === "tile" && "nd-deck-card-meta")}>
           {!hideDeck && <><span className="truncate">{r.deck.split("::").slice(-1)[0]}</span><span>·</span></>}
@@ -147,7 +149,8 @@ export function BulkBar({ checked, rows, decks, tags, onClear, onDone, onDeleted
   const bulk = async (action: string, extra: Record<string, unknown> = {}) => {
     try {
       await api.bulkItems(action, ids, extra);
-      toast.success(`${ids.length} item${ids.length === 1 ? "" : "s"} updated`);
+      const target = action === "move" && typeof extra.deck === "string" ? extra.deck.split("::").at(-1) : null;
+      toast.success(target ? `${ids.length} item${ids.length === 1 ? "" : "s"} moved to ${target}` : `${ids.length} item${ids.length === 1 ? "" : "s"} updated`);
       if (action === "delete") onDeleted?.(ids);
       onClear();
       onDone();
@@ -204,6 +207,68 @@ export function BulkBar({ checked, rows, decks, tags, onClear, onDone, onDeleted
       </AlertDialog>
     </>
   );
+}
+
+export function useItemsDeckDrag(checked: Set<string>, onDrop: (deck: string, ids: string[]) => void) {
+  const draggedItem = useRef<string | null>(null);
+  const dropTargetElement = useRef<HTMLElement | null>(null);
+
+  useEffect(() => () => dropTargetElement.current?.classList.remove("is-drop-target"), []);
+
+  const setDeckDropTarget = (target: HTMLElement | null) => {
+    if (dropTargetElement.current === target) return;
+    dropTargetElement.current?.classList.remove("is-drop-target");
+    dropTargetElement.current = target;
+    target?.classList.add("is-drop-target");
+  };
+
+  const onPointerDown = (id: string, event: React.PointerEvent<HTMLDivElement>) => {
+    if (event.button !== 0 || (event.target instanceof HTMLElement && event.target.closest("button"))) return;
+    const row = event.currentTarget;
+    const x0 = event.clientX;
+    const y0 = event.clientY;
+    const ids = checked.has(id) ? [...checked] : [id];
+    let active = false;
+    let targetName: string | null = null;
+    draggedItem.current = null;
+    row.classList.add("select-none");
+
+    const update = (x: number, y: number) => {
+      const target = document.elementFromPoint(x, y)?.closest<HTMLElement>("#notedrop-tree [data-card-drop-target]") ?? null;
+      targetName = target?.dataset.cardDropTarget ?? null;
+      setDeckDropTarget(target);
+    };
+    const move = (pointer: PointerEvent) => {
+      if (!active && Math.hypot(pointer.clientX - x0, pointer.clientY - y0) < 5) return;
+      active = true;
+      draggedItem.current = id;
+      pointer.preventDefault();
+      update(pointer.clientX, pointer.clientY);
+    };
+    const end = (pointer: PointerEvent) => {
+      row.removeEventListener("pointermove", move);
+      row.removeEventListener("pointerup", end);
+      row.removeEventListener("pointercancel", end);
+      row.classList.remove("select-none");
+      if (pointer.type === "pointerup" && active) update(pointer.clientX, pointer.clientY);
+      setDeckDropTarget(null);
+      if (pointer.type === "pointercancel") draggedItem.current = null;
+      else if (active && targetName) onDrop(targetName, ids);
+    };
+
+    row.setPointerCapture(event.pointerId);
+    row.addEventListener("pointermove", move);
+    row.addEventListener("pointerup", end);
+    row.addEventListener("pointercancel", end);
+  };
+
+  const consumeDragClick = (id: string) => {
+    if (draggedItem.current !== id) return false;
+    draggedItem.current = null;
+    return true;
+  };
+
+  return { onPointerDown, consumeDragClick };
 }
 
 const HINT_LABEL: Record<string, string> = {
