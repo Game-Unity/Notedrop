@@ -279,24 +279,27 @@ const HINT_LABEL: Record<string, string> = {
   "is:suspended": "Suspended",
   "prop:lapses>=2": "Often missed",
   "rated:1:1": "Missed today",
-  "type:free": "Free answer",
 };
 
-export function SearchHints({ onPick }: { onPick(s: string): void }) {
-  const hints = ["is:due", "is:new", LEARNING_SEARCH, MASTERED_SEARCH, "is:suspended", "prop:lapses>=2", "rated:1:1", "type:free"];
+export function SearchHints({ onPick, tags = [], types = [] }: { onPick(s: string): void; tags?: string[]; types?: { id: string; name: string }[] }) {
+  const hints = [
+    ...["is:due", "is:new", LEARNING_SEARCH, MASTERED_SEARCH, "is:suspended", "prop:lapses>=2", "rated:1:1"].map((query) => ({ query, label: HINT_LABEL[query] })),
+    ...types.map((type) => ({ query: `type:${type.id}`, label: type.name })),
+    ...tags.map((tag) => ({ query: `tag:"${tag}"`, label: tag })),
+  ];
   // Phones: plain words in one swipeable row; the query syntax still goes into the search box.
   if (usePhone())
     return (
       <div className="-mx-5 flex gap-2 overflow-x-auto px-5 [scrollbar-width:none]">
         {hints.map((h) => (
-          <button key={h} onClick={() => onPick(h)} className="h-9 shrink-0 rounded-full border bg-card px-3.5 text-[13px] text-muted-foreground active:bg-accent active:text-foreground">{HINT_LABEL[h]}</button>
+          <button key={h.query} onClick={() => onPick(h.query)} className="h-9 shrink-0 rounded-full border bg-card px-3.5 text-[13px] text-muted-foreground active:bg-accent active:text-foreground">{h.label}</button>
         ))}
       </div>
     );
   return (
     <div className="flex flex-wrap gap-1.5">
       {hints.map((h) => (
-        <button key={h} onClick={() => onPick(h)} className="h-7 rounded-md border px-2 text-xs text-muted-foreground transition-colors hover:border-ring hover:text-foreground pointer-coarse:h-9 pointer-coarse:px-2.5">{HINT_LABEL[h]}</button>
+        <button key={h.query} onClick={() => onPick(h.query)} className="h-7 rounded-md border px-2 text-xs text-muted-foreground transition-colors hover:border-ring hover:text-foreground pointer-coarse:h-9 pointer-coarse:px-2.5">{h.label}</button>
       ))}
     </div>
   );

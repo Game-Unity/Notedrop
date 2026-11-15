@@ -11,7 +11,7 @@ import { LiveMarkdown } from "@/components/live-editor";
 import { MediaPasteProvider } from "@/components/media-paste";
 import { BulkBar, CheckBox, groupItems, ItemRow, OrderSelect, SearchHints, useItemsDeckDrag } from "@/components/item-editor";
 import { DeckOptions, formatDeadline, type DeckFull } from "@/components/deck-options";
-import { api, type Counts, type DeckNode, type LearnerSummary, type Preset, type SearchRow } from "@/lib/api";
+import { api, type Counts, type DeckNode, type LearnerSummary, type Preset, type SearchFacets, type SearchRow } from "@/lib/api";
 import { etudeDownload } from "@/lib/local-url";
 import { navigate } from "@/lib/router";
 import { cn } from "@/lib/utils";
@@ -283,6 +283,7 @@ function DeckCards({ deck, dataKey, hasChildren, active, selected, onOpenCard, o
   const [order, setOrder] = useState("relevance");
   const [limit, setLimit] = useState(CARDS_PAGE);
   const [rows, setRows] = useState<SearchRow[]>([]);
+  const [facets, setFacets] = useState<SearchFacets>({ tags: [], types: [] });
   const [total, setTotal] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [checked, setChecked] = useState<Set<string>>(new Set());
@@ -315,6 +316,18 @@ function DeckCards({ deck, dataKey, hasChildren, active, selected, onOpenCard, o
     api.tags().then((t) => setTags(t.map((x) => x.tag)));
   }, []);
   useEffect(reloadMeta, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    setFacets({ tags: [], types: [] });
+    api.search(`deck:"${deck}"`, { limit: 0, facets: true }).then((result) => {
+      if (!result.facets) throw new Error("Search facets are missing from the response.");
+      if (!cancelled) setFacets(result.facets);
+    }).catch((e) => {
+      if (!cancelled) toast.error("Couldn't load search filters", { description: (e as Error).message });
+    });
+    return () => { cancelled = true; };
+  }, [deck, dataKey]);
 
   const lastDataKey = useRef(dataKey);
   useEffect(() => {
@@ -379,7 +392,7 @@ function DeckCards({ deck, dataKey, hasChildren, active, selected, onOpenCard, o
           </div>
           <Button className="h-10 gap-1.5 px-3" onClick={onCreateCard} aria-label="Add a card"><Plus className="size-4" /><span className="hidden min-[420px]:inline">Add</span></Button>
         </div>
-        {!emptyDeck && <SearchHints onPick={(h) => setQuery((q) => (q ? `${q} ${h}` : h))} />}
+        {!emptyDeck && <SearchHints tags={facets.tags} types={facets.types} onPick={(h) => setQuery((q) => (q ? `${q} ${h}` : h))} />}
       </div>
 
       {!emptyDeck && (

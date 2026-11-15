@@ -83,6 +83,7 @@ type SidePanelContext = {
   onClose(): void;
   onOpenCard(itemId: string): void;
   onSavedEdit(): void;
+  onDeletedEdit(): void;
   onDirtyChange(dirty: boolean): void;
   onCloseChat(): void;
   onAgentChanged(final: boolean): void;
@@ -110,12 +111,15 @@ const SIDE_PANEL_CONTENTS: {
   },
   {
     id: "deck-card-editor",
-    matches: ({ path, deckName, mode, chatOpen }) => !chatOpen && path === "/deck" && Boolean(deckName) && mode !== "overview",
+    matches: ({ path, deckName, mode, itemId, chatOpen }) => !chatOpen && (
+      (path === "/deck" && Boolean(deckName) && mode !== "overview")
+      || (path === "/study" && mode === "edit" && Boolean(itemId))
+    ),
     render: (context) => <DeckCardPanel {...context} />,
   },
 ];
 
-function DeckCardPanel({ deckName, mode, itemId, saveRef, onChanged, onClose, onOpenCard, onSavedEdit, onDirtyChange }: SidePanelContext) {
+function DeckCardPanel({ deckName, mode, itemId, saveRef, onChanged, onClose, onOpenCard, onSavedEdit, onDeletedEdit, onDirtyChange }: SidePanelContext) {
   const [decks, setDecks] = useState<string[]>([]);
   const [tags, setTags] = useState<string[]>([]);
   const [types, setTypes] = useState<TypeSummary[]>([]);
@@ -158,7 +162,7 @@ function DeckCardPanel({ deckName, mode, itemId, saveRef, onChanged, onClose, on
       onSaved={onChanged}
       onSaveSuccess={onSavedEdit}
       onDirtyChange={onDirtyChange}
-      onDeleted={() => { onSavedEdit(); onChanged(); }}
+      onDeleted={() => { onDeletedEdit(); onChanged(); }}
       onDuplicate={(id) => { onChanged(); onOpenCard(id); }}
     />
   );
@@ -237,8 +241,10 @@ export function App() {
   const [confirmSaveContinue, setConfirmSaveContinue] = useState(false);
   const [savingContinue, setSavingContinue] = useState(false);
   const [pendingPanel, setPendingPanel] = useState<PanelDestination | null>(null);
+  const [studyCardChange, setStudyCardChange] = useState<{ revision: number; deleted: boolean }>({ revision: 0, deleted: false });
   const panelSaveRef = useRef<(() => Promise<boolean>) | null>(null);
   const panelRoute = path === "/deck" ? `${path}:${deckName}` : path;
+  const studyEditorOpen = path === "/study" && panel.mode === "edit" && Boolean(panel.itemId);
   const previousPanelRoute = useRef(panelRoute);
   useEffect(() => {
     if (previousPanelRoute.current === panelRoute) return;
@@ -305,6 +311,14 @@ export function App() {
     ? applyPanelDestination({ mode: "overview" })
     : requestPanelDestination({ mode: "overview" });
   const closePanelAfterSave = () => applyPanelDestination({ mode: "overview" });
+  const closeStudyPanelAfterSave = () => {
+    setStudyCardChange((change) => ({ revision: change.revision + 1, deleted: false }));
+    closePanelAfterSave();
+  };
+  const closeStudyPanelAfterDelete = () => {
+    setStudyCardChange((change) => ({ revision: change.revision + 1, deleted: true }));
+    closePanelAfterSave();
+  };
   const toggleChat = () => {
     if (agent.open) agent.setOpen(false);
     else requestPanelDestination({ mode: "chat" });
@@ -338,13 +352,15 @@ export function App() {
     saveRef: panelSaveRef,
     onChanged: () => {
       invalidateProgress();
+      if (path === "/study") return;
       setDataKey((key) => key + 1);
     },
     // Zero-arg wrapper: the editor's close button is an onClick handler, and a MouseEvent
     // must not be read as closePanel(discard).
     onClose: () => closePanel(),
     onOpenCard: openPanelCard,
-    onSavedEdit: closePanelAfterSave,
+    onSavedEdit: () => path === "/study" ? closeStudyPanelAfterSave() : closePanelAfterSave(),
+    onDeletedEdit: () => path === "/study" ? closeStudyPanelAfterDelete() : closePanelAfterSave(),
     onDirtyChange: setPanelDirty,
     onCloseChat: () => agent.setOpen(false),
     onAgentChanged,
@@ -375,7 +391,7 @@ export function App() {
     const card = params.get("card") ? Number(params.get("card")) : undefined;
     const ahead = params.get("ahead") === "1";
     const placement = (deck && params.get("placement")) || undefined;
-    page = <StudyPage key={`${deck}|${q}|${card}|${ahead}|${placement}`} scope={{ deck, q, ahead, placement }} startCard={card} title={deck ? deck.split("::").pop()! : q ? `Search: ${q}` : "All cards"} />;
+    page = <StudyPage key={`${deck}|${q}|${card}|${ahead}|${placement}`} scope={{ deck, q, ahead, placement }} startCard={card} title={deck ? deck.split("::").pop()! : q ? `Search: ${q}` : "All cards"} onEditCard={openPanelCard} editorOpen={studyEditorOpen} cardChange={studyCardChange} />;
   } else if (path === "/deck") page = (
     <DeckPage
       key={deckName}
@@ -449,7 +465,12 @@ export function App() {
   return (
     <TooltipProvider delayDuration={300}>
       {studying ? (
-        page
+        path === "/study" ? (
+          <div className={cn("flex h-dvh min-w-0", studyEditorOpen && "nd-app-shell nd-app-shell--study-editor")} data-panel-mode={studyEditorOpen ? "editor" : undefined} data-sidebar-collapsed={collapsed}>
+            <div className={cn("min-w-0 flex-1", studyEditorOpen && "nd-app-content")}>{page}</div>
+            <NoteDropSidePanel visible={studyEditorOpen} mode="editor">{sidePanelContents}</NoteDropSidePanel>
+          </div>
+        ) : page
       ) : (
         <div
           className={cn("nd-app-shell flex min-h-dvh", path === "/deck" && "nd-app-shell--deck", path === "/types" && "nd-app-shell--types")}

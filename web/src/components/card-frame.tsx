@@ -118,9 +118,8 @@ export const CardFrame = forwardRef<CardFrameHandle, Props>(function CardFrame(p
   }, []);
   useEffect(() => {
     if (!loaded) return;
-    const send = () => post({ type: "screen", height: screenHeight() });
+    const send = () => post({ type: "screen", height: screenHeight(), viewportHeight: window.innerHeight });
     send();
-    if (!props.fitScreen && !props.fitContainer) return;
     window.addEventListener("resize", send);
     const parent = iframe.current?.parentElement;
     let resize: ResizeObserver | undefined;
@@ -199,7 +198,7 @@ export const CardFrame = forwardRef<CardFrameHandle, Props>(function CardFrame(p
       const p = latest.current;
       switch (msg.type) {
         case "loaded":
-          prefsFor(typeOfSrc(p.src)).then((prefs) => post({ type: "init", view: p.view, mode: p.mode ?? "answer", answer: p.answer ?? null, result: p.result ?? null, theme: theme(), screen: { height: screenHeight() }, prefs }));
+          prefsFor(typeOfSrc(p.src)).then((prefs) => post({ type: "init", view: p.view, mode: p.mode ?? "answer", answer: p.answer ?? null, result: p.result ?? null, theme: theme(), screen: { height: screenHeight(), viewportHeight: window.innerHeight }, prefs }));
           break;
         case "set-pref": {
           // Previews of unsaved types (raw HTML) have nowhere to keep preferences.

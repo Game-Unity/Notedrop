@@ -175,7 +175,7 @@
 }
 
 :is(.prose-etude, .prose) li::marker {
-    color: var(--nd-prose-marker);
+    color: var(--muted-foreground);
     font-size: 1.0em;
 }
 
@@ -281,7 +281,7 @@
     color: var(--nd-prose-text-color);
 }
 
-:is(.prose-etude, .prose)>:first-child {
+:is(.prose-etude)>:first-child {
     font-weight: var(--nd-prose-strong-weight);
 }
 
@@ -326,4 +326,19 @@
 
 :is(.cm-md-smiles, .cm-md-smiles-inline, .e-smiles, .e-smiles-inline) svg * {
     font-family: "Comfortaa", sans-serif;
+}
+
+.solution li::marker {
+    color: var(--foreground) !important;
+    font-weight: 700 !important;
+    -webkit-text-stroke: var(--nd-prose-stroke) !important;
+}
+
+code {
+    font-family: "Comfortaa", sans-serif !important;
+    font-size: 0.85rem !important;
+    line-height: 1.6 !important;
+    white-space: pre !important;
+    letter-spacing: 0.02em;
+    font-feature-settings: "tnum" !important;
 }

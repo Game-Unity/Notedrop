@@ -309,6 +309,11 @@ export interface SearchRow {
   retrievability: number | null;
 }
 
+export interface SearchFacets {
+  tags: string[];
+  types: { id: string; name: string }[];
+}
+
 export interface ItemEditProposal {
   itemId: string;
   fields: Record<string, unknown>;
@@ -520,7 +525,7 @@ export const api = {
   frameHtml: (def: CardType) => call<{ html: string }>("POST", "/api/frame", { def }),
   frameDoc: (html: string) => call<{ url: string }>("POST", "/api/frame-doc", { html }),
 
-  search: (q: string, opts: { limit?: number; offset?: number; order?: string } = {}) => call<{ total: number; rows: SearchRow[] }>("GET", `/api/items${qs({ q, ...opts })}`),
+  search: (q: string, opts: { limit?: number; offset?: number; order?: string; facets?: boolean } = {}) => call<{ total: number; rows: SearchRow[]; facets?: SearchFacets }>("GET", `/api/items${qs({ q, ...opts, facets: opts.facets ? 1 : undefined })}`),
   item: (id: string) => call<ItemDetail>("GET", `/api/items/${encodeURIComponent(id)}`),
   saveItem: (id: string, item: { type: string; deck: string; fields: Record<string, unknown>; tags: string[]; source?: string; notes?: string; archived?: boolean }) =>
     call<{ result: string; item: ItemDetail }>("PUT", `/api/items/${encodeURIComponent(id)}`, item),

@@ -2051,7 +2051,7 @@ export class Etude {
   }
 
   /** Browse: cards matching a search, with their item. "relevance" (the default) is the order added unless there's free text. */
-  search(query: string, opts: { limit?: number; offset?: number; order?: string } = {}) {
+  search(query: string, opts: { limit?: number; offset?: number; order?: string; facets?: boolean } = {}) {
     const c = this.compileSearch(query);
     const orders: Record<string, string> = {
       added: "i.ord, c.id",
@@ -2074,8 +2074,22 @@ export class Etude {
     );
     const t = now();
     const cfgs = new Map<string, PresetConfig>();
+    let facets: { tags: string[]; types: { id: string; name: string }[] } | undefined;
+    if (opts.facets) {
+      const tags = new Set<string>();
+      const types = new Set<string>();
+      for (const row of this.db.all<{ type: string; tags: string }>(`SELECT DISTINCT i.type, i.tags ${from} WHERE ${c.where}`, ...c.params)) {
+        types.add(row.type);
+        for (const tag of parse<string[]>(row.tags, [])) tags.add(tag);
+      }
+      facets = {
+        tags: [...tags].sort((a, b) => a.localeCompare(b)),
+        types: [...types].map((id) => ({ id, name: this.type(id).name })).sort((a, b) => a.name.localeCompare(b.name)),
+      };
+    }
     return {
       total,
+      ...(facets ? { facets } : {}),
       rows: rows.map((r) => {
         const key = `${r.deck}\0${r.type}`;
         if (!cfgs.has(key)) cfgs.set(key, this.cardConfig(r.deck, r.type));

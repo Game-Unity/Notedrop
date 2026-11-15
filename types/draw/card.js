@@ -20,7 +20,7 @@ function fit() {
   const h = Math.round(w < 520 ? Math.min(Math.max(w * 1.05, 340), 520) : Math.min(Math.max(w * 0.62, 320), 560));
   canvas.style.height = h + "px";
   canvas.width = Math.round(w * dpr);
-  canvas.height = Math.round(h * dpr);
+  canvas.height = Math.round(canvas.clientHeight * dpr);
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   paint();
 }

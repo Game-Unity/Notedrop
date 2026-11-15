@@ -14,7 +14,7 @@ import { api, humanInterval, relative, RATING_LABEL, type Counts, type LearnerSu
 import { cn } from "@/lib/utils";
 import { navigate, studyReturnTo } from "@/lib/router";
 import { usePhone } from "@/lib/phone";
-import { ActionSheet, Tally } from "@/components/phone-shell";
+import { ActionSheet } from "@/components/phone-shell";
 import { SketchBar, SketchLayer, sketchTransform, useSketch } from "@/components/sketch-pad";
 import { track } from "@/lib/telemetry";
 import { invalidateProgress } from "@/lib/notedrop-progress";
@@ -28,6 +28,8 @@ const RATING_STYLE: Record<Rating, string> = {
   4: "text-easy border-easy/30 hover:bg-easy/10",
 };
 
+const STUDY_HEADER_BADGE = "min-h-[30px] rounded-[18px] border-0 bg-muted px-[25px] py-0 text-[11px] font-bold tracking-[0.3px] text-foreground";
+
 const FOCUS_KEY = "etude.study.focus";
 
 // On a phone, focus mode runs the card edge to edge; this strip under it holds the leave-focus button,
@@ -40,7 +42,14 @@ const VERDICT_TEXT: Record<string, { label: string; cls: string }> = {
   incorrect: { label: "Not quite", cls: "text-again" },
 };
 
-export function StudyPage({ scope, title, startCard }: { scope: Scope; title: string; startCard?: number }) {
+export function StudyPage({ scope, title, startCard, onEditCard, editorOpen, cardChange }: {
+  scope: Scope;
+  title: string;
+  startCard?: number;
+  onEditCard(itemId: string): void;
+  editorOpen: boolean;
+  cardChange: { revision: number; deleted: boolean };
+}) {
   // Usage count (only when the person turned usage stats on).
   useEffect(() => track("study.session"), []);
   const [card, setCard] = useState<StudyCard | null>(null);
@@ -108,6 +117,34 @@ export function StudyPage({ scope, title, startCard }: { scope: Scope; title: st
       })
       .catch((e) => toast.error((e as Error).message));
   }, [load, startCard]);
+
+  const appliedCardChange = useRef(cardChange.revision);
+  useEffect(() => {
+    if (cardChange.revision === 0 || appliedCardChange.current === cardChange.revision || !card) return;
+    appliedCardChange.current = cardChange.revision;
+    if (cardChange.deleted) {
+      void load(card.cardId);
+      return;
+    }
+
+    let active = true;
+    setPhase("loading");
+    setResult(null);
+    setRetry(null);
+    setAttemptId(null);
+    setFeedback(null);
+    api.card(card.cardId, card.seed).then((updated) => {
+      if (!active) return;
+      setCard(updated);
+      setPhase("answer");
+      shownAt.current = Date.now();
+    }).catch((e) => {
+      if (!active) return;
+      toast.error("Couldn't refresh card", { description: (e as Error).message });
+      setPhase("answer");
+    });
+    return () => { active = false; };
+  }, [cardChange, card, load]);
 
   const askFeedback = useCallback(async (id: number) => {
     setFeedback({ loading: true });
@@ -304,6 +341,7 @@ export function StudyPage({ scope, title, startCard }: { scope: Scope; title: st
   }, [phase, card, reveal, rate, result, undo, setAside, again]);
 
   useEffect(() => {
+    if (editorOpen) return;
     const h = (e: KeyboardEvent) => {
       if (e.repeat && (["u", "U", "=", "-", "@", "!"].includes(e.key) || ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z"))) return;
       const t = e.target as HTMLElement;
@@ -318,7 +356,7 @@ export function StudyPage({ scope, title, startCard }: { scope: Scope; title: st
     };
     window.addEventListener("keydown", h);
     return () => window.removeEventListener("keydown", h);
-  }, [onKey, focus]);
+  }, [onKey, focus, editorOpen]);
 
   const suggested = result?.grade.suggested ?? null;
   const verdict = card?.showVerdict !== false && result?.grade.verdict && VERDICT_TEXT[result.grade.verdict];
@@ -333,13 +371,12 @@ export function StudyPage({ scope, title, startCard }: { scope: Scope; title: st
 
   return (
     <div className={cn("nd-study-page flex h-dvh min-h-0 w-full flex-col overflow-hidden", bare && "pt-[env(safe-area-inset-top)]", sk.on && "overflow-x-clip")}>
-      {bare ? null : phone ? (
+      {bare || (card && phase !== "done") ? null : phone ? (
         <header className="sticky top-0 z-10 flex h-[calc(3.5rem+env(safe-area-inset-top))] items-end bg-background/92 px-1 pt-[env(safe-area-inset-top)] backdrop-blur">
           <div className="flex h-14 w-full items-center gap-1">
             <button onClick={() => navigate(studyReturnTo())} className="flex size-11 shrink-0 items-center justify-center rounded-full text-muted-foreground active:bg-accent" aria-label="Back"><ChevronLeft className="size-6" /></button>
             <div className="min-w-0 flex-1">
               <div className="score-serif truncate text-[1.15rem] leading-tight">{title}</div>
-              {counts && <Tally n={counts.new} l={counts.learning} r={counts.review} className="mt-0.5 text-[12px]" />}
             </div>
             {card && (phase === "answer" || phase === "result") && (
               <button onClick={() => setFocus(true)} className="flex size-11 shrink-0 items-center justify-center rounded-full text-muted-foreground active:bg-accent" aria-label="Focus on the card"><Maximize2 className="size-5" /></button>
@@ -349,90 +386,112 @@ export function StudyPage({ scope, title, startCard }: { scope: Scope; title: st
             )}
           </div>
         </header>
-      ) : (
+      ) : card && phase !== "done" ? null : (
       <header className="sticky top-0 z-10 mx-auto flex w-full max-w-3xl items-center gap-2 bg-background/90 px-4 py-3 pt-[max(0.75rem,env(safe-area-inset-top))] backdrop-blur sm:gap-3 sm:px-8 sm:py-4">
-        <Button variant="ghost" size="icon" className="-ml-2" onClick={() => navigate(studyReturnTo())} aria-label="Back">
-          <ArrowLeft />
-        </Button>
+        {(!card || (phase !== "answer" && phase !== "result") || bare) && (
+          <Button variant="ghost" size="icon" className="-ml-2" onClick={() => navigate(studyReturnTo())} aria-label="Back">
+            <ArrowLeft />
+          </Button>
+        )}
         <div className="min-w-0 flex-1">
           <div className="truncate text-sm font-medium">{title}</div>
-          {card && <div className="truncate text-xs text-muted-foreground">{card.deck.split("::").slice(1).join(" › ") || card.deck}</div>}
         </div>
-        {counts && (
-          <div className="flex items-center gap-3 text-sm tabular">
-            <Tooltip><TooltipTrigger asChild><span className="text-new">{counts.new}</span></TooltipTrigger><TooltipContent>New</TooltipContent></Tooltip>
-            <Tooltip><TooltipTrigger asChild><span className="text-learn">{counts.learning}</span></TooltipTrigger><TooltipContent>Learning</TooltipContent></Tooltip>
-            <Tooltip><TooltipTrigger asChild><span className="text-review">{counts.review}</span></TooltipTrigger><TooltipContent>Review</TooltipContent></Tooltip>
-          </div>
-        )}
-        {card && (phase === "answer" || phase === "result") && (
+        {(!card || (phase !== "answer" && phase !== "result")) && (
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon" onClick={() => setAside("bury", true)} aria-label="Bury note until tomorrow" aria-keyshortcuts="="><EyeOff /></Button>
+              <Button variant="ghost" size="icon" disabled={phase === "loading" || phase === "grading"} onClick={undo} aria-label="Undo"><Undo2 /></Button>
             </TooltipTrigger>
-            <TooltipContent>Bury until tomorrow: <kbd className="opacity-70">=</kbd> the note, <kbd className="opacity-70">-</kbd> just this card</TooltipContent>
+            <TooltipContent>Undo last rating <kbd className="ml-1 opacity-70">Ctrl Z</kbd></TooltipContent>
           </Tooltip>
         )}
-        {card && (phase === "answer" || phase === "result") && (
-          <DropdownMenu>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" aria-label="Suspend"><Pause /></Button>
-                </DropdownMenuTrigger>
-              </TooltipTrigger>
-              <TooltipContent>Suspend: <kbd className="opacity-70">@</kbd> just this card, <kbd className="opacity-70">!</kbd> the note</TooltipContent>
-            </Tooltip>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => setAside("suspend", false)}>Suspend this card<kbd className="ml-auto pl-4 text-xs opacity-60">@</kbd></DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setAside("suspend", true)}>Suspend the whole note<kbd className="ml-auto pl-4 text-xs opacity-60">!</kbd></DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
-        {card && (phase === "answer" || phase === "result") && (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon" onClick={() => setFocus(true)} aria-label="Focus on the card"><Maximize2 /></Button>
-            </TooltipTrigger>
-            <TooltipContent>Focus: hide everything but the card. <kbd className="opacity-70">Esc</kbd> leaves</TooltipContent>
-          </Tooltip>
-        )}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button variant="ghost" size="icon" disabled={phase === "loading" || phase === "grading"} onClick={undo} aria-label="Undo"><Undo2 /></Button>
-          </TooltipTrigger>
-          <TooltipContent>Undo last rating <kbd className="ml-1 opacity-70">Ctrl Z</kbd></TooltipContent>
-        </Tooltip>
       </header>
       )}
 
       {phase === "done" && (scope.placement ? <PlacementDone deck={scope.deck ?? ""} /> : <Done counts={counts} scope={scope} />)}
 
       {card && phase !== "done" && (
-        <main ref={mainRef} style={phone ? sketchTransform(sk.view, mainRef.current) : undefined} className="flex min-h-0 flex-1 flex-col gap-5 sm:gap-6">
-          <div className={cn("flex flex-wrap items-center gap-2 text-xs text-muted-foreground", bare && "hidden")}>
-            <Badge variant="outline" className="font-normal">{card.type}</Badge>
-            {card.scheduler.id !== "fsrs" && <Badge variant="outline" className="font-normal">{card.scheduler.name.toLowerCase()}</Badge>}
-            {card.state === 0 && <Badge variant="outline" className="border-new/30 font-normal text-new">new</Badge>}
+        <main ref={mainRef} style={phone ? sketchTransform(sk.view, mainRef.current) : undefined} className="flex min-h-0 flex-1 flex-col gap-11 font-normal">
+          <div className={cn("flex flex-col gap-3", bare && "hidden")}>
+            <h1 className="min-w-0 break-words text-2xl font-semibold tracking-tight max-md:text-[2.25rem] max-md:font-normal max-md:leading-[1.08] max-md:tracking-normal">{title}</h1>
+            <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+            <Badge variant="outline" className={cn(STUDY_HEADER_BADGE, "max-w-full truncate")}>{card.deck.split("::").slice(1).join(" › ") || card.deck}</Badge>
+            {card.state === 0 && <Badge variant="outline" className={STUDY_HEADER_BADGE}>New</Badge>}
+            {card.scheduler.id !== "fsrs" && <Badge variant="outline" className={STUDY_HEADER_BADGE}>{card.scheduler.name.toLowerCase()}</Badge>}
             {card.generated && (
               <Tooltip>
-                <TooltipTrigger asChild><Badge variant="outline" className="gap-1 font-normal"><Dices className="size-3" />variant</Badge></TooltipTrigger>
+                <TooltipTrigger asChild><Badge variant="outline" className={cn(STUDY_HEADER_BADGE, "gap-1")}><Dices className="size-3" />variant</Badge></TooltipTrigger>
                 <TooltipContent>Generated: the numbers change every review</TooltipContent>
               </Tooltip>
             )}
-            {scope.ahead && <Badge variant="outline" className="gap-1 font-normal"><FastForward className="size-3" />practicing ahead</Badge>}
-            {card.placement && <Badge variant="outline" className="border-highlight/40 font-normal text-highlight">finding your level</Badge>}
+            {scope.ahead && <Badge variant="outline" className={cn(STUDY_HEADER_BADGE, "gap-1")}><FastForward className="size-3" />practicing ahead</Badge>}
+            {card.placement && <Badge variant="outline" className={cn(STUDY_HEADER_BADGE, "text-highlight")}>finding your level</Badge>}
             {card.quickCheck && (
               <Tooltip>
-                <TooltipTrigger asChild><Badge variant="outline" className="font-normal">quick check</Badge></TooltipTrigger>
+                <TooltipTrigger asChild><Badge variant="outline" className={STUDY_HEADER_BADGE}>quick check</Badge></TooltipTrigger>
                 <TooltipContent>Your placement suggests you know this. Right on first sight sends it weeks away.</TooltipContent>
               </Tooltip>
             )}
-            {practice && <Badge variant="outline" className="border-highlight/40 font-normal text-highlight">practice, not scheduled</Badge>}
+            {practice && <Badge variant="outline" className={cn(STUDY_HEADER_BADGE, "text-highlight")}>practice, not scheduled</Badge>}
             <div className="flex-1" />
-            <Button variant="ghost" size="sm" className="h-7 gap-1.5 px-2 text-xs text-muted-foreground max-md:hidden" onClick={() => navigate(`/browse?item=${encodeURIComponent(card.itemId)}`)}>
-              <Pencil className="size-3.5" /> Edit
-            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="ghost" size="sm" className="h-7 w-7 gap-0 p-0 text-muted-foreground" onClick={() => navigate(studyReturnTo())} aria-label="Back"><ArrowLeft className="size-4" /></Button>
+              </TooltipTrigger>
+              <TooltipContent>Back</TooltipContent>
+            </Tooltip>
+            {(phase === "answer" || phase === "result") && (
+              <>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button variant="ghost" size="sm" className="h-7 w-7 gap-0 p-0 text-muted-foreground" onClick={() => setAside("bury", true)} aria-label="Bury note until tomorrow" aria-keyshortcuts="="><EyeOff className="size-4" /></Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Bury until tomorrow: <kbd className="opacity-70">=</kbd> the note, <kbd className="opacity-70">-</kbd> just this card</TooltipContent>
+                </Tooltip>
+                <DropdownMenu>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="sm" className="h-7 w-7 gap-0 p-0 text-muted-foreground" aria-label="Suspend"><Pause className="size-4" /></Button>
+                      </DropdownMenuTrigger>
+                    </TooltipTrigger>
+                    <TooltipContent>Suspend: <kbd className="opacity-70">@</kbd> just this card, <kbd className="opacity-70">!</kbd> the note</TooltipContent>
+                  </Tooltip>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => setAside("suspend", false)}>Suspend this card<kbd className="ml-auto pl-4 text-xs opacity-60">@</kbd></DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setAside("suspend", true)}>Suspend the whole note<kbd className="ml-auto pl-4 text-xs opacity-60">!</kbd></DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button variant="ghost" size="sm" className="h-7 w-7 gap-0 p-0 text-muted-foreground" onClick={() => setFocus(true)} aria-label="Focus on the card"><Maximize2 className="size-4" /></Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Focus: hide everything but the card. <kbd className="opacity-70">Esc</kbd> leaves</TooltipContent>
+                </Tooltip>
+              </>
+            )}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="ghost" size="sm" className="h-7 w-7 gap-0 p-0 text-muted-foreground" disabled={phase === "loading" || phase === "grading"} onClick={undo} aria-label="Undo"><Undo2 className="size-4" /></Button>
+              </TooltipTrigger>
+              <TooltipContent>Undo last rating <kbd className="ml-1 opacity-70">Ctrl Z</kbd></TooltipContent>
+            </Tooltip>
+            {phone && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="ghost" size="sm" className="h-7 w-7 gap-0 p-0 text-muted-foreground pointer-coarse:size-10" onClick={() => setTools(true)} aria-label="Card actions"><MoreHorizontal className="size-4" /></Button>
+                </TooltipTrigger>
+                <TooltipContent>Card actions</TooltipContent>
+              </Tooltip>
+            )}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="ghost" size="sm" className="h-7 w-7 gap-0 p-0 text-muted-foreground max-md:hidden" onClick={() => onEditCard(card.itemId)} aria-label="Edit">
+                  <Pencil className="size-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Edit</TooltipContent>
+            </Tooltip>
+          </div>
           </div>
 
           {retry && phase === "answer" && <AnswerRetry hint={retry.hint} />}
@@ -440,7 +499,7 @@ export function StudyPage({ scope, title, startCard }: { scope: Scope; title: st
             ref={frame}
             className="shrink-0"
             src={`/frame/${encodeURIComponent(card.type)}?v=${encodeURIComponent(card.typeVersion)}`}
-            frameKey={`${card.cardId}:${card.seed}:${card.typeVersion}:${retry?.count ?? 0}`}
+            frameKey={`${card.cardId}:${card.seed}:${card.typeVersion}:${retry?.count ?? 0}:${cardChange.revision}`}
             view={card.view}
             onSubmit={onSubmit}
             onReady={setReady}
@@ -505,7 +564,7 @@ export function StudyPage({ scope, title, startCard }: { scope: Scope; title: st
           <Minimize2 className="size-4" />
         </button>
       )}
-      {card && showBar && (phase === "answer" || phase === "grading" || phase === "result") && (
+      {card && showBar && !editorOpen && (phase === "answer" || phase === "grading" || phase === "result") && (
         <footer className="z-20 shrink-0 bg-background pb-[env(safe-area-inset-bottom)] max-md:pb-[max(0.5rem,env(safe-area-inset-bottom))]">
           <div className="mx-auto flex h-24 max-w-3xl items-center justify-center gap-2 px-3 py-3 max-md:px-4 sm:h-22 sm:px-8 sm:py-4">
             {phone && sk.on ? (
@@ -533,7 +592,7 @@ export function StudyPage({ scope, title, startCard }: { scope: Scope; title: st
               </div>
             )}
             {phase !== "result" ? (
-              <Button size="lg" className="h-[3.25rem] flex-1 gap-2 rounded-full text-[16px] font-semibold pointer-coarse:h-[3.25rem] sm:h-10 sm:w-auto sm:min-w-48 sm:flex-none sm:rounded-md sm:text-sm" disabled={phase === "grading" || (!ready && card.grader !== "self")} onClick={reveal}>
+              <Button size="lg" className="h-[3.25rem] flex-1 gap-2 rounded-full text-[16px] font-semibold disabled:border disabled:border-border disabled:bg-transparent disabled:text-muted-foreground disabled:opacity-100 pointer-coarse:h-[3.25rem] sm:h-10 sm:w-auto sm:min-w-48 sm:flex-none sm:rounded-md sm:text-sm" disabled={phase === "grading" || (!ready && card.grader !== "self")} onClick={reveal}>
                 {phase === "grading" ? <><Loader2 className="size-4 animate-spin" /> Grading…</> : card.grader === "self" ? <>Show answer <kbd className="hidden text-xs opacity-60 sm:inline">Space</kbd></> : <>Check <span className="hidden items-center gap-0.5 text-xs opacity-60 sm:flex"><kbd>Ctrl</kbd><CornerDownLeft className="size-3" /></span></>}
               </Button>
             ) : !card.scheduler.ratings ? (
@@ -584,7 +643,7 @@ export function StudyPage({ scope, title, startCard }: { scope: Scope; title: st
             ],
             [
               { label: "Focus on the card", icon: Maximize2, hint: "hide everything else", onClick: () => setFocus(true) },
-              { label: "Edit card", icon: Pencil, onClick: () => navigate(`/browse?item=${encodeURIComponent(card.itemId)}`) },
+              { label: "Edit card", icon: Pencil, onClick: () => { setTools(false); onEditCard(card.itemId); } },
             ],
           ]}
         />

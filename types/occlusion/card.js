@@ -4,8 +4,6 @@ const canvas = etude.$(".io-canvas");
 const img = etude.$(".io-img");
 const layer = etude.$(".io-boxes");
 const pct = etude.$(".io-pct");
-// Short enough that the image and the answer box fit on a laptop screen together; zoom for detail.
-const MAX_H = 520;
 const MAX_Z = 8;
 const touchy = navigator.maxTouchPoints > 0 || matchMedia("(any-pointer: coarse), (hover: none)").matches;
 
@@ -64,8 +62,9 @@ const zoomAt = (nz, px, py) => {
 function layout() {
   const ratio = img.naturalWidth && img.naturalHeight ? img.naturalHeight / img.naturalWidth : 0.6;
   const avail = etude.root.clientWidth || stage.parentElement.clientWidth;
+  const maxHeight = parseFloat(getComputedStyle(stage).maxHeight);
   let w = avail, h = w * ratio;
-  if (h > MAX_H) { h = MAX_H; w = h / ratio; }
+  if (h > maxHeight) { h = maxHeight; w = h / ratio; }
   const k = W ? w / W : 1;
   W = w; H = h;
   stage.style.width = `${w}px`;
@@ -87,6 +86,7 @@ img.addEventListener("error", () => {
 });
 img.src = view.image;
 new ResizeObserver(() => layout()).observe(etude.root);
+etude.onScreen(layout);
 layout();
 
 const local = (e) => {

@@ -40,12 +40,13 @@ command({
     { name: "limit", type: "number", description: "Maximum rows.", default: 100 },
     { name: "offset", type: "number", description: "Rows to skip.", default: 0 },
     { name: "ids", type: "boolean", description: "Print only card ids, one per line." },
+    { name: "facets", type: "boolean", description: "Include all matching tags and card types, independent of pagination." },
   ],
   examples: ["etude card list is:due --order due", 'etude card list "prop:lapses>=3" --ids | etude card suspend -'],
-  output: "{ total, rows: [{ cardId, itemId, face, type, deck, tags, title, state, stateName, due, reps, lapses, stability, difficulty, suspended, archived, generated, retrievability }] }",
+  output: "{ total, rows: [{ cardId, itemId, face, type, deck, tags, title, state, stateName, due, reps, lapses, stability, difficulty, suspended, archived, generated, retrievability }], facets?: { tags: string[], types: [{ id, name }] } }",
   run(ctx) {
     const q = [ctx.flags.deck ? `deck:"${ctx.flags.deck}"` : "", ctx.args.query.join(" ")].filter(Boolean).join(" ");
-    const r = ctx.e.search(q, { limit: ctx.flags.limit, offset: ctx.flags.offset, order: ctx.flags.order });
+    const r = ctx.e.search(q, { limit: ctx.flags.limit, offset: ctx.flags.offset, order: ctx.flags.order, facets: ctx.flags.facets });
     if (ctx.flags.ids) return r.rows.map((x) => x.cardId).join("\n");
     return { ...r, rows: r.rows.map((x) => ({ ...x, stateName: stateName(x.state) })) };
   },

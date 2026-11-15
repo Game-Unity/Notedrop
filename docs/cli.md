@@ -1674,8 +1674,9 @@ etude card list [query...] [flags]
 | `--limit <N>` | number | Maximum rows. Default `100`. |
 | `--offset <N>` | number | Rows to skip. Default `0`. |
 | `--ids` | boolean | Print only card ids, one per line. |
+| `--facets` | boolean | Include all matching tags and card types, independent of pagination. |
 
-Output: { total, rows: [{ cardId, itemId, face, type, deck, tags, title, state, stateName, due, reps, lapses, stability, difficulty, suspended, archived, generated, retrievability }] }
+Output: { total, rows: [{ cardId, itemId, face, type, deck, tags, title, state, stateName, due, reps, lapses, stability, difficulty, suspended, archived, generated, retrievability }], facets?: { tags: string[], types: [{ id, name }] } }
 
 ```sh
 etude card list is:due --order due

@@ -118,7 +118,7 @@ The body gets `data-mode="answer"` or `data-mode="result"`, so `.only-answer` an
 | `etude.submit(value?)` | submit now, with `value` or `getAnswer()`'s result; ignored outside answer mode or after the first submit |
 | `etude.setReady(bool)` | enable or disable the app's Submit button (enabled by default) |
 | `etude.onResult(fn)` | called with `{ grade, key, answer }` after grading; called at once if the card is already graded |
-| `etude.screen` | `{ height }`: how much of the screen the card can fill, in CSS pixels, while the learner studies in focus mode; `{ height: null }` otherwise (the page scrolls). Also set as the CSS variable `--etude-screen-height` |
+| `etude.screen` | `{ height }`: how much of the screen the card can fill, in CSS pixels, while the learner studies in focus mode; `{ height: null }` otherwise (the page scrolls). Also set as the CSS variable `--etude-screen-height`. The separate CSS variable `--etude-viewport-height` tracks the main app's viewport height in all modes, including window resizes. |
 | `etude.onScreen(fn)` | called with `etude.screen` whenever it changes: focus mode turned on or off, the window resized |
 | `etude.prefs` | what this card type saved for itself with `setPref`, shared by all its cards (an object; `{}` until something is saved) |
 | `etude.setPref(key, value)` | saves one preference for the type: a short key (letters, digits, `_ . -`, up to 64) and a JSON value, `null` to remove it. At most 4 KB per type |

@@ -5,7 +5,7 @@ const { math } = etude;
 input.placeholder ||= "Type your answer";
 if (etude.answer != null) input.value = String(etude.answer);
 
-// What renders is what gets graded: the parsed answer printed back as LaTeX.
+// Validate the parsed answer, but preserve explicit LaTeX formatting in the preview.
 const render = () => {
   const src = input.value.trim();
   preview.classList.remove("is-unread");
@@ -17,7 +17,8 @@ const render = () => {
     return;
   }
   try {
-    preview.innerHTML = etude.tex(math.toLatex(math.parse(src)), true);
+    const parsed = math.parse(src);
+    preview.innerHTML = etude.tex(/\\[a-zA-Z{]/.test(src) ? src : math.toLatex(parsed), true);
     etude.setReady(true);
   } catch (e) {
     // Mid-typing ("\frac{1}{") or something the checker can't read: show what KaTeX makes of it.

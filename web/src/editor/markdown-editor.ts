@@ -327,9 +327,14 @@ class TableWidget extends WidgetType {
             }
             cell.appendChild(span);
           } else {
-            const el = document.createElement(m[2] ? "strong" : m[4] ? "em" : "code");
-            el.textContent = m[3] ?? m[5] ?? m[7] ?? "";
-            cell.appendChild(el);
+            const content = m[3] ?? m[5] ?? m[7] ?? "";
+            const smiles = m[7] ? inlineSmiles(content) : null;
+            if (smiles) cell.appendChild(new SmilesWidget(smiles, true).toDOM());
+            else {
+              const el = document.createElement(m[2] ? "strong" : m[4] ? "em" : "code");
+              el.textContent = content;
+              cell.appendChild(el);
+            }
           }
           rest = rest.slice(m.index + m[0].length);
           re.lastIndex = 0;

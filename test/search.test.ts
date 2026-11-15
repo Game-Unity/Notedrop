@@ -45,6 +45,31 @@ async function setup() {
 const titles = (r: { rows: { itemId: string; title: string }[] }) => [...new Map(r.rows.map((x) => [x.itemId, x.title])).values()];
 const items = (r: { rows: { itemId: string }[] }) => [...new Set(r.rows.map((x) => x.itemId))];
 
+test("search facets include every matching tag and type across pages and subdecks", async () => {
+  const e = await setup();
+  try {
+    e.upsertItem({ id: "junge", type: "vocab", deck: "German", fields: words[0].fields, tags: ["grammar::noun", "shared"] });
+    e.upsertItem({ id: "basic", type: "basic", deck: "German::Basics", fields: { front: "Question", back: "Answer" }, tags: ["basics", "shared"] });
+    e.upsertItem({ id: "outside", type: "typed", deck: "Other", fields: { prompt: "Question", answers: ["Answer"] }, tags: ["outside"] });
+    e.upsertItem({ id: "archived", type: "basic", deck: "German", fields: { front: "Archived", back: "Answer" }, tags: ["archived"], archived: true });
+
+    const result = e.search("deck:German", { limit: 0, offset: 1000, facets: true });
+    assert.deepEqual(result.rows, []);
+    assert.deepEqual(result.facets, {
+      tags: ["basics", "grammar::noun", "shared"],
+      types: [{ id: "basic", name: "Basic" }, { id: "vocab", name: "Vocab" }],
+    });
+    assert.deepEqual(e.search("deck:German type:basic", { limit: 1, facets: true }).facets, {
+      tags: ["basics", "shared"],
+      types: [{ id: "basic", name: "Basic" }],
+    });
+    assert.deepEqual(e.search("deck:Missing", { facets: true }).facets, { tags: [], types: [] });
+    assert.equal("facets" in e.search("deck:German"), false);
+  } finally {
+    e.close();
+  }
+});
+
 test("titles follow the type's field order, not the order fields were stored in", async () => {
   const e = await setup();
   assert.deepEqual(titles(e.search("deck:German", { order: "added" })), ["Junge", "viel", "Übung", "besonders"]);
@@ -152,4 +177,8 @@ test("CLI: item list and --query use field search and relevance", async () => {
   assert.equal((await cli(["item", "tag", "--query", "bare:junge", "-t", "noun"])).code, 0);
   assert.deepEqual(JSON.parse((await cli(["item", "list", "tag:noun"])).out).rows.map((r: { id: string }) => r.id), ["junge"]);
   assert.equal((await cli(["search", "nofield:x"])).code, 4);
+  const facets = await cli(["card", "list", "--deck", "German", "--facets", "--limit", "0"]);
+  assert.equal(facets.code, 0);
+  assert.deepEqual(JSON.parse(facets.out).facets, { tags: ["noun"], types: [{ id: "vocab", name: "Vocab" }] });
+  assert.deepEqual(JSON.parse(facets.out).rows, []);
 });

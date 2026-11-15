@@ -95,7 +95,7 @@ export function BrowsePage({ initialQuery, openItem }: { initialQuery: string; o
               </button>
             )}
           </div>
-          <SearchHints onPick={(s) => setQuery((q) => (q ? `${q} ${s}` : s))} />
+          <SearchHints tags={tags} types={types.filter((type) => type.items > 0)} onPick={(s) => setQuery((q) => (q ? `${q} ${s}` : s))} />
           <div className="-mb-1 flex min-h-9 items-center gap-2.5 text-xs text-muted-foreground">
             <span className={cn(!checked.size && "max-md:hidden")}><CheckBox checked={allChecked} label="Select all" onClick={() => setChecked(allChecked ? new Set() : new Set(items.map((r) => r.itemId)))} /></span>
             <span className="tabular min-w-0 truncate">{error ? <span className="text-destructive">{error}</span> : `${total} card${total === 1 ? "" : "s"}${total > PAGE ? `, showing ${PAGE}` : ""}`}</span>
