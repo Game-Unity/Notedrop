@@ -1,5 +1,5 @@
 // The card list rows, bulk actions and item editor shared by Browse and the deck page's Cards tab.
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { Archive, ArchiveRestore, ArrowLeft, Check, Copy, Dices, FolderInput, Image, Loader2, MoreHorizontal, Pause, Play, RotateCcw, Save, Tag, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,7 @@ import { TooltipHint } from "@/components/ui/tooltip";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Popover, PopoverAnchor, PopoverContent } from "@/components/ui/popover";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -624,48 +625,149 @@ function AnswerView({ answer }: { answer: unknown }) {
   return <pre className="whitespace-pre-wrap break-words font-mono text-[13px]">{text || <span className="text-muted-foreground">(empty)</span>}</pre>;
 }
 
-export function DeckInput({ value, decks, onChange }: { value: string; decks: string[]; onChange(v: string): void }) {
-  const id = useMemo(() => `decks-${Math.random().toString(36).slice(2)}`, []);
+function useSuggestions(options: string[], text: string, onSelect: (value: string) => void) {
+  const [open, setOpen] = useState(false);
+  const [active, setActive] = useState(-1);
+  const id = useId();
+  const inputRef = useRef<HTMLInputElement>(null);
+  const matches = options.filter((option) => option.toLowerCase().includes(text.toLowerCase()));
+  const visible = open && matches.length > 0;
+  const select = (value: string) => {
+    onSelect(value);
+    setOpen(false);
+    setActive(-1);
+  };
+  const keyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.nativeEvent.isComposing) return;
+    if ((event.key === "ArrowDown" || event.key === "ArrowUp") && matches.length) {
+      event.preventDefault();
+      setOpen(true);
+      setActive((current) => event.key === "ArrowDown"
+        ? (current + 1) % matches.length
+        : (current <= 0 ? matches.length - 1 : current - 1));
+    } else if (event.key === "Enter" && visible && active >= 0 && active < matches.length) {
+      event.preventDefault();
+      select(matches[active]);
+    } else if (event.key === "Escape" && visible) {
+      event.preventDefault();
+      event.stopPropagation();
+      setOpen(false);
+      setActive(-1);
+    }
+  };
+  return {
+    visible, matches, active, id, select, keyDown, setOpen, inputRef,
+    reset: () => { setActive(-1); setOpen(true); },
+    inputProps: {
+      role: "combobox" as const,
+      "aria-autocomplete": "list" as const,
+      "aria-expanded": visible,
+      "aria-controls": visible ? id : undefined,
+      "aria-activedescendant": visible && active >= 0 && active < matches.length ? `${id}-${active}` : undefined,
+    },
+  };
+}
+
+function SuggestionList({ suggestions }: { suggestions: ReturnType<typeof useSuggestions> }) {
+  const list = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (suggestions.visible && suggestions.active >= 0) {
+      list.current?.querySelector('[aria-selected="true"]')?.scrollIntoView({ block: "nearest" });
+    }
+  }, [suggestions.visible, suggestions.active]);
   return (
-    <>
-      <Input list={id} value={value} onChange={(e) => onChange(e.target.value)} placeholder="Deck::Subdeck" />
-      <datalist id={id}>{decks.map((d) => <option key={d} value={d} />)}</datalist>
-    </>
+    <PopoverContent
+      align="start"
+      className="w-[var(--radix-popover-trigger-width)] min-w-48 p-1"
+      onOpenAutoFocus={(event) => event.preventDefault()}
+      onCloseAutoFocus={(event) => event.preventDefault()}
+      onInteractOutside={(event) => {
+        if (event.target === suggestions.inputRef.current) event.preventDefault();
+      }}
+    >
+      <div ref={list} id={suggestions.id} role="listbox" className="max-h-60 overflow-y-auto">
+        {suggestions.matches.map((option, index) => (
+          <div
+            key={option}
+            id={`${suggestions.id}-${index}`}
+            role="option"
+            aria-selected={index === suggestions.active}
+            className={cn("relative flex h-10 cursor-default items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-hidden select-none hover:bg-accent hover:text-accent-foreground", index === suggestions.active && "bg-accent text-accent-foreground")}
+            onPointerDown={(event) => event.preventDefault()}
+            onClick={() => suggestions.select(option)}
+          >
+            {option}
+          </div>
+        ))}
+      </div>
+    </PopoverContent>
+  );
+}
+
+export function DeckInput({ value, decks, onChange }: { value: string; decks: string[]; onChange(v: string): void }) {
+  const suggestions = useSuggestions(decks, value, onChange);
+  return (
+    <Popover open={suggestions.visible} onOpenChange={suggestions.setOpen}>
+      <PopoverAnchor asChild>
+        <Input
+          {...suggestions.inputProps}
+          ref={suggestions.inputRef}
+          aria-label="Deck"
+          value={value}
+          onChange={(e) => { onChange(e.target.value); suggestions.reset(); }}
+          onFocus={suggestions.reset}
+          onBlur={() => suggestions.setOpen(false)}
+          onKeyDown={suggestions.keyDown}
+          placeholder="Deck::Subdeck"
+        />
+      </PopoverAnchor>
+      <SuggestionList suggestions={suggestions} />
+    </Popover>
   );
 }
 
 export function TagInput({ value, known, onChange }: { value: string[]; known: string[]; onChange(v: string[]): void }) {
   const [text, setText] = useState("");
-  const id = useMemo(() => `tags-${Math.random().toString(36).slice(2)}`, []);
   const add = (t: string) => {
     const tag = t.trim().replace(/\s+/g, "-");
     if (tag && !value.includes(tag)) onChange([...value, tag]);
     setText("");
   };
+  const suggestions = useSuggestions(known.filter((tag) => !value.includes(tag)), text, add);
   return (
-    <div className="flex min-h-9 flex-wrap items-center gap-1.5 rounded-md border bg-transparent px-2 py-1.5 focus-within:border-ring">
-      {value.map((t) => (
-        <span key={t} className="flex items-center gap-1 rounded bg-secondary px-1.5 py-0.5 font-mono text-xs">
-          {t}
-          <TooltipHint label={`Remove ${t}`}><button onClick={() => onChange(value.filter((x) => x !== t))} className="text-muted-foreground hover:text-foreground" aria-label={`Remove ${t}`}><X className="size-3" /></button></TooltipHint>
-        </span>
-      ))}
-      <input
-        list={id}
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === "," || e.key === " ") {
-            e.preventDefault();
-            add(text);
-          } else if (e.key === "Backspace" && !text && value.length) onChange(value.slice(0, -1));
-        }}
-        onBlur={() => text && add(text)}
-        className="min-w-24 flex-1 bg-transparent font-mono text-xs outline-none placeholder:text-muted-foreground"
-        placeholder={value.length ? "" : "Add tags, use :: for subtags"}
-      />
-      <datalist id={id}>{known.map((t) => <option key={t} value={t} />)}</datalist>
-    </div>
+    <Popover open={suggestions.visible} onOpenChange={suggestions.setOpen}>
+      <PopoverAnchor asChild>
+        <div className="nd-tags-input flex min-h-9 flex-wrap items-center gap-1.5 rounded-md border bg-transparent px-2 py-1.5 focus-within:border-ring">
+          {value.map((t) => (
+            <span key={t} className="flex items-center gap-1 rounded bg-secondary px-1.5 py-0.5 font-mono text-xs">
+              {t}
+              <TooltipHint label={`Remove ${t}`}><button onClick={() => onChange(value.filter((x) => x !== t))} className="text-muted-foreground hover:text-foreground" aria-label={`Remove ${t}`}><X className="size-3" /></button></TooltipHint>
+            </span>
+          ))}
+          <input
+            {...suggestions.inputProps}
+            ref={suggestions.inputRef}
+            aria-label="Tags"
+            value={text}
+            onChange={(e) => { setText(e.target.value); suggestions.reset(); }}
+            onFocus={suggestions.reset}
+            onKeyDown={(e) => {
+              suggestions.keyDown(e);
+              if (e.defaultPrevented || e.nativeEvent.isComposing) return;
+              if (e.key === "Enter" || e.key === "," || e.key === " ") {
+                e.preventDefault();
+                add(text);
+                suggestions.setOpen(false);
+              } else if (e.key === "Backspace" && !text && value.length) onChange(value.slice(0, -1));
+            }}
+            onBlur={() => { if (text) add(text); suggestions.setOpen(false); }}
+            className="min-w-24 flex-1 bg-transparent font-mono text-xs outline-none placeholder:text-muted-foreground"
+            placeholder={value.length ? "" : "Add tags, use :: for subtags"}
+          />
+        </div>
+      </PopoverAnchor>
+      <SuggestionList suggestions={suggestions} />
+    </Popover>
   );
 }
 

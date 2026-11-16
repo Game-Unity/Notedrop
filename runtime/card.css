@@ -29,7 +29,7 @@ html { overflow: hidden; }
 #card { overflow-wrap: break-word; hyphens: auto; }
 body {
   color: var(--foreground);
-  font: 400 16px/1.6 var(--font-sans);
+  font: 400 16px/1.6 "Comfortaa", sans-serif;
   -webkit-font-smoothing: antialiased;
   padding: 2px;
 }

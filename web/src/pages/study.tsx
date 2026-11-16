@@ -371,7 +371,7 @@ export function StudyPage({ scope, title, startCard, onEditCard, editorOpen, car
 
   return (
     <div className={cn("nd-study-page flex h-dvh min-h-0 w-full flex-col overflow-hidden", bare && "pt-[env(safe-area-inset-top)]", sk.on && "overflow-x-clip")}>
-      {bare || (card && phase !== "done") ? null : phone ? (
+      {bare || phase === "done" || card ? null : phone ? (
         <header className="sticky top-0 z-10 flex h-[calc(3.5rem+env(safe-area-inset-top))] items-end bg-background/92 px-1 pt-[env(safe-area-inset-top)] backdrop-blur">
           <div className="flex h-14 w-full items-center gap-1">
             <button onClick={() => navigate(studyReturnTo())} className="flex size-11 shrink-0 items-center justify-center rounded-full text-muted-foreground active:bg-accent" aria-label="Back"><ChevronLeft className="size-6" /></button>
@@ -386,7 +386,7 @@ export function StudyPage({ scope, title, startCard, onEditCard, editorOpen, car
             )}
           </div>
         </header>
-      ) : card && phase !== "done" ? null : (
+      ) : (
       <header className="sticky top-0 z-10 mx-auto flex w-full max-w-3xl items-center gap-2 bg-background/90 px-4 py-3 pt-[max(0.75rem,env(safe-area-inset-top))] backdrop-blur sm:gap-3 sm:px-8 sm:py-4">
         {(!card || (phase !== "answer" && phase !== "result") || bare) && (
           <Button variant="ghost" size="icon" className="-ml-2" onClick={() => navigate(studyReturnTo())} aria-label="Back">
@@ -407,7 +407,11 @@ export function StudyPage({ scope, title, startCard, onEditCard, editorOpen, car
       </header>
       )}
 
-      {phase === "done" && (scope.placement ? <PlacementDone deck={scope.deck ?? ""} /> : <Done counts={counts} scope={scope} />)}
+      {phase === "done" && (
+        <main className="flex min-h-0 flex-1 flex-col">
+          {scope.placement ? <PlacementDone deck={scope.deck ?? ""} /> : <Done counts={counts} scope={scope} />}
+        </main>
+      )}
 
       {card && phase !== "done" && (
         <main ref={mainRef} style={phone ? sketchTransform(sk.view, mainRef.current) : undefined} className="flex min-h-0 flex-1 flex-col gap-11 font-normal">

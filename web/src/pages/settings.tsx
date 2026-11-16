@@ -191,7 +191,7 @@ export function SettingsPage() {
   const shown = dirty ? errors : {};
 
   return (
-    <div className="w-full py-10 max-md:pt-[calc(1.25rem+env(safe-area-inset-top))]">
+    <div className="nd-settings-page w-full py-10 max-md:pt-[calc(1.25rem+env(safe-area-inset-top))]">
       {saved && draft && (
         <nav
           ref={navRef}
@@ -327,7 +327,7 @@ export function SettingsPage() {
 
           <div
             className={cn(
-              "sticky bottom-[calc(4rem+env(safe-area-inset-bottom))] z-10 mt-10 flex items-center gap-2 border-t bg-background/95 px-5 py-3 backdrop-blur transition-opacity md:bottom-0",
+              "nd-page-save sticky bottom-[calc(4rem+env(safe-area-inset-bottom))] z-10 mt-10 flex items-center gap-2 border-t bg-background/95 px-5 py-3 backdrop-blur transition-opacity md:bottom-0",
               dirty ? "opacity-100" : "pointer-events-none opacity-0",
             )}
             aria-hidden={!dirty}

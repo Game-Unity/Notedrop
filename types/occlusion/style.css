@@ -1,13 +1,17 @@
 .io-header { margin-bottom: -0.25rem; }
 .io { display: flex; flex-direction: column; gap: 0.5rem; align-items: center; }
+.io-stage-box {
+  display: flex; justify-content: center; width: 100%;
+  border: 1px solid var(--border); border-radius: calc(var(--radius) - 2px);
+}
+.io-stage-box:has(.io-stage:focus-visible) { border-color: var(--ring); }
 .io-stage {
   position: relative; overflow: hidden; max-width: 100%;
   max-height: calc(var(--etude-viewport-height, 100vh) * 0.4);
-  border: 1px solid var(--border); border-radius: calc(var(--radius) - 2px);
+  border-radius: calc(var(--radius) - 2px);
   background: color-mix(in oklab, var(--foreground) 4%, transparent);
   touch-action: pan-y; user-select: none; -webkit-user-select: none; outline: none;
 }
-.io-stage:focus-visible { border-color: var(--ring); }
 .io-stage.is-zoomed { touch-action: none; cursor: grab; }
 .io-stage.is-zoomed:active { cursor: grabbing; }
 .io-stage.is-broken::after {

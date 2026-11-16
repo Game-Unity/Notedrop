@@ -43,7 +43,16 @@ function md(text, { inline = false } = {}) {
   });
   const restored = src.replace(/\u0001(\d+)\u0001/g, (_, i) => code[Number(i)]);
   const html = inline ? marked.parseInline(restored, { gfm: true }) : marked.parse(restored, { gfm: true, breaks: false });
-  return html.replace(/\u0000(\d+)\u0000/g, (_, i) => stash[Number(i)]);
+  const template = document.createElement("template");
+  template.innerHTML = html.replace(/\u0000(\d+)\u0000/g, (_, i) => stash[Number(i)]);
+  for (const image of template.content.querySelectorAll("img")) {
+    if (image.parentElement?.classList.contains("e-image-box")) continue;
+    const box = document.createElement("span");
+    box.className = "e-image-box";
+    image.replaceWith(box);
+    box.append(image);
+  }
+  return template.innerHTML;
 }
 
 function escapeHtml(s) {

@@ -729,21 +729,24 @@ color-mix(in oklab, var(--highlight) 12%, transparent);
     margin: 0 !important; 
 }
 
-.live-md.prose-etude .cm-md-image-pad {
-    padding: 0 0 20px 0;
+.live-md .cm-md-image-pad {
+    margin-bottom: 20px;
+    padding: 20px var(--nd-prose-pre-padding-inline, 25px);
+    border: 1px solid var(--border);
+    border-radius: calc(var(--radius) - 2px);
 }
 
-.live-md.prose-etude .cm-md-image img {
+.live-md .cm-md-image img {
     background: var(--muted);
     border-radius: var(--radius);
     display: block;
     max-width: 100%;
     width: auto;
-    max-height: var(--nd-prose-img-max);
+    max-height: var(--nd-prose-img-max, 300px);
     height: auto;
     object-fit: contain;
     margin: 0 auto;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02), -1px 2px 18px rgba(0, 0, 0, 0.06);
+    box-shadow: none;
 }
 
 
@@ -850,6 +853,14 @@ color-mix(in oklab, var(--highlight) 12%, transparent);
 
 .nd-app-content {
     position: relative;
+}
+
+@media (min-width: 768px) {
+    .nd-app-content:has(.nd-page-save),
+    .nd-settings-page:has(.nd-page-save),
+    .nd-deck-page:has(.nd-page-save) {
+        padding-bottom: 0;
+    }
 }
 
 .nd-app-content > .nd-deck-page {
@@ -2068,26 +2079,32 @@ p.-mt-1.text-xs.text-muted-foreground {}
     line-height: 20px;
 }
 
+.nd-side-panel input::selection,
+.nd-side-panel textarea::selection {
+    background-color: color-mix(in oklab, var(--highlight) 28%, transparent);
+    color: inherit;
+}
+
 .nd-side-panel .nd-card-create-form button[data-size="sm"],
 .nd-side-panel .nd-item-editor-panel button[data-size="sm"] {
     min-height: 36px;
 }
 
-.nd-side-panel .nd-card-create-form div.rounded-md:has(> input[list]),
-.nd-side-panel .nd-item-editor-panel div.rounded-md:has(> input[list]) {
+.nd-side-panel .nd-card-create-form .nd-tags-input,
+.nd-side-panel .nd-item-editor-panel .nd-tags-input {
     min-height: 36px;
     padding: 4px 12px;
     border-color: var(--input);
     background: transparent;
 }
 
-.nd-side-panel .nd-card-create-form div.rounded-md:has(> input[list]):focus-within,
-.nd-side-panel .nd-item-editor-panel div.rounded-md:has(> input[list]):focus-within {
+.nd-side-panel .nd-card-create-form .nd-tags-input:focus-within,
+.nd-side-panel .nd-item-editor-panel .nd-tags-input:focus-within {
     border-color: var(--ring);
 }
 
-.nd-side-panel .nd-card-create-form div.rounded-md:has(> input[list]) > span,
-.nd-side-panel .nd-item-editor-panel div.rounded-md:has(> input[list]) > span {
+.nd-side-panel .nd-card-create-form .nd-tags-input > span,
+.nd-side-panel .nd-item-editor-panel .nd-tags-input > span {
     font-family: inherit;
     font-size: 12px;
     font-weight: 500;
@@ -2097,8 +2114,8 @@ p.-mt-1.text-xs.text-muted-foreground {}
     background: rgb(71 71 71 / 65%) !important;
 }
 
-.nd-side-panel .nd-card-create-form div.rounded-md:has(> input[list]) > span > button,
-.nd-side-panel .nd-item-editor-panel div.rounded-md:has(> input[list]) > span > button {
+.nd-side-panel .nd-card-create-form .nd-tags-input > span > button,
+.nd-side-panel .nd-item-editor-panel .nd-tags-input > span > button {
     display: inline-flex;
     width: 16px;
     height: 16px;
@@ -2109,14 +2126,14 @@ p.-mt-1.text-xs.text-muted-foreground {}
     color: #fff !important;
 }
 
-.nd-side-panel .nd-card-create-form div.rounded-md:has(> input[list]) > span > button:hover,
-.nd-side-panel .nd-item-editor-panel div.rounded-md:has(> input[list]) > span > button:hover {
+.nd-side-panel .nd-card-create-form .nd-tags-input > span > button:hover,
+.nd-side-panel .nd-item-editor-panel .nd-tags-input > span > button:hover {
     background: color-mix(in oklab, var(--danger) 14%, transparent);
     color: var(--danger);
 }
 
-.nd-side-panel .nd-card-create-form div.rounded-md:has(> input[list]) > span > button svg,
-.nd-side-panel .nd-item-editor-panel div.rounded-md:has(> input[list]) > span > button svg {
+.nd-side-panel .nd-card-create-form .nd-tags-input > span > button svg,
+.nd-side-panel .nd-item-editor-panel .nd-tags-input > span > button svg {
     width: 20px;
     height: 13px;
     stroke: currentColor !important;

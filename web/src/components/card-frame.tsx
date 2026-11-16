@@ -85,7 +85,8 @@ function theme() {
 export const CardFrame = forwardRef<CardFrameHandle, Props>(function CardFrame(props, ref) {
   const iframe = useRef<HTMLIFrameElement>(null);
   const [height, setHeight] = useState(props.minHeight ?? 120);
-  const [loaded, setLoaded] = useState(false);
+  const [loadedKey, setLoadedKey] = useState<string | null>(null);
+  const loaded = loadedKey === props.frameKey;
   const latest = useRef(props);
   latest.current = props;
 
@@ -97,6 +98,13 @@ export const CardFrame = forwardRef<CardFrameHandle, Props>(function CardFrame(p
   useEffect(() => {
     if (loaded) post({ type: "explain-action", available: explainAvailable });
   }, [loaded, explainAvailable, post]);
+
+  useEffect(() => {
+    if (loaded && (latest.current.mode ?? "answer") === "answer" && latest.current.autoFocus !== false) {
+      iframe.current?.focus();
+      post({ type: "focus" });
+    }
+  }, [loaded, post]);
 
   // The height left on screen from the frame's top to the bottom of the window (less a margin), or null.
   const screenHeight = useCallback(() => {
@@ -190,7 +198,7 @@ export const CardFrame = forwardRef<CardFrameHandle, Props>(function CardFrame(p
   }), [post]);
 
   useEffect(() => {
-    setLoaded(false);
+    setLoadedKey(null);
     const onMessage = (e: MessageEvent) => {
       if (e.source !== iframe.current?.contentWindow) return;
       const msg = e.data;
@@ -210,11 +218,7 @@ export const CardFrame = forwardRef<CardFrameHandle, Props>(function CardFrame(p
           break;
         }
         case "mounted":
-          setLoaded(true);
-          if ((p.mode ?? "answer") === "answer" && p.autoFocus !== false) {
-            iframe.current?.focus();
-            post({ type: "focus" });
-          }
+          setLoadedKey(p.frameKey);
           break;
         case "size":
           if (typeof msg.height === "number") setHeight(Math.max(p.minHeight ?? 60, Math.min(msg.height + 4, 6000)));
@@ -277,7 +281,7 @@ export const CardFrame = forwardRef<CardFrameHandle, Props>(function CardFrame(p
       src={served ? (docUrl ?? undefined) : props.html !== undefined || local ? undefined : props.src}
       srcDoc={served ? undefined : (props.html ?? (local ? (localHtml ?? "") : undefined))}
       // No opacity fade: on macOS WebKit the faded-in card frame could stop painting.
-      className={cn("block w-full border-0 bg-transparent", props.className)}
+      className={cn("block w-full border-0 bg-transparent", !loaded && "invisible", props.className)}
       style={{ height, colorScheme: scheme }}
     />
   );

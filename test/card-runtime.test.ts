@@ -28,14 +28,17 @@ test("card runtime: explanation action stays inside the revealed answer and noti
     window.close();
   });
   const { boot } = await import(runtimeUrl);
-  boot(() => {}, '<div class="prose">Front</div><template data-on="result"><div class="e-reveal">Back</div></template>');
+  boot(() => {}, '<div class="prose">{{md:front}}</div><template data-on="result"><div class="e-reveal">Back</div></template>');
   const message = (type: string, extra = {}) => {
     const event = new window.MessageEvent("message", { data: { etude: 1, type, ...extra } });
     Object.defineProperty(event, "source", { value: window });
     window.dispatchEvent(event);
   };
-  message("init", { view: {} });
+  message("init", { view: { front: 'Question <img src="/media/pic.png" alt="pic">' } });
   await new Promise(setImmediate);
+  const image = window.document.querySelector(".prose .e-image-box > img");
+  assert.ok(image);
+  assert.equal(image.getAttribute("src"), "/media/pic.png");
   assert.equal(window.document.querySelector("[data-explain-action]"), null);
   message("result", { result: { key: {} } });
   message("explain-action", { available: true });
