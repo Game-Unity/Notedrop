@@ -28,7 +28,7 @@ function fit() {
 function paintBackground(c, w, h, forExport) {
   if (forExport) { c.fillStyle = "#ffffff"; c.fillRect(0, 0, w, h); }
   if (bg === "blank") return;
-  c.strokeStyle = forExport ? "#e5e7eb" : "rgba(255,255,255,0.07)";
+  c.strokeStyle = forExport ? "#e5e7eb" : getComputedStyle(document.documentElement).getPropertyValue("--border").trim() || "#2a2a2a";
   c.lineWidth = 1;
   c.beginPath();
   const step = 24;

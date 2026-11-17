@@ -71,7 +71,7 @@ export function FieldsSchema({
           const dup = names.indexOf(f.name) !== i;
           const expanded = open === i;
           return (
-            <div key={i} className={cn("rounded-lg border bg-card/30", (badName || dup) && "border-destructive/60")}>
+            <div key={i} className={cn("rounded-lg border", (badName || dup) && "border-destructive/60")}>
               <div className="flex flex-wrap items-center gap-2 p-2 sm:flex-nowrap">
                 <button
                   className="flex size-9 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"

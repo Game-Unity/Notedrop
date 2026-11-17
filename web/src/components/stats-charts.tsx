@@ -17,17 +17,17 @@ export const fmtDuration = (ms: number) => {
 
 type Tip = { x: number; y: number; lines: string[] } | null;
 
-/** Width of an element in CSS pixels, so charts draw text at its real size instead of scaling a viewBox. */
-function useWidth<T extends HTMLElement>() {
+/** Chart bounds in CSS pixels, so labels keep their real size when the chart resizes. */
+function useChartSize<T extends HTMLElement>() {
   const ref = useRef<T>(null);
-  const [w, setW] = useState(0);
+  const [size, setSize] = useState({ width: 0, height: 0 });
   useEffect(() => {
     if (!ref.current) return;
-    const ro = new ResizeObserver(([e]) => setW(Math.floor(e.contentRect.width)));
+    const ro = new ResizeObserver(([e]) => setSize({ width: Math.floor(e.contentRect.width), height: Math.floor(e.contentRect.height) }));
     ro.observe(ref.current);
     return () => ro.disconnect();
   }, []);
-  return [ref, w] as const;
+  return [ref, size.width, size.height] as const;
 }
 
 /** A tooltip positioned inside a relative container, clamped to stay on screen. */
@@ -47,8 +47,8 @@ function Tooltip({ tip, width }: { tip: Tip; width: number }) {
  * Review heatmap: one column per week (Monday first), one row per weekday, newest week on the right.
  * Cell color scales with reviews; the again rate shows in the tooltip.
  */
-export function Heatmap({ days, weeks: maxWeeks, today }: { days: { day: string; reviews: number; again: number; runs?: number; ms: number }[]; weeks: number; today: string }) {
-  const [ref, width] = useWidth<HTMLDivElement>();
+export function Heatmap({ days, weeks: maxWeeks, today, fill = false }: { days: { day: string; reviews: number; again: number; runs?: number; ms: number }[]; weeks: number; today: string; fill?: boolean }) {
+  const [ref, width] = useChartSize<HTMLDivElement>();
   const [tip, setTip] = useState<Tip>(null);
   const L = 30, T = 20, G = 3;
   // As many weeks as fit at a readable cell size (up to maxWeeks), then cells grow to fill the width.
@@ -85,9 +85,9 @@ export function Heatmap({ days, weeks: maxWeeks, today }: { days: { day: string;
   };
 
   return (
-    <div ref={ref} className="relative">
-      <div className="overflow-hidden">
-        <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} className="max-w-full" role="img" aria-label={`Answers per day over the last ${weeks} weeks: ${total} on ${active} days`} onMouseLeave={() => setTip(null)}>
+    <div ref={ref} className={cn("relative", fill && "nd-stats-heatmap")}>
+      <div className={cn("overflow-hidden", fill && "nd-stats-heatmap-plot")}>
+        <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} className={cn("max-w-full", fill && "h-full w-full")} role="img" aria-label={`Answers per day over the last ${weeks} weeks: ${total} on ${active} days`} onMouseLeave={() => setTip(null)}>
           <title>{`Answers per day, last ${weeks} weeks`}</title>
           {months.map((m, i) => (
             <text key={i} x={L + m.col * (C + G)} y={11} className="fill-muted-foreground" fontSize={11}>{m.label}</text>
@@ -134,7 +134,7 @@ export function Heatmap({ days, weeks: maxWeeks, today }: { days: { day: string;
         </svg>
       </div>
       <Tooltip tip={tip} width={width || 300} />
-      <div className="mt-2 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground" style={{ width: W, maxWidth: "100%" }}>
+      <div className="mt-2 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground" style={{ width: fill ? "100%" : W, maxWidth: "100%" }}>
         <span className="tabular mr-auto basis-full pb-1 sm:basis-auto sm:pb-0">Last {weeks} weeks · {[total - runs || !runs ? `${total - runs} review${total - runs === 1 ? "" : "s"}` : "", runs ? `${runs} run${runs === 1 ? "" : "s"}` : ""].filter(Boolean).join(" + ")} on {active} day{active === 1 ? "" : "s"}</span>
         Less
         {[0, 1, 2, 3, 4].map((lv) => (
@@ -150,6 +150,7 @@ export function Heatmap({ days, weeks: maxWeeks, today }: { days: { day: string;
 export function BarChart({
   data,
   height = 160,
+  fill = false,
   color = "var(--review)",
   highlight,
   mark,
@@ -160,6 +161,7 @@ export function BarChart({
 }: {
   data: { key: string; value: number; label: string }[];
   height?: number;
+  fill?: boolean;
   color?: string;
   highlight?: number;
   mark?: { at: number; label: string } | null;
@@ -169,12 +171,12 @@ export function BarChart({
   ticks?: number[];
   format?(v: number): string;
 }) {
-  const [ref, width] = useWidth<HTMLDivElement>();
+  const [ref, width, measuredHeight] = useChartSize<HTMLDivElement>();
   const [tip, setTip] = useState<Tip>(null);
   const [hover, setHover] = useState<number | null>(null);
-  const W = Math.max(240, width || 600), L = 34, R = 8, B = 24;
+  const W = Math.max(fill ? 80 : 240, width || 600), L = 34, R = 8, B = 24;
   const T = mark ? 26 : 12;
-  const H = height;
+  const H = fill && measuredHeight ? Math.max(80, measuredHeight) : height;
   const n = data.length;
   const max = Math.max(...data.map((d) => d.value), 0);
   const nice = (() => {
@@ -190,7 +192,7 @@ export function BarChart({
   const every = Math.max(1, Math.ceil(52 / bw));
   const labelled = (i: number) => (tickAt ? tickAt.includes(i) && (bw >= 9 || i === 0 || i === n - 1 || i % 14 === 0) : i === 0 || (i % every === 0 && i >= every));
   return (
-    <div ref={ref} className="relative w-full">
+    <div ref={ref} className={cn("relative w-full", fill && "nd-stats-bar")}>
       <svg width={W} height={H} className="block max-w-full" role="img" aria-label={label} onMouseLeave={() => { setTip(null); setHover(null); }}>
         <title>{label}</title>
         {ticks.map((t) => (

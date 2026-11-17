@@ -2,72 +2,82 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { CalendarClock, ChevronRight, Play } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectSeparator, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { BarChart, Heatmap, ShareBar, fmtDay, fmtDuration, parseDay } from "@/components/stats-charts";
-import { Donut, ForgettingCurve, Histogram, ProgressChart, RecallRing, SERIF, Sparkline, StudyClock, recallColor } from "@/components/stats-viz";
-import { api, type DeckNode, type LearnerSummary, type PracticeCard, type StatsScheduler, type Stats } from "@/lib/api";
+import { Donut, ForgettingCurve, Histogram, ProgressChart, RecallRing, Sparkline, StudyClock, recallColor } from "@/components/stats-viz";
+import { api, type LearnerSummary, type PracticeCard, type StatsScheduler, type Stats } from "@/lib/api";
 import { navigate } from "@/lib/router";
 import { cn } from "@/lib/utils";
 import { Breadcrumb, PHONE_H1 } from "@/components/page";
 import { track } from "@/lib/telemetry";
+import { escapeDeckSearch, LEARNING_SEARCH, MASTERED_SEARCH, partitionProgress, type NoteDropProgress } from "@/lib/notedrop-metrics";
 
 /** The engine window: ratings, verdicts and the heatmap cover this many weeks. */
 const WEEKS = 26;
 const pct = (v: number | null, digits = 0) => (v == null ? "—" : `${(v * 100).toFixed(digits)}%`);
 
-export function StatsPage({ deck }: { deck?: string }) {
+export function StatsPage({ deck, fixedDeck = false }: { deck?: string; fixedDeck?: boolean }) {
   // Usage count (only when the person turned usage stats on).
   useEffect(() => track("stats.open"), []);
   const [stats, setStats] = useState<Stats | null>(null);
-  const [decks, setDecks] = useState<DeckNode[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const scopeDeck = fixedDeck ? deck : undefined;
 
   useEffect(() => {
-    api.decks().then(setDecks).catch(() => {});
-  }, []);
-  useEffect(() => {
+    let live = true;
     setStats(null);
+    setError(null);
     api
-      .stats({ deck }, WEEKS * 7)
+      .stats({ deck: scopeDeck }, WEEKS * 7)
       .then((s) => {
+        if (!live) return;
         setStats(s);
         setError(null);
       })
       .catch((e) => {
+        if (!live) return;
         setError((e as Error).message);
         toast.error((e as Error).message);
       });
-  }, [deck]);
+    return () => { live = false; };
+  }, [scopeDeck]);
 
-  const scope = (v: string) => navigate(v === "__all" ? "/stats" : `/stats?deck=${encodeURIComponent(v)}`, { replace: true });
-
-  return (
-    <div className="w-full py-8 max-md:pt-[calc(1.25rem+env(safe-area-inset-top))] sm:py-10">
-      <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div className="min-w-0">
-          <h1 className={cn("text-2xl font-semibold tracking-tight", PHONE_H1)}>Stats</h1>
-          <Breadcrumb items={[{ label: "Stats", onClick: () => navigate("/stats") }]} />
-          <p className="mt-1 truncate text-sm text-muted-foreground max-md:hidden">{deck ? deck.replace(/::/g, " › ") : "All decks"}</p>
-        </div>
-        <Select value={deck ?? "__all"} onValueChange={scope}>
-          <SelectTrigger className="h-10 w-full sm:w-72" aria-label="Scope"><SelectValue /></SelectTrigger>
-          <SelectContent className="max-h-80">
-            <SelectItem value="__all">All decks</SelectItem>
-            {decks.length > 0 && <SelectSeparator />}
-            {decks.map((d) => (
-              <SelectItem key={d.id} value={d.name}>
-                <span style={{ paddingLeft: d.depth * 12 }}>{d.name.split("::").pop()}</span>
-              </SelectItem>
-            ))}
-            {deck && !decks.some((d) => d.name === deck) && <SelectItem value={deck}>{deck}</SelectItem>}
-          </SelectContent>
-        </Select>
-      </div>
-
+  const content = (
+    <>
       {error && !stats && <div className="rounded-xl border border-dashed p-10 text-center text-muted-foreground">{error}</div>}
       {!stats && !error && <Loading />}
-      {stats && deck && <Skills deck={deck} />}
-      {stats && <Body stats={stats} deck={deck} />}
+      {stats && fixedDeck && deck && <Skills deck={deck} />}
+      {stats && (fixedDeck ? <Body stats={stats} deck={deck} deckTab /> : <GlobalStats stats={stats} />)}
+    </>
+  );
+
+  if (fixedDeck) return content;
+
+  return (
+    <div className="nd-stats-page w-full py-8 max-md:pt-[calc(1.25rem+env(safe-area-inset-top))] sm:py-10">
+      <div className="nd-stats-header mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div className="min-w-0">
+          <h1 className={cn("text-2xl font-semibold tracking-tight", PHONE_H1)}>Stats</h1>
+          <Breadcrumb items={[{ label: "Stats", onClick: () => navigate("/stats") }, { label: "All decks", onClick: () => navigate("/stats") }]} />
+        </div>
+      </div>
+      {content}
+    </div>
+  );
+}
+
+function GlobalStats({ stats: s }: { stats: Stats }) {
+  const totalAnswers = s.days.reduce((sum, day) => sum + day.reviews + (day.runs ?? 0), 0);
+  const first = s.days.find((day) => day.reviews + (day.runs ?? 0) > 0)?.day;
+  const activeWeeks = first ? Math.min(WEEKS, Math.max(16, Math.ceil((parseDay(s.today.day).getTime() - parseDay(first).getTime()) / (7 * 86400_000)) + 2)) : WEEKS;
+  return (
+    <div className="nd-stats-grid grid gap-4">
+      <Panel title="Review activity" aside="Answers per day" className="nd-stats-panel">
+        <Heatmap days={s.days} weeks={activeWeeks} today={s.today.day} fill />
+        <TimeSpent days={s.days} today={s.today.day} fill />
+      </Panel>
+      <Panel title="When you study" aside={`Last ${WEEKS} weeks`} className="nd-stats-panel">
+        {totalAnswers ? <StudyClock hours={s.hours} target={s.desiredRetention ?? 0.9} stacked fill /> : <Empty>Your study hours show up after your first reviews.</Empty>}
+      </Panel>
     </div>
   );
 }
@@ -129,7 +139,7 @@ function Loading() {
   );
 }
 
-function Body({ stats, deck }: { stats: Stats; deck?: string }) {
+function Body({ stats, deck, deckTab = false }: { stats: Stats; deck?: string; deckTab?: boolean }) {
   const s = stats;
   const totalReviews = s.days.reduce((a, d) => a + d.reviews, 0);
   // Every answer, a drill's runs included: what the heatmap and the clock count.
@@ -153,25 +163,26 @@ function Body({ stats, deck }: { stats: Stats; deck?: string }) {
     );
 
   const studied = s.cards.total - s.cards.new;
-  const young = s.cards.review - s.cards.mature;
   // The heatmap starts a little before the first study day instead of showing months of nothing.
   const first = s.days.find((d) => d.reviews + (d.runs ?? 0) > 0)?.day;
   const activeWeeks = first ? Math.min(WEEKS, Math.max(16, Math.ceil((parseDay(s.today.day).getTime() - parseDay(first).getTime()) / (7 * 86400_000)) + 2)) : WEEKS;
 
   // A deck on a rated script scheduler (Leitner, a user's own): ratings, due dates and whatever its state
   // groups cards by, but no memory model.
-  if (kind === "rated") return <RatedBody stats={s} deck={deck!} summary={s.schedulers[0]} />;
+  if (kind === "rated") return <RatedBody stats={s} deck={deck!} summary={s.schedulers[0]} deckTab={deckTab} />;
 
   // A deck on a drill has no memory model and nothing to forecast: its stats are what it measured.
   if (s.scheduler && s.scheduler !== "fsrs")
     return (
       <div className="flex flex-col gap-6">
         {s.practice.length ? s.practice.map((p) => <PracticePanel key={p.cardId} card={p} />) : <Empty>Every run you do here is measured. Practice once and your results show up.</Empty>}
-        <Panel title="Practice days" aside={totalAnswers ? "Runs per day" : undefined}>
-          {totalAnswers ? <Heatmap days={s.days} weeks={activeWeeks} today={s.today.day} /> : <Empty>Each practice day fills a square here.</Empty>}
-          {totalMs > 0 && <TimeSpent days={s.days} today={s.today.day} />}
-        </Panel>
-        {totalAnswers > 0 && (
+        {!deckTab && (
+          <Panel title="Practice days" aside={totalAnswers ? "Runs per day" : undefined}>
+            {totalAnswers ? <Heatmap days={s.days} weeks={activeWeeks} today={s.today.day} /> : <Empty>Each practice day fills a square here.</Empty>}
+            {totalMs > 0 && <TimeSpent days={s.days} today={s.today.day} />}
+          </Panel>
+        )}
+        {!deckTab && totalAnswers > 0 && (
           <Panel title="When you practice" aside={`Last ${WEEKS} weeks`}>
             <StudyClock hours={s.hours} target={target} />
           </Panel>
@@ -181,7 +192,7 @@ function Body({ stats, deck }: { stats: Stats; deck?: string }) {
 
   return (
     <div className="flex flex-col gap-6">
-      <Overview stats={s} deck={deck} />
+      {!deckTab && <Overview stats={s} deck={deck} />}
 
       {others.length > 0 && <Schedulers list={s.schedulers} />}
 
@@ -191,67 +202,128 @@ function Body({ stats, deck }: { stats: Stats; deck?: string }) {
         </div>
       )}
 
-      {s.curve.length > 0 && (
+      {!deckTab && s.curve.length > 0 && (
         <Panel title="If you stopped today" aside="Average predicted recall, no more reviews">
           <ForgettingCurve curve={s.curve} target={target} />
         </Panel>
       )}
 
-      <div className="grid items-start gap-6 lg:grid-cols-2">
-        <Panel title="Cards" aside={<span className="tabular">{s.cards.total} {others.length ? "on FSRS" : "total"}</span>}>
-          <Donut
-            center={s.cards.total}
-            sub="cards"
-            parts={[
-              { key: "new", label: "New", value: s.cards.new, color: "var(--new)" },
-              { key: "learning", label: "Learning", value: s.cards.learning, color: "var(--learn)" },
-              { key: "young", label: "Young", value: young, color: "var(--chart-3)" },
-              { key: "mature", label: "Mature", value: s.cards.mature, color: "var(--review)" },
-            ]}
-            onPick={(i) => navigate(`/browse?q=${encodeURIComponent(scope + ["is:new", "is:learning", "is:review prop:stability<21", "is:review prop:stability>=21"][i])}`)}
-          />
-          <p className="mt-3 text-xs text-muted-foreground">Mature cards hold for 21 days or more. Pick a row to browse those cards.</p>
-        </Panel>
-        <Panel title="Memory strength" aside="Days until each card falls to 90% recall">
-          {studied ? (
-            <>
-              <Histogram
-                label="Studied cards by stability"
-                height={104}
-                bars={s.stability.map((b, i) => {
-                  const lo = i ? s.stability[i - 1].upTo! : 0;
-                  const name = b.upTo == null ? `${lo}d+` : i === 0 ? "<1d" : `${lo}–${b.upTo}d`;
-                  return { key: name, value: b.cards, label: name.replace(/d\+?$/, (m) => (m === "d+" ? "+" : "")), color: "var(--review)", tip: `${b.cards} card${b.cards === 1 ? "" : "s"} · stability ${name}` };
-                })}
-                onPick={(i) => {
-                  const lo = i ? s.stability[i - 1].upTo! : 0, hi = s.stability[i].upTo;
-                  navigate(`/browse?q=${encodeURIComponent(`${scope}-is:new prop:stability>=${lo}${hi == null ? "" : ` prop:stability<${hi}`}`)}`);
-                }}
-              />
-            </>
-          ) : (
-            <Empty>Study a few cards and FSRS starts estimating how long each one stays in memory.</Empty>
-          )}
-        </Panel>
+      <div className={cn("nd-stats-summary-grid grid gap-6", !deckTab && "items-start")}>
+        <Cards key={deck ?? "__all"} deck={deck} stats={deckTab ? s : undefined} />
+        {!deckTab && (
+          <Panel title="Memory strength" aside="Days until each card falls to 90% recall">
+            {studied ? (
+              <>
+                <Histogram
+                  label="Studied cards by stability"
+                  height={104}
+                  bars={s.stability.map((b, i) => {
+                    const lo = i ? s.stability[i - 1].upTo! : 0;
+                    const name = b.upTo == null ? `${lo}d+` : i === 0 ? "<1d" : `${lo}–${b.upTo}d`;
+                    return { key: name, value: b.cards, label: name.replace(/d\+?$/, (m) => (m === "d+" ? "+" : "")), color: "var(--review)", tip: `${b.cards} card${b.cards === 1 ? "" : "s"} · stability ${name}` };
+                  })}
+                  onPick={(i) => {
+                    const lo = i ? s.stability[i - 1].upTo! : 0, hi = s.stability[i].upTo;
+                    navigate(`/browse?q=${encodeURIComponent(`${scope}-is:new prop:stability>=${lo}${hi == null ? "" : ` prop:stability<${hi}`}`)}`);
+                  }}
+                />
+              </>
+            ) : (
+              <Empty>Study a few cards and FSRS starts estimating how long each one stays in memory.</Empty>
+            )}
+          </Panel>
+        )}
       </div>
 
-      <Panel title="Review activity" aside={totalAnswers ? "Answers per day" : undefined}>
-        {totalAnswers ? (
-          <Heatmap days={s.days} weeks={activeWeeks} today={s.today.day} />
-        ) : (
-          <Empty>No reviews in the last {WEEKS} weeks. Each study day fills a square here.</Empty>
-        )}
-        {totalMs > 0 && <TimeSpent days={s.days} today={s.today.day} />}
-      </Panel>
+      {!deckTab && (
+        <Panel title="Review activity" aside={totalAnswers ? "Answers per day" : undefined}>
+          {totalAnswers ? (
+            <Heatmap days={s.days} weeks={activeWeeks} today={s.today.day} />
+          ) : (
+            <Empty>No reviews in the last {WEEKS} weeks. Each study day fills a square here.</Empty>
+          )}
+          {totalMs > 0 && <TimeSpent days={s.days} today={s.today.day} />}
+        </Panel>
+      )}
 
       <Panel title="Forecast" aside="Next 30 days">
         <Forecast stats={s} deck={deck} />
       </Panel>
 
-      <div className="grid items-start gap-6 lg:grid-cols-2">
-        <Panel title="When you study" aside={`Last ${WEEKS} weeks`}>
-          {totalAnswers ? <StudyClock hours={s.hours} target={target} /> : <Empty>Your study hours show up after your first reviews.</Empty>}
-        </Panel>
+      {!deckTab && (
+        <div className="grid items-start gap-6 lg:grid-cols-2">
+          <Panel title="When you study" aside={`Last ${WEEKS} weeks`}>
+            {totalAnswers ? <StudyClock hours={s.hours} target={target} /> : <Empty>Your study hours show up after your first reviews.</Empty>}
+          </Panel>
+          <Ratings stats={s} totalReviews={totalReviews} />
+        </div>
+      )}
+
+      <Panel title="Weakest tags" aside={`Predicted recall now · the line is your ${Math.round(target * 100)}% target`}>
+        <WeakTags tree={s.tagTree} target={target} deck={deck} />
+      </Panel>
+    </div>
+  );
+}
+
+function Cards({ deck, stats }: { deck?: string; stats?: Stats }) {
+  const [progress, setProgress] = useState<NoteDropProgress | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const scope = deck ? `deck:"${escapeDeckSearch(deck)}" ` : "";
+
+  useEffect(() => {
+    let live = true;
+    Promise.all([
+      api.search(scope.trim(), { limit: 1 }),
+      api.search(`${scope}is:new`, { limit: 1 }),
+      api.search(`${scope}${MASTERED_SEARCH}`, { limit: 1 }),
+    ]).then(([all, unseen, mastered]) => {
+      const value = partitionProgress(all.total, unseen.total, mastered.total);
+      if (live) setProgress(value);
+    }).catch((e) => {
+      if (live) setError((e as Error).message);
+    });
+    return () => { live = false; };
+  }, [scope]);
+
+  return (
+    <Panel title="Cards" aside={progress && <span className="tabular">{progress.total} total</span>} className={stats ? "nd-cards-overview-panel" : undefined}>
+      <div className={stats ? "nd-cards-overview" : undefined}>
+        <div className={cn("min-w-0", stats && "flex flex-col justify-evenly gap-3 py-3")}>
+          {error ? <Empty>{error}</Empty> : progress ? (
+            <>
+              <Donut
+                center={progress.total}
+                sub="cards"
+                parts={[
+                  { key: "new", label: "New", value: progress.new, color: "var(--new)" },
+                  { key: "learning", label: "Learning", value: progress.learning, color: "var(--learn)" },
+                  { key: "mastered", label: "Mastered", value: progress.mastered, color: "var(--review)" },
+                ]}
+                onPick={(i) => {
+                  const query = ["is:new", LEARNING_SEARCH, MASTERED_SEARCH][i];
+                  navigate(deck
+                    ? `/deck?name=${encodeURIComponent(deck)}&tab=cards&q=${encodeURIComponent(query)}`
+                    : `/browse?q=${encodeURIComponent(query)}`);
+                }}
+              />
+              <p className={cn("text-xs text-muted-foreground", !stats && "mt-3")}>Mastered cards have been studied and have a stability greater than 21 days. Pick a row to browse those cards.</p>
+            </>
+          ) : <div className="h-40 animate-pulse rounded-xl bg-muted/40" />}
+        </div>
+        {stats && (
+          <div className="nd-cards-trends">
+            <RetentionTrend stats={stats} />
+            <Trend label="Streak" value={`${stats.streak} day${stats.streak === 1 ? "" : "s"}`} sub={stats.bestStreak ? `Best ${stats.bestStreak} in ${WEEKS} weeks` : "Study today to start one"} streak={stats.days} today={stats.today.day} />
+          </div>
+        )}
+      </div>
+    </Panel>
+  );
+}
+
+function Ratings({ stats: s, totalReviews, hideGradedAnswers = false }: { stats: Stats; totalReviews: number; hideGradedAnswers?: boolean }) {
+  return (
         <Panel title="Ratings" aside={`Last ${WEEKS} weeks`}>
           {totalReviews ? (
             <Donut
@@ -267,7 +339,7 @@ function Body({ stats, deck }: { stats: Stats; deck?: string }) {
           ) : (
             <Empty>Ratings appear after your first reviews.</Empty>
           )}
-          {s.verdicts.correct + s.verdicts.partial + s.verdicts.incorrect + s.verdicts.ungraded > 0 && (
+          {!hideGradedAnswers && s.verdicts.correct + s.verdicts.partial + s.verdicts.incorrect + s.verdicts.ungraded > 0 && (
             <div className="mt-5 border-t pt-4">
               <div className="mb-3 text-xs font-medium">Graded answers</div>
               <ShareBar
@@ -282,12 +354,6 @@ function Body({ stats, deck }: { stats: Stats; deck?: string }) {
             </div>
           )}
         </Panel>
-      </div>
-
-      <Panel title="Weakest tags" aside={`Predicted recall now · the line is your ${Math.round(target * 100)}% target`}>
-        <WeakTags tree={s.tagTree} target={target} />
-      </Panel>
-    </div>
   );
 }
 
@@ -297,9 +363,6 @@ export function Overview({ stats: s, deck, ring }: { stats: Stats; deck?: string
   const totalReviews = s.days.reduce((a, d) => a + d.reviews, 0);
   const totalMs = s.days.reduce((a, d) => a + d.ms, 0);
   const drillsReady = s.schedulers.filter((x) => x.kind === "drill").reduce((a, x) => a + x.due, 0);
-  const recent = s.weeks.slice(-12);
-  // Weekly retention only says something once a few weeks have review answers.
-  const rateWeeks = recent.filter((w) => w.reviewed > 0).length;
   // Volume and time read best per day over the last two weeks.
   const daily = (() => {
     const by = new Map(s.days.map((d) => [d.day, d]));
@@ -319,7 +382,7 @@ export function Overview({ stats: s, deck, ring }: { stats: Stats; deck?: string
           <RecallRing value={s.recall} target={target} size={ring} label="Recall now" sub={s.recall == null ? undefined : `target ${Math.round(target * 100)}%`} />
           <div className="min-w-0">
             <div className="text-xs text-muted-foreground">Due today</div>
-            <div className="tabular text-5xl leading-none tracking-tight" style={SERIF}>{dueToday}</div>
+            <div className="tabular text-5xl leading-none tracking-tight">{dueToday}</div>
             <div className="mt-1.5 text-xs text-muted-foreground">
               {s.overdue ? <span className="text-again">{s.overdue} overdue</span> : dueToday ? "all on time" : "nothing waiting"}
               {s.today.reviews > 0 && <> · {s.today.reviews} done today</>}
@@ -331,16 +394,7 @@ export function Overview({ stats: s, deck, ring }: { stats: Stats; deck?: string
           </div>
         </div>
         <div className="grid flex-1 grid-cols-2 gap-x-5 gap-y-5 lg:border-l lg:pl-6">
-          <Trend
-            label="True retention"
-            value={pct(s.trueRetention.rate, 1)}
-            tone={tone(s.trueRetention.rate)}
-            sub={s.trueRetention.reviewed ? `${s.trueRetention.passed}/${s.trueRetention.reviewed} passed · 30 days` : "No review answers in 30 days"}
-            spark={rateWeeks >= 3 ? recent.map((w) => w.rate) : undefined}
-            note={rateWeeks >= 3 ? undefined : "Trend after 3 weeks of reviews"}
-            color={s.trueRetention.rate == null ? undefined : recallColor(s.trueRetention.rate, target)}
-            domain={[0.5, 1]}
-          />
+          <RetentionTrend stats={s} />
           <Trend label="Reviews, last 7 days" value={String(week.reviews)} sub={`${totalReviews} in ${WEEKS} weeks`} bars={daily.map((d) => d.reviews)} color="var(--chart-2)" />
           <Trend label="Streak" value={`${s.streak} day${s.streak === 1 ? "" : "s"}`} sub={s.bestStreak ? `Best ${s.bestStreak} in ${WEEKS} weeks` : "Study today to start one"} streak={s.days} today={s.today.day} />
           <Trend label="Time, last 7 days" value={fmtDuration(week.ms)} sub={totalMs ? `${fmtDuration(totalMs)} in ${WEEKS} weeks` : "Time per answer is recorded as you study"} bars={daily.map((d) => d.ms)} color="var(--chart-3)" />
@@ -350,12 +404,29 @@ export function Overview({ stats: s, deck, ring }: { stats: Stats; deck?: string
   );
 }
 
+function RetentionTrend({ stats: s }: { stats: Stats }) {
+  const recent = s.weeks.slice(-12);
+  const rateWeeks = recent.filter((w) => w.reviewed > 0).length;
+  return (
+    <Trend
+      label="True retention"
+      value={pct(s.trueRetention.rate, 1)}
+      tone={tone(s.trueRetention.rate)}
+      sub={s.trueRetention.reviewed ? `${s.trueRetention.passed}/${s.trueRetention.reviewed} passed · 30 days` : "No review answers in 30 days"}
+      spark={rateWeeks >= 3 ? recent.map((w) => w.rate) : undefined}
+      note={rateWeeks >= 3 ? undefined : "Trend after 3 weeks of reviews"}
+      color={s.trueRetention.rate == null ? undefined : recallColor(s.trueRetention.rate, s.desiredRetention ?? 0.9)}
+      domain={[0.5, 1]}
+    />
+  );
+}
+
 /** A headline number with a 12-week sparkline, or, for the streak, the last 14 days as dots. */
 export function Trend({ label, value, sub, tone: t, spark, bars, note, color, domain, streak, today }: { label: string; value: string; sub: string; tone?: keyof typeof TONE; spark?: (number | null)[]; bars?: number[]; note?: string; color?: string; domain?: [number, number]; streak?: Stats["days"]; today?: string }) {
   return (
     <div className="min-w-0">
       <div className="truncate text-xs text-muted-foreground">{label}</div>
-      <div className={cn("tabular mt-0.5 text-2xl leading-tight tracking-tight", t ? TONE[t] : value === "—" && "text-muted-foreground/50")} style={SERIF}>{value}</div>
+      <div className={cn("tabular mt-0.5 text-2xl leading-tight tracking-tight", t ? TONE[t] : value === "—" && "text-muted-foreground/50")}>{value}</div>
       <div className="mt-1.5 h-[30px]">
         {spark && <Sparkline values={spark} color={color} height={30} domain={domain} />}
         {bars && <MiniBars values={bars} color={color} />}
@@ -405,7 +476,7 @@ export function Schedulers({ list }: { list: StatsScheduler[] }) {
     <Panel title="By scheduler" aside="Recall, card states and memory strength count FSRS cards only">
       <ul className="flex flex-col divide-y">
         {list.map((x) => {
-          const go = () => (x.decks.length === 1 ? navigate(`/stats?deck=${encodeURIComponent(x.decks[0])}`) : undefined);
+          const go = () => (x.decks.length === 1 ? navigate(`/deck?name=${encodeURIComponent(x.decks[0])}&tab=stats`) : undefined);
           const status = x.kind === "drill" ? (x.due ? `${x.due} ready` : "none ready") : `${x.due} due`;
           const extra = x.kind === "drill" ? (x.answers ? `${x.answers} run${x.answers === 1 ? "" : "s"}` : "") : x.passRate != null ? `${pct(x.passRate)} pass` : "";
           return (
@@ -435,7 +506,7 @@ export function Schedulers({ list }: { list: StatsScheduler[] }) {
 }
 
 /** A deck on a rated script scheduler: what's due, how answers went, and what its state groups cards by. */
-function RatedBody({ stats: s, deck, summary }: { stats: Stats; deck: string; summary: StatsScheduler }) {
+function RatedBody({ stats: s, deck, summary, deckTab = false }: { stats: Stats; deck: string; summary: StatsScheduler; deckTab?: boolean }) {
   const totalReviews = s.days.reduce((a, d) => a + d.reviews, 0);
   const totalMs = s.days.reduce((a, d) => a + d.ms, 0);
   const target = s.desiredRetention ?? 0.9;
@@ -447,22 +518,24 @@ function RatedBody({ stats: s, deck, summary }: { stats: Stats; deck: string; su
   const ratedTotal = s.ratings.again + s.ratings.hard + s.ratings.good + s.ratings.easy;
   return (
     <div className="flex flex-col gap-6">
-      <section aria-label="Overview" className="rounded-xl border bg-card/40">
-        <div className="grid grid-cols-2 gap-x-5 gap-y-5 p-4 sm:grid-cols-4 sm:p-5">
-          <div>
-            <div className="text-xs text-muted-foreground">Due today</div>
-            <div className="tabular text-5xl leading-none tracking-tight" style={SERIF}>{dueToday}</div>
-            <div className="mt-1.5 text-xs text-muted-foreground">{s.overdue ? <span className="text-again">{s.overdue} overdue</span> : dueToday ? "all on time" : "nothing waiting"}</div>
-            <Button size="sm" className="mt-3 h-9 gap-1.5" disabled={!dueToday && !summary.new} onClick={() => navigate(`/study?deck=${encodeURIComponent(deck)}`)}>
-              <Play className="size-3.5" />Practice
-            </Button>
+      {!deckTab && (
+        <section aria-label="Overview" className="rounded-xl border bg-card/40">
+          <div className="grid grid-cols-2 gap-x-5 gap-y-5 p-4 sm:grid-cols-4 sm:p-5">
+            <div>
+              <div className="text-xs text-muted-foreground">Due today</div>
+              <div className="tabular text-5xl leading-none tracking-tight">{dueToday}</div>
+              <div className="mt-1.5 text-xs text-muted-foreground">{s.overdue ? <span className="text-again">{s.overdue} overdue</span> : dueToday ? "all on time" : "nothing waiting"}</div>
+              <Button size="sm" className="mt-3 h-9 gap-1.5" disabled={!dueToday && !summary.new} onClick={() => navigate(`/study?deck=${encodeURIComponent(deck)}`)}>
+                <Play className="size-3.5" />Practice
+              </Button>
+            </div>
+            <Stat label="Pass rate" value={pct(summary.passRate)} sub={summary.rated ? `${summary.passed}/${summary.rated} not Again · ${WEEKS} weeks` : "No answers yet"} tone={tone(summary.passRate)} />
+            <Stat label="Cards" value={String(summary.cards)} sub={summary.new ? `${summary.new} not seen yet` : "all seen"} />
+            <Stat label="Streak" value={`${s.streak} day${s.streak === 1 ? "" : "s"}`} sub={s.bestStreak ? `Best ${s.bestStreak} in ${WEEKS} weeks` : "Practice today to start one"} />
           </div>
-          <Stat label="Pass rate" value={pct(summary.passRate)} sub={summary.rated ? `${summary.passed}/${summary.rated} not Again · ${WEEKS} weeks` : "No answers yet"} tone={tone(summary.passRate)} />
-          <Stat label="Cards" value={String(summary.cards)} sub={summary.new ? `${summary.new} not seen yet` : "all seen"} />
-          <Stat label="Streak" value={`${s.streak} day${s.streak === 1 ? "" : "s"}`} sub={s.bestStreak ? `Best ${s.bestStreak} in ${WEEKS} weeks` : "Practice today to start one"} />
-        </div>
-        <p className="border-t px-4 py-3 text-xs text-muted-foreground sm:px-5">Scheduled by {summary.name}. It decides when cards come back without predicting recall, so there's no forgetting curve here.</p>
-      </section>
+          <p className="border-t px-4 py-3 text-xs text-muted-foreground sm:px-5">Scheduled by {summary.name}. It decides when cards come back without predicting recall, so there's no forgetting curve here.</p>
+        </section>
+      )}
 
       {g && (
         <Panel title={`Cards by ${g.label.toLowerCase()}`} aside={<span className="tabular">{groupTotal} seen</span>}>
@@ -485,32 +558,36 @@ function RatedBody({ stats: s, deck, summary }: { stats: Stats; deck: string; su
         <Forecast stats={s} deck={deck} />
       </Panel>
 
-      <div className="grid items-start gap-6 lg:grid-cols-2">
-        <Panel title="Ratings" aside={`Last ${WEEKS} weeks`}>
-          {ratedTotal ? (
-            <Donut
-              center={ratedTotal}
-              sub="ratings"
-              parts={[
-                { key: "again", label: "Again", value: s.ratings.again, color: "var(--again)" },
-                { key: "hard", label: "Hard", value: s.ratings.hard, color: "var(--hard)" },
-                { key: "good", label: "Good", value: s.ratings.good, color: "var(--good)" },
-                { key: "easy", label: "Easy", value: s.ratings.easy, color: "var(--easy)" },
-              ]}
-            />
-          ) : (
-            <Empty>Ratings appear after your first answers.</Empty>
-          )}
-        </Panel>
-        <Panel title="When you practice" aside={`Last ${WEEKS} weeks`}>
-          {totalReviews ? <StudyClock hours={s.hours} target={target} /> : <Empty>Your practice hours show up after your first answers.</Empty>}
-        </Panel>
-      </div>
+      {!deckTab && (
+        <div className="grid items-start gap-6 lg:grid-cols-2">
+          <Panel title="Ratings" aside={`Last ${WEEKS} weeks`}>
+            {ratedTotal ? (
+              <Donut
+                center={ratedTotal}
+                sub="ratings"
+                parts={[
+                  { key: "again", label: "Again", value: s.ratings.again, color: "var(--again)" },
+                  { key: "hard", label: "Hard", value: s.ratings.hard, color: "var(--hard)" },
+                  { key: "good", label: "Good", value: s.ratings.good, color: "var(--good)" },
+                  { key: "easy", label: "Easy", value: s.ratings.easy, color: "var(--easy)" },
+                ]}
+              />
+            ) : (
+              <Empty>Ratings appear after your first answers.</Empty>
+            )}
+          </Panel>
+          <Panel title="When you practice" aside={`Last ${WEEKS} weeks`}>
+            {totalReviews ? <StudyClock hours={s.hours} target={target} /> : <Empty>Your practice hours show up after your first answers.</Empty>}
+          </Panel>
+        </div>
+      )}
 
-      <Panel title="Practice days" aside={totalReviews ? "Answers per day" : undefined}>
-        {totalReviews ? <Heatmap days={s.days} weeks={activeWeeks} today={s.today.day} /> : <Empty>Each practice day fills a square here.</Empty>}
-        {totalMs > 0 && <TimeSpent days={s.days} today={s.today.day} />}
-      </Panel>
+      {!deckTab && (
+        <Panel title="Practice days" aside={totalReviews ? "Answers per day" : undefined}>
+          {totalReviews ? <Heatmap days={s.days} weeks={activeWeeks} today={s.today.day} /> : <Empty>Each practice day fills a square here.</Empty>}
+          {totalMs > 0 && <TimeSpent days={s.days} today={s.today.day} />}
+        </Panel>
+      )}
     </div>
   );
 }
@@ -519,7 +596,7 @@ function Stat({ label, value, sub, tone: t }: { label: string; value: string; su
   return (
     <div className="min-w-0">
       <div className="truncate text-xs text-muted-foreground">{label}</div>
-      <div className={cn("tabular mt-0.5 text-3xl leading-tight tracking-tight", t ? TONE[t] : value === "—" && "text-muted-foreground/50")} style={SERIF}>{value}</div>
+      <div className={cn("tabular mt-0.5 text-3xl leading-tight tracking-tight", t ? TONE[t] : value === "—" && "text-muted-foreground/50")}>{value}</div>
       <div className="mt-1 truncate text-[11px] text-muted-foreground" title={sub}>{sub}</div>
     </div>
   );
@@ -554,15 +631,15 @@ export function PracticePanel({ card }: { card: PracticeCard }) {
       <div className="mb-4 grid grid-cols-3 gap-4">
         <div>
           <div className="text-xs text-muted-foreground">Last</div>
-          <div className="tabular text-3xl leading-tight tracking-tight" style={SERIF}>{fmt(m.last)}</div>
+          <div className="tabular text-3xl leading-tight tracking-tight">{fmt(m.last)}</div>
         </div>
         <div>
           <div className="text-xs text-muted-foreground">Best</div>
-          <div className="tabular text-3xl leading-tight tracking-tight text-good" style={SERIF}>{fmt(m.best)}</div>
+          <div className="tabular text-3xl leading-tight tracking-tight text-good">{fmt(m.best)}</div>
         </div>
         <div>
           <div className="text-xs text-muted-foreground">Since the first</div>
-          <div className={cn("tabular text-3xl leading-tight tracking-tight", delta == null ? "text-muted-foreground/50" : up ? "text-good" : delta === 0 ? "" : "text-again")} style={SERIF}>
+          <div className={cn("tabular text-3xl leading-tight tracking-tight", delta == null ? "text-muted-foreground/50" : up ? "text-good" : delta === 0 ? "" : "text-again")}>
             {delta == null ? "—" : `${delta > 0 ? "+" : delta < 0 ? "−" : ""}${Math.abs(delta).toFixed(m.digits)}`}
           </div>
         </div>
@@ -572,9 +649,9 @@ export function PracticePanel({ card }: { card: PracticeCard }) {
   );
 }
 
-function Panel({ title, aside, children }: { title: string; aside?: ReactNode; children: ReactNode }) {
+function Panel({ title, aside, children, className }: { title: string; aside?: ReactNode; children: ReactNode; className?: string }) {
   return (
-    <section className="rounded-xl border bg-card/40 p-4 sm:p-5">
+    <section className={cn("rounded-xl border bg-card/40 p-4 sm:p-5", className)}>
       <div className="mb-4 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
         <h2 className="shrink-0 text-sm font-medium">{title}</h2>
         {aside && <div className="min-w-0 text-xs text-muted-foreground">{aside}</div>}
@@ -591,7 +668,7 @@ function Empty({ children }: { children: ReactNode }) {
 const TONE = { good: "text-good", hard: "text-hard", again: "text-again" } as const;
 export const tone = (v: number | null): keyof typeof TONE | undefined => (v == null ? undefined : v >= 0.85 ? "good" : v >= 0.7 ? "hard" : "again");
 
-function TimeSpent({ days, today }: { days: Stats["days"]; today: string }) {
+function TimeSpent({ days, today, fill = false }: { days: Stats["days"]; today: string; fill?: boolean }) {
   const series = useMemo(() => {
     const by = new Map(days.map((d) => [d.day, d]));
     const end = parseDay(today);
@@ -608,7 +685,7 @@ function TimeSpent({ days, today }: { days: Stats["days"]; today: string }) {
   const total = series.reduce((a, d) => a + d.value, 0);
   if (!total) return null;
   return (
-    <div className="mt-6 border-t pt-5">
+    <div className={cn("mt-6 border-t pt-5", fill && "nd-stats-time")}>
       <div className="mb-2 flex items-baseline justify-between text-xs text-muted-foreground">
         <span className="font-medium text-foreground">Time studying</span>
         <span className="tabular">{fmtDuration(total * 60000)} in 30 days</span>
@@ -616,7 +693,8 @@ function TimeSpent({ days, today }: { days: Stats["days"]; today: string }) {
       <BarChart
         data={series}
         height={120}
-        color="var(--chart-2)"
+        fill={fill}
+        color="var(--foreground)"
         highlight={series.length - 1}
         ticks={[1, 8, 15, 22, 29]}
         format={(v) => `${v}m`}
@@ -698,15 +776,16 @@ export function Forecast({ stats, deck, height = 170 }: { stats: Stats; deck?: s
 function Mini({ label, value, sub }: { label: string; value: number; sub?: string }) {
   return (
     <div>
-      <div className="tabular text-2xl leading-tight" style={SERIF}>{value}</div>
+      <div className="tabular text-2xl leading-tight">{value}</div>
       <div className="text-xs text-muted-foreground">{label}</div>
       {sub && <div className="text-xs text-again">{sub}</div>}
     </div>
   );
 }
 
-export function WeakTags({ tree, target, limit = 10 }: { tree: Stats["tagTree"]; target: number; limit?: number }) {
+export function WeakTags({ tree, target, limit = 10, deck }: { tree: Stats["tagTree"]; target: number; limit?: number; deck?: string }) {
   const roots = useMemo(() => tree.filter((t) => t.depth === 0).sort((a, b) => b.cards - a.cards), [tree]);
+  const groups = roots.filter((r) => tree.some((t) => t.tag.startsWith(r.tag + "::")));
   const [group, setGroup] = useState<string>("__leaf");
   const [all, setAll] = useState(false);
 
@@ -715,28 +794,31 @@ export function WeakTags({ tree, target, limit = 10 }: { tree: Stats["tagTree"];
   const inGroup = group === "__leaf" ? tree.filter((t) => t.direct) : tree.filter((t) => t.tag.startsWith(group + "::"));
   const seen = inGroup.filter((t) => t.seen > 0).sort((a, b) => a.recall! - b.recall! || b.seen - a.seen);
   const unseen = inGroup.filter((t) => t.seen === 0);
-  const shown = all ? seen : seen.slice(0, limit);
+  const tags = [...seen, ...unseen];
+  const shown = all ? tags : tags.slice(0, limit);
   // The meters share one scale that starts a little under the weakest tag, so 89% and 95% look different.
   const lo = Math.max(0, Math.min(0.6, Math.floor(((seen[0]?.recall ?? 0.6) - 0.05) * 20) / 20));
   const head = group === "__leaf" ? null : tree.find((t) => t.tag === group);
 
   return (
     <div>
-      <div className="-mx-1 mb-4 flex flex-wrap gap-1.5" role="radiogroup" aria-label="Tag group">
-        <Chip active={group === "__leaf"} onClick={() => setGroup("__leaf")}>Every tag</Chip>
-        {roots.filter((r) => tree.some((t) => t.tag.startsWith(r.tag + "::"))).map((r) => (
-          <Chip key={r.tag} active={group === r.tag} onClick={() => setGroup(r.tag)}>{r.tag}</Chip>
-        ))}
-      </div>
+      {groups.length > 0 && (
+        <div className="-mx-1 mb-4 flex flex-wrap gap-1.5" role="radiogroup" aria-label="Tag group">
+          <Chip active={group === "__leaf"} onClick={() => setGroup("__leaf")}>Every tag</Chip>
+          {groups.map((r) => (
+            <Chip key={r.tag} active={group === r.tag} onClick={() => setGroup(r.tag)}>{r.tag}</Chip>
+          ))}
+        </div>
+      )}
       {head && (
         <div className="mb-3 flex items-center gap-3 rounded-lg bg-muted/40 px-3 py-2.5 text-sm">
-          <span className="font-mono text-[13px]">{head.tag}</span>
+          <span className="text-[13px]">{head.tag}</span>
           <span className="text-xs text-muted-foreground">all {head.cards} cards · {head.seen} studied</span>
           <span className="tabular ml-auto font-medium">{pct(head.recall)}</span>
         </div>
       )}
-      {seen.length === 0 ? (
-        <Empty>None of these tags has a studied card yet. Recall per tag appears after your first reviews.</Empty>
+      {tags.length === 0 ? (
+        <Empty>No tags in this group.</Empty>
       ) : (
         <ul className="-mx-2">
           {shown.map((t) => {
@@ -745,18 +827,27 @@ export function WeakTags({ tree, target, limit = 10 }: { tree: Stats["tagTree"];
             return (
               <li key={t.tag}>
                 <button
-                  onClick={() => navigate(`/browse?q=${encodeURIComponent(`tag:${t.tag}`)}`)}
+                  onClick={() => {
+                    const query = `tag:"${escapeDeckSearch(t.tag)}"`;
+                    navigate(deck
+                      ? `/deck?name=${encodeURIComponent(deck)}&tab=cards&q=${encodeURIComponent(query)}`
+                      : `/browse?q=${encodeURIComponent(query)}`);
+                  }}
                   className="grid min-h-11 w-full grid-cols-[minmax(0,1fr)_3.5rem] items-center gap-x-4 gap-y-1.5 rounded-md px-2 py-2 text-left hover:bg-accent/40 sm:grid-cols-[minmax(0,16rem)_minmax(0,1fr)_3.5rem_1rem]"
                 >
                   <span className="flex min-w-0 items-baseline gap-2">
-                    <span className="min-w-0 truncate font-mono text-[13px]">
+                    <span className="min-w-0 truncate text-[13px]">
                       {cut > 0 && <span className="text-muted-foreground">{label.slice(0, cut + 2)}</span>}
                       {label.slice(cut > 0 ? cut + 2 : 0)}
                     </span>
                     <span className="tabular shrink-0 text-xs text-muted-foreground">{t.seen === t.cards ? t.cards : `${t.seen}/${t.cards}`}</span>
                   </span>
-                  <span className="tabular text-right text-sm font-medium sm:order-3" style={{ color: recallColor(t.recall!, target) }}>{pct(t.recall)}</span>
-                  <span className="col-span-2 sm:order-2 sm:col-span-1"><TargetMeter value={t.recall!} target={target} lo={lo} /></span>
+                  <span className="tabular text-right text-sm font-medium sm:order-3" title={t.seen === 0 ? "Not studied yet" : undefined} style={{ color: t.seen > 0 ? recallColor(t.recall!, target) : "var(--muted-foreground)" }}>
+                    {t.seen > 0 ? pct(t.recall) : "—"}
+                  </span>
+                  <span className="col-span-2 sm:order-2 sm:col-span-1">
+                    <TargetMeter value={t.seen > 0 ? t.recall! : 0} target={target} lo={lo} />
+                  </span>
                   <ChevronRight className="hidden size-4 text-muted-foreground sm:order-4 sm:block" />
                 </button>
               </li>
@@ -765,10 +856,9 @@ export function WeakTags({ tree, target, limit = 10 }: { tree: Stats["tagTree"];
         </ul>
       )}
       <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-muted-foreground">
-        {seen.length > limit && (
-          <button className="h-10 rounded-md border px-3 text-foreground hover:bg-accent/50" onClick={() => setAll(!all)}>{all ? "Show fewer" : `Show all ${seen.length}`}</button>
+        {tags.length > limit && (
+          <button className="h-10 rounded-md border px-3 text-foreground hover:bg-accent/50" onClick={() => setAll(!all)}>{all ? "Show fewer" : `Show all ${tags.length}`}</button>
         )}
-        {unseen.length > 0 && <span>{unseen.length} tag{unseen.length === 1 ? "" : "s"} not studied yet</span>}
       </div>
     </div>
   );

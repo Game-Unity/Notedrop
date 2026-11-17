@@ -12,12 +12,12 @@ import { useScheme } from "@/lib/theme";
 const LANGS = { js: javascript, html, css, json, markdown };
 
 const theme = EditorView.theme({
-  "&": { backgroundColor: "transparent", fontSize: "13px" },
+  "&": { backgroundColor: "transparent", fontSize: "13.5px" },
   ".cm-gutters": { backgroundColor: "transparent", borderRight: "1px solid var(--border)", color: "var(--muted-foreground)" },
-  ".cm-content": { fontFamily: "var(--font-mono)" },
+  ".cm-content": { fontFamily: '"Comfortaa", sans-serif', fontSize: "13.5px", fontWeight: "500", letterSpacing: "0.02em", fontFeatureSettings: '"tnum"', whiteSpace: "pre" },
   ".cm-activeLine, .cm-activeLineGutter": { backgroundColor: "color-mix(in oklab, var(--foreground) 4%, transparent)" },
   "&.cm-focused": { outline: "none" },
-  ".cm-scroller": { lineHeight: "1.55" },
+  ".cm-scroller": { lineHeight: "1.6", fontFamily: '"Comfortaa", sans-serif', scrollbarColor: "#d2d2d6 transparent", scrollbarWidth: "thin" },
 });
 
 export function CodeEditor({
@@ -46,7 +46,7 @@ export function CodeEditor({
         value={value}
         onChange={onChange}
         theme={scheme === "light" ? "light" : oneDark}
-        extensions={[LANGS[lang](), theme, EditorView.lineWrapping]}
+        extensions={[LANGS[lang](), theme]}
         basicSetup={{ lineNumbers, foldGutter: false, highlightActiveLine: true, autocompletion: lang !== "markdown" }}
         minHeight={`${minHeight}px`}
         maxHeight={maxHeight ? `${maxHeight}px` : undefined}

@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import { api, type Grade } from "@/lib/api";
 import { pageScheme, THEME_EVENT, useScheme } from "@/lib/theme";
 import { etudeFetch, isLocal } from "@/lib/transport";
+import { BUILTIN_THEMES } from "../../../src/core/themes.ts";
 
 export interface CardResult {
   grade: Grade;
@@ -39,6 +40,8 @@ interface Props {
   fitScreen?: boolean;
   /** Report the height left in the parent after its padding and other children. */
   fitContainer?: boolean;
+  darkTheme?: boolean;
+  markdownEditorStyle?: boolean;
   /** Pixels kept free under the card when fitting the screen (default 16), e.g. for a button. */
   fitMargin?: number;
   onSubmit?(answer: unknown): void;
@@ -71,15 +74,35 @@ const THEME_VARS = [
   "--again", "--hard", "--good", "--easy", "--new", "--learn", "--review", "--radius", "--font-sans", "--font-mono",
 ];
 
-function theme() {
-  const cs = getComputedStyle(document.documentElement);
-  const vars: Record<string, string> = {};
-  for (const v of THEME_VARS) {
-    const val = cs.getPropertyValue(v).trim();
-    if (val) vars[v] = val;
+const PANEL_THEME_VARS = [
+  "--background-app", "--background-app-sidebar", "--color-app", "--color-main-app", "--background", "--foreground",
+  "--card", "--card-foreground", "--popover", "--popover-foreground", "--muted", "--muted-foreground", "--secondary",
+  "--secondary-foreground", "--accent", "--accent-foreground", "--border", "--input", "--ring", "--highlight",
+  "--success", "--warning", "--hard", "--easy", "--code-keyword", "--code-string", "--code-number", "--code-function",
+  "--code-type", "--code-comment", "--code-punct",
+];
+
+const darkPreviewTheme = BUILTIN_THEMES.find((item) => item.id === "midnight");
+
+function theme(forceDark = false, markdownEditorStyle = false, panel?: Element | null) {
+  const dark = forceDark ? darkPreviewTheme : undefined;
+  const vars: Record<string, string> = dark ? { ...dark.vars } : {};
+  if (!dark) {
+    const cs = getComputedStyle(document.documentElement);
+    for (const v of THEME_VARS) {
+      const val = cs.getPropertyValue(v).trim();
+      if (val) vars[v] = val;
+    }
+    vars["--danger"] ||= cs.getPropertyValue("--destructive").trim();
   }
-  vars["--danger"] ||= cs.getPropertyValue("--destructive").trim();
-  return { scheme: pageScheme(), vars };
+  if (markdownEditorStyle && panel) {
+    const cs = getComputedStyle(panel);
+    for (const v of PANEL_THEME_VARS) {
+      const val = cs.getPropertyValue(v).trim();
+      if (val) vars[v] = val;
+    }
+  }
+  return { scheme: dark?.scheme ?? pageScheme(), vars, markdownEditorStyle };
 }
 
 export const CardFrame = forwardRef<CardFrameHandle, Props>(function CardFrame(props, ref) {
@@ -206,7 +229,7 @@ export const CardFrame = forwardRef<CardFrameHandle, Props>(function CardFrame(p
       const p = latest.current;
       switch (msg.type) {
         case "loaded":
-          prefsFor(typeOfSrc(p.src)).then((prefs) => post({ type: "init", view: p.view, mode: p.mode ?? "answer", answer: p.answer ?? null, result: p.result ?? null, theme: theme(), screen: { height: screenHeight(), viewportHeight: window.innerHeight }, prefs }));
+          prefsFor(typeOfSrc(p.src)).then((prefs) => post({ type: "init", view: p.view, mode: p.mode ?? "answer", answer: p.answer ?? null, result: p.result ?? null, theme: theme(p.darkTheme, p.markdownEditorStyle, iframe.current?.closest(".nd-card-preview-sidebar")), screen: { height: screenHeight(), viewportHeight: window.innerHeight }, prefs }));
           break;
         case "set-pref": {
           // Previews of unsaved types (raw HTML) have nowhere to keep preferences.
@@ -265,12 +288,16 @@ export const CardFrame = forwardRef<CardFrameHandle, Props>(function CardFrame(p
   }, [props.frameKey, post]);
 
   // A theme change (or a live preview in Settings) restyles cards already on screen.
-  const scheme = useScheme();
+  const pageThemeScheme = useScheme();
+  const scheme = props.darkTheme ? "dark" : pageThemeScheme;
   useEffect(() => {
-    const onTheme = () => post({ type: "theme", theme: theme() });
+    const onTheme = () => post({ type: "theme", theme: theme(latest.current.darkTheme, latest.current.markdownEditorStyle, iframe.current?.closest(".nd-card-preview-sidebar")) });
     window.addEventListener(THEME_EVENT, onTheme);
     return () => window.removeEventListener(THEME_EVENT, onTheme);
   }, [post]);
+  useEffect(() => {
+    if (loaded) post({ type: "theme", theme: theme(props.darkTheme, props.markdownEditorStyle, iframe.current?.closest(".nd-card-preview-sidebar")) });
+  }, [loaded, props.darkTheme, props.markdownEditorStyle, post]);
 
   return (
     <iframe

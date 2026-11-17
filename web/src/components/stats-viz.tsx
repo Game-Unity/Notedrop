@@ -2,9 +2,6 @@
 import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
-/** Computer Modern for the big numerals, matching the wordmark. */
-export const SERIF = { fontFamily: "KaTeX_Main, 'Latin Modern Roman', 'CMU Serif', Georgia, serif" } as const;
-
 /** Width of an element in CSS pixels. */
 export function useWidth<T extends HTMLElement>() {
   const ref = useRef<T>(null);
@@ -65,7 +62,7 @@ export function RecallRing({ value, target, size = 176, label, sub }: { value: n
         )}
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-        <div className="tabular text-[40px] leading-none tracking-tight" style={SERIF}>
+        <div className="tabular text-[40px] leading-none tracking-tight">
           {value == null ? "—" : (v * 100).toFixed(1)}
           {value != null && <span className="ml-0.5 text-xl text-muted-foreground">%</span>}
         </div>
@@ -275,7 +272,7 @@ export function Histogram({
 // ---------------------------------------------------------- study clock
 
 /** A 24-hour clock: wedge length is how much you study at that hour, color is how well. */
-export function StudyClock({ hours, target, size = 232 }: { hours: { hour: number; reviews: number; rated?: number; passed: number }[]; target: number; size?: number }) {
+export function StudyClock({ hours, target, size = 232, stacked = false, fill = false }: { hours: { hour: number; reviews: number; rated?: number; passed: number }[]; target: number; size?: number; stacked?: boolean; fill?: boolean }) {
   // Wedge length is every answer; colour is the pass rate over rated ones (a drill run has none).
   const ratedOf = (h: { reviews: number; rated?: number }) => h.rated ?? h.reviews;
   const shown = useShown(100);
@@ -289,18 +286,32 @@ export function StudyClock({ hours, target, size = 232 }: { hours: { hour: numbe
   const eligible = totalRated >= 40 ? hours.filter((h) => ratedOf(h) >= Math.max(10, totalRated * 0.05)) : [];
   const best = eligible.length ? eligible.reduce((a, b) => (b.passed / ratedOf(b) > a.passed / ratedOf(a) ? b : a)) : null;
   const busiest = hours.reduce((a, b) => (b.reviews > a.reviews ? b : a));
-  const wedge = (h: number, len: number) => {
+  const wedge = (h: number, len: number, rounded = false) => {
     const a0 = ((h / 24) * 2 - 0.5) * Math.PI + 0.025, a1 = (((h + 1) / 24) * 2 - 0.5) * Math.PI - 0.025;
     const r = r0 + (r1 - r0) * len;
     const p = (a: number, rr: number) => `${(c + Math.cos(a) * rr).toFixed(2)},${(c + Math.sin(a) * rr).toFixed(2)}`;
+    if (rounded) {
+      const corner = Math.min(3, (r - r0) / 2);
+      const inner = Math.min(corner / r0, (a1 - a0) / 2);
+      const outer = Math.min(corner / r, (a1 - a0) / 2);
+      return [
+        `M${p(a0 + inner, r0)}`,
+        `Q${p(a0, r0)} ${p(a0, r0 + corner)}`,
+        `L${p(a0, r - corner)}Q${p(a0, r)} ${p(a0 + outer, r)}`,
+        `A${r},${r} 0 0 1 ${p(a1 - outer, r)}`,
+        `Q${p(a1, r)} ${p(a1, r - corner)}`,
+        `L${p(a1, r0 + corner)}Q${p(a1, r0)} ${p(a1 - inner, r0)}`,
+        `A${r0},${r0} 0 0 0 ${p(a0 + inner, r0)}Z`,
+      ].join("");
+    }
     return `M${p(a0, r0)}L${p(a0, r)}A${r},${r} 0 0 1 ${p(a1, r)}L${p(a1, r0)}A${r0},${r0} 0 0 0 ${p(a0, r0)}Z`;
   };
   const hh = (h: number) => `${String(h).padStart(2, "0")}:00`;
   const hv = hover != null ? hours[hover] : null;
   return (
-    <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-center sm:gap-6">
-      <div className="relative shrink-0" style={{ width: S, height: S }}>
-        <svg width={S} height={S} role="img" aria-label={`Reviews by hour of day; busiest ${hh(busiest.hour)}`} onMouseLeave={() => setHover(null)}>
+    <div className={cn("flex flex-col items-center gap-4 sm:gap-6", !stacked && "sm:flex-row", fill && "nd-stats-clock")}>
+      <div className={cn("relative shrink-0", fill && "nd-stats-clock-plot")} style={fill ? undefined : { width: S, height: S }}>
+        <svg width={S} height={S} viewBox={`0 0 ${S} ${S}`} role="img" aria-label={`Reviews by hour of day; busiest ${hh(busiest.hour)}`} onMouseLeave={() => setHover(null)}>
           {[0.33, 0.66, 1].map((k) => (
             <circle key={k} cx={c} cy={c} r={r0 + (r1 - r0) * k} fill="none" stroke="var(--border)" />
           ))}
@@ -314,15 +325,16 @@ export function StudyClock({ hours, target, size = 232 }: { hours: { hour: numbe
             {hours.map((h, i) => {
               const len = h.reviews ? Math.sqrt(h.reviews / max) : 0;
               const rate = ratedOf(h) ? h.passed / ratedOf(h) : null;
+              const color = rate == null ? "var(--chart-2)" : recallColor(rate, target);
               return (
                 <g key={h.hour} onMouseEnter={() => setHover(i)}>
                   <path d={wedge(h.hour, 1)} fill="transparent" />
                   {h.reviews > 0 && (
                     <path
-                      d={wedge(h.hour, Math.max(len, 0.06))}
-                      fill={rate == null ? "var(--chart-2)" : recallColor(rate, target)}
-                      fillOpacity={hover == null || hover === i ? 0.9 : 0.4}
-                      style={{ transition: "fill-opacity .15s" }}
+                      d={wedge(h.hour, Math.max(len, 0.06), true)}
+                      fill={color}
+                      opacity={hover == null || hover === i ? 0.9 : 0.4}
+                      style={{ transition: "opacity .15s" }}
                       pointerEvents="none"
                     />
                   )}
@@ -334,7 +346,7 @@ export function StudyClock({ hours, target, size = 232 }: { hours: { hour: numbe
         <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">
           {hv ? (
             <>
-              <div className="tabular text-lg leading-none" style={SERIF}>{hh(hv.hour)}</div>
+              <div className="tabular text-lg leading-none">{hh(hv.hour)}</div>
               <div className="tabular mt-1 text-[11px] text-muted-foreground">{hv.reviews}{ratedOf(hv) ? ` · ${Math.round((hv.passed / ratedOf(hv)) * 100)}%` : ""}</div>
             </>
           ) : (
@@ -345,12 +357,12 @@ export function StudyClock({ hours, target, size = 232 }: { hours: { hour: numbe
       <dl className="grid w-full grid-cols-2 gap-x-4 gap-y-3 text-sm sm:grid-cols-1">
         <div>
           <dt className="text-xs text-muted-foreground">Busiest hour</dt>
-          <dd className="tabular mt-0.5 text-lg" style={SERIF}>{hh(busiest.hour)}</dd>
+          <dd className="tabular mt-0.5 text-lg">{hh(busiest.hour)}</dd>
           <dd className="tabular text-xs text-muted-foreground">{busiest.reviews} answer{busiest.reviews === 1 ? "" : "s"}</dd>
         </div>
         {totalRated > 0 && <div>
           <dt className="text-xs text-muted-foreground">Sharpest hour</dt>
-          <dd className="tabular mt-0.5 text-lg" style={SERIF}>{best ? hh(best.hour) : "—"}</dd>
+          <dd className="tabular mt-0.5 text-lg">{best ? hh(best.hour) : "—"}</dd>
           <dd className="tabular text-xs text-muted-foreground">{best ? `${Math.round((best.passed / ratedOf(best)) * 100)}% not Again` : "Needs more rated answers"}</dd>
         </div>}
         <p className="col-span-2 text-xs text-pretty text-muted-foreground sm:col-span-1">{totalRated ? "Longer wedges, more answers. Color is how often you didn't press Again at that hour." : "Longer wedges, more runs at that hour."}</p>
@@ -365,8 +377,8 @@ export function Donut({ parts, center, sub, size = 132, onPick }: { parts: { key
   const shown = useShown(120);
   const [hover, setHover] = useState<number | null>(null);
   const total = parts.reduce((a, p) => a + p.value, 0);
-  const stroke = 16, r = size / 2 - stroke / 2 - 2, C = 2 * Math.PI * r;
-  const gap = total && parts.filter((p) => p.value).length > 1 ? 2.5 : 0;
+  const stroke = 10, r = size / 2 - stroke / 2 - 2, C = 2 * Math.PI * r;
+  const gap = total && parts.filter((p) => p.value).length > 1 ? stroke + 6.5 : 0;
   let acc = 0;
   const pct = (v: number) => (total ? ((v / total) * 100).toFixed(1) : "0");
   return (
@@ -388,8 +400,9 @@ export function Donut({ parts, center, sub, size = 132, onPick }: { parts: { key
                 fill="none"
                 stroke={p.color}
                 strokeWidth={hover === i ? stroke + 4 : stroke}
+                strokeLinecap="round"
                 strokeDasharray={`${shown ? Math.max(0.5, len - gap) : 0} ${C}`}
-                strokeDashoffset={-start}
+                strokeDashoffset={-(start + Math.min(gap, len) / 2)}
                 transform={`rotate(-90 ${size / 2} ${size / 2})`}
                 opacity={hover == null || hover === i ? 1 : 0.45}
                 onMouseEnter={() => setHover(i)}
@@ -402,12 +415,12 @@ export function Donut({ parts, center, sub, size = 132, onPick }: { parts: { key
         <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">
           {hover != null ? (
             <>
-              <div className="tabular text-2xl leading-none" style={SERIF}>{pct(parts[hover].value)}%</div>
+              <div className="tabular text-2xl leading-none">{pct(parts[hover].value)}%</div>
               <div className="mt-1 text-[11px] text-muted-foreground">{parts[hover].label}</div>
             </>
           ) : (
             <>
-              <div className="tabular text-2xl leading-none" style={SERIF}>{center}</div>
+              <div className="tabular text-2xl leading-none">{center}</div>
               {sub && <div className="mt-1 text-[11px] text-muted-foreground">{sub}</div>}
             </>
           )}

@@ -210,7 +210,7 @@ export function NoteDropTree({ deckName, dataKey }: { deckName: string; dataKey:
             <span className="nd-tree-label">{leafOf(root.name)}</span>
           </button></TooltipHint>
           <h3 className="mt-4 mb-1.5 shrink-0 text-sm font-medium">Chapters</h3>
-          <div className="nd-tree-content" ref={treeDrag.setListRef}>
+          <div className="nd-tree-content nd-side-panel-scroll" ref={treeDrag.setListRef}>
             {childrenOf(decks, root.name).map((name, index) => {
               const child = deckByName.get(name);
               return child ? (

@@ -13,7 +13,7 @@ import { BulkBar, CheckBox, groupItems, ItemRow, OrderSelect, SearchHints, useIt
 import { DeckOptions, formatDeadline, type DeckFull } from "@/components/deck-options";
 import { api, type Counts, type DeckNode, type LearnerSummary, type Preset, type SearchFacets, type SearchRow } from "@/lib/api";
 import { etudeDownload } from "@/lib/local-url";
-import { navigate } from "@/lib/router";
+import { navigate, useLocation } from "@/lib/router";
 import { cn } from "@/lib/utils";
 import { Block, Breadcrumb, EmptyState, LinkRow, Page, Section } from "@/components/page";
 import { childrenOf, clashes, leafOf, moveDeck, MoveDeckDialog, parentOf } from "@/components/move-deck";
@@ -21,10 +21,13 @@ import { usePhone } from "@/lib/phone";
 import { PhoneTitle } from "@/components/phone-shell";
 import { useDeckActions } from "@/components/deck-actions";
 import { invalidateProgress, loadDeckList, onProgressInvalidated, relatedDecks } from "@/lib/notedrop-progress";
+import { StatsPage } from "@/pages/stats";
 
 const enc = encodeURIComponent;
 
 export function DeckPage({ name, dataKey, activeItemId, onOpenCard, onCreateCard, onClosePanel }: { name: string; dataKey: number; activeItemId: string | null; onOpenCard(id: string): void; onCreateCard(): void; onClosePanel(discard?: boolean): void }) {
+  const { params } = useLocation();
+  const urlTab = params.get("tab") ?? "overview";
   const [deck, setDeck] = useState<DeckFull | null>(null);
   const [decks, setDecks] = useState<DeckNode[]>([]);
   const [presets, setPresets] = useState<Preset[]>([]);
@@ -34,6 +37,8 @@ export function DeckPage({ name, dataKey, activeItemId, onOpenCard, onCreateCard
   const [queueError, setQueueError] = useState<{ deck: string; message: string } | null>(null);
   const [tab, setTab] = useState(() => new URLSearchParams(location.search).get("tab") ?? "overview");
   const phone = usePhone();
+
+  useEffect(() => setTab(urlTab), [urlTab]);
 
   // Keep the open tab in the URL so reloads and links land on it.
   const switchTab = (t: string) => {
@@ -173,6 +178,7 @@ export function DeckPage({ name, dataKey, activeItemId, onOpenCard, onCreateCard
   const cardsTab = (
           <DeckCards
             deck={deck.name}
+            initialQuery={params.get("q") ?? ""}
             dataKey={dataKey}
             hasChildren={children.length > 0}
             active={tab === "cards"}
@@ -215,7 +221,7 @@ export function DeckPage({ name, dataKey, activeItemId, onOpenCard, onCreateCard
         <Tabs value={tab} onValueChange={switchTab} className="mt-7">
           <div className="sticky top-[calc(3rem+env(safe-area-inset-top))] z-10 border-b bg-background/95 px-5 backdrop-blur">
             <TabsList variant="line" className="h-11 w-full justify-start gap-5 bg-transparent p-0">
-              {(["overview", "cards", "options", "manage"] as const).map((t) => (
+              {(["overview", "stats", "cards", "options", "manage"] as const).map((t) => (
                 <TabsTrigger key={t} value={t} className="h-11 flex-none rounded-none border-0 px-0 text-[15px] capitalize shadow-none after:!bottom-0 after:bg-highlight data-[state=active]:bg-transparent data-[state=active]:shadow-none">{t}</TabsTrigger>
               ))}
             </TabsList>
@@ -225,6 +231,7 @@ export function DeckPage({ name, dataKey, activeItemId, onOpenCard, onCreateCard
               {overviewText}
             </div>
           </TabsContent>
+          <TabsContent value="stats" className="mt-0 px-4"><StatsPage deck={deck.name} fixedDeck /></TabsContent>
           <TabsContent value="cards" className="mt-4 px-4">{cardsTab}</TabsContent>
           <TabsContent value="options" className="mt-6 px-4">{optionsTab}</TabsContent>
           <TabsContent value="manage" className="mt-6 px-4">{manageTab}</TabsContent>
@@ -250,6 +257,7 @@ export function DeckPage({ name, dataKey, activeItemId, onOpenCard, onCreateCard
 
         <TabsList variant="line" className="nd-deck-tabs-nav mb-5 h-auto w-full justify-start gap-1.5 rounded-none border-b bg-transparent p-0 pb-3">
           <TabsTrigger value="overview" className="nd-deck-tab">Overview</TabsTrigger>
+          <TabsTrigger value="stats" className="nd-deck-tab">Stats</TabsTrigger>
           <TabsTrigger value="cards" className="nd-deck-tab">Cards</TabsTrigger>
           <TabsTrigger value="options" className="nd-deck-tab">Options</TabsTrigger>
           <TabsTrigger value="manage" className="nd-deck-tab">Manage</TabsTrigger>
@@ -257,6 +265,10 @@ export function DeckPage({ name, dataKey, activeItemId, onOpenCard, onCreateCard
 
         <TabsContent value="overview" className="mt-6 flex flex-col gap-8">
           {overviewText}
+        </TabsContent>
+
+        <TabsContent value="stats" className="mt-0">
+          <StatsPage deck={deck.name} fixedDeck />
         </TabsContent>
 
         <TabsContent value="cards" className="mt-6">
@@ -278,8 +290,9 @@ export function DeckPage({ name, dataKey, activeItemId, onOpenCard, onCreateCard
 const CARDS_PAGE = 200;
 
 /** Every card in the deck and its subdecks, with the same rows, filters and editor as Browse. */
-function DeckCards({ deck, dataKey, hasChildren, active, selected, onOpenCard, onCreateCard, onClosePanel, onChanged }: { deck: string; dataKey: number; hasChildren: boolean; active: boolean; selected: string | null; onOpenCard(id: string): void; onCreateCard(): void; onClosePanel(discard?: boolean): void; onChanged(): void }) {
-  const [query, setQuery] = useState("");
+function DeckCards({ deck, initialQuery, dataKey, hasChildren, active, selected, onOpenCard, onCreateCard, onClosePanel, onChanged }: { deck: string; initialQuery: string; dataKey: number; hasChildren: boolean; active: boolean; selected: string | null; onOpenCard(id: string): void; onCreateCard(): void; onClosePanel(discard?: boolean): void; onChanged(): void }) {
+  const [query, setQuery] = useState(initialQuery);
+  useEffect(() => setQuery(initialQuery), [initialQuery]);
   const [order, setOrder] = useState("relevance");
   const [limit, setLimit] = useState(CARDS_PAGE);
   const [rows, setRows] = useState<SearchRow[]>([]);
@@ -883,7 +896,7 @@ function DangerZone({ deck, decks, hasChildren, onMoved }: { deck: DeckFull; dec
   return (
     <div className="flex flex-col gap-8">
       <Section title="Elsewhere">
-        <LinkRow icon={BarChart3} title="Statistics" description="Retention, forecast and weakest tags for this deck." onClick={() => navigate(`/stats?deck=${enc(deck.name)}`)} />
+        <LinkRow icon={BarChart3} title="Statistics" description="Card progress, ratings, forecast and tags for this deck." onClick={() => navigate(`/deck?name=${enc(deck.name)}&tab=stats`)} />
       </Section>
       <Section title="Place in the tree">
         <Block

@@ -13,7 +13,7 @@ export const PHONE_H1 = "max-md:text-[2.25rem] max-md:leading-[1.08] max-md:font
 /** Negative margins that let a bar inside <Page> run edge to edge. */
 export const PAGE_BLEED = "-mx-4 px-4 sm:-mx-8 sm:px-8";
 
-export type Crumb = { label: string; onClick(): void };
+export type Crumb = { label: string; onClick?: () => void };
 
 export function Breadcrumb({ items, className }: { items: Crumb[]; className?: string }) {
   return (
@@ -21,7 +21,9 @@ export function Breadcrumb({ items, className }: { items: Crumb[]; className?: s
       {items.map((c, i) => (
         <span key={i} className="flex min-w-0 items-center">
           {i > 0 && <ChevronRight className="size-3.5 shrink-0 opacity-60" />}
-          <button className="min-h-9 truncate rounded-md px-1.5 transition-colors hover:text-foreground" onClick={c.onClick}>{c.label}</button>
+          {c.onClick
+            ? <button className="min-h-9 truncate rounded-md px-1.5 transition-colors hover:text-foreground" onClick={c.onClick}>{c.label}</button>
+            : <span aria-current="page" className="inline-flex min-w-0 items-center truncate rounded-md px-1.5 capitalize">{c.label}</span>}
         </span>
       ))}
     </nav>

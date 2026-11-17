@@ -1,6 +1,7 @@
-// The card type editor: schema, template, scripts and grader on the left, a live preview of the
-// unsaved draft on the right. Nothing is stored until Save.
+// The card type editor: schema, template, scripts and grader on the left, with a live preview of
+// the unsaved draft in the side panel on wide screens. Nothing is stored until Save.
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { AlertTriangle, ArrowLeft, Copy, Download, Loader2, MoreHorizontal, Plus, RotateCcw, Save, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -14,6 +15,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { CodeEditor } from "@/components/code-editor";
 import { CardPreview } from "@/components/card-preview";
+import { Breadcrumb } from "@/components/page";
 import { forgetTypePrefs } from "@/components/card-frame";
 import { AutoTextarea, FieldEditor } from "@/components/field-editor";
 import { api, ApiError, type CardType, type FieldSpec, type LeftoverReport, type SchedulerSummary, type TypeSummary } from "@/lib/api";
@@ -29,7 +31,18 @@ type Grader = CardType["grader"] & { code?: string; vision?: boolean; instructio
 const same = (a: CardType, b: CardType) => JSON.stringify(exportShape(a)) === JSON.stringify(exportShape(b));
 const count = (n: number, one: string) => `${n.toLocaleString()} ${one}${n === 1 ? "" : "s"}`;
 
-export function TypeEditor({ id }: { id: string }) {
+export function TypeEditor({ id, previewHost, previewFooterHost, sampleHost }: { id: string; previewHost?: HTMLElement | null; previewFooterHost?: HTMLElement | null; sampleHost?: HTMLElement | null }) {
+  const [wideViewport, setWideViewport] = useState(false);
+  const showSidebarPreview = !!previewHost && wideViewport;
+  useEffect(() => {
+    if (typeof window.matchMedia !== "function") return;
+    const query = window.matchMedia("(min-width: 1200px)");
+    const update = () => setWideViewport(query.matches);
+    update();
+    query.addEventListener("change", update);
+    return () => query.removeEventListener("change", update);
+  }, []);
+
   const [saved, setSaved] = useState<CardType | null>(null);
   const [draft, setDraft] = useState<CardType | null>(null);
   const [sample, setSample] = useState<Record<string, unknown>>({});
@@ -46,6 +59,14 @@ export function TypeEditor({ id }: { id: string }) {
   }, []);
 
   const isNew = !saved;
+  const folderBreadcrumbs = summary?.folder
+    ? summary.folder.split("::").map((part, index, parts) => ({
+        label: part,
+        onClick: () => navigate(`/types?folder=${encodeURIComponent(parts.slice(0, index + 1).join("::"))}`),
+      }))
+    : summary?.shipped
+      ? [{ label: "Built in", onClick: () => navigate(`/types?folder=${encodeURIComponent("@builtin")}`) }]
+      : [];
 
   // ------------------------------------------------------------- loading
   const pickSample = useCallback(async (typeId: string, def: CardType): Promise<{ fields: Record<string, unknown>; from: string }> => {
@@ -181,7 +202,7 @@ export function TypeEditor({ id }: { id: string }) {
       document.removeEventListener("focusin", onFocusIn);
       window.removeEventListener("blur", onBlur);
     };
-  }, [!!draft]);
+  }, [!!draft, showSidebarPreview]);
 
   const load = useCallback(async (seed: number, face: string) => {
     if (!preview) return null;
@@ -294,6 +315,9 @@ export function TypeEditor({ id }: { id: string }) {
   const [usage, setUsage] = useState<{ items: number; archived: number; cards: number; reviews: number } | null>(null);
   const [view, setView] = useState<"edit" | "preview">("edit");
   const [tab, setTab] = useState("info");
+  useEffect(() => {
+    if (showSidebarPreview && tab === "sample") setTab("info");
+  }, [showSidebarPreview, tab]);
 
   // Back to the folder the type lives in.
   const home = summary?.folder ? `/types?folder=${encodeURIComponent(summary.folder)}` : "/types";
@@ -336,7 +360,6 @@ export function TypeEditor({ id }: { id: string }) {
   };
 
   const items = summary?.items ?? 0;
-  const archived = summary?.archived ?? 0;
   const generated = typeof sample.generator === "string" || /\brng\b/.test(draft?.prepare ?? "");
 
   if (missing)
@@ -352,20 +375,72 @@ export function TypeEditor({ id }: { id: string }) {
   const grader = draft.grader as Grader;
   const setGrader = (g: Partial<Grader>) => set({ grader: { ...grader, ...g } as CardType["grader"] });
   const problemCount = fatal.length + (cardError ? 1 : 0);
+  const sampleEditor = (
+    <>
+      <div className="flex items-baseline gap-2 mb-0 pt-4">
+        <h2 className="text-sm font-semibold leading-5">Sample editor</h2>
+      </div>
+      <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+        <span>The preview uses these values. Nothing here is saved{sampleFrom ? `; loaded from ${sampleFrom}` : ""}.</span>
+        <div className="flex-1" />
+        <Button variant="outline" size="sm" className="h-9 text-foreground" onClick={async () => {
+          const s = isNew && draft.id === id && readPending(id)?.def ? { fields: { ...BLANK_SAMPLE }, from: "starter sample" } : await pickSample(id, draft);
+          setSample(s.fields);
+          setSampleFrom(s.from);
+        }}>Reload</Button>
+        <Button variant="outline" size="sm" className="h-9 text-foreground" onClick={() => { setSample(fieldDefaults(draft)); setSampleFrom("field defaults"); }}>Use defaults</Button>
+      </div>
+      {draft.fields.length ? (
+        <FieldEditor fields={draft.fields.filter((f) => /^[A-Za-z_]\w*$/.test(f.name))} value={sample} onChange={setSample} />
+      ) : (
+        <p className="text-sm text-muted-foreground">Add fields first.</p>
+      )}
+    </>
+  );
+  const previewContent = (
+    <>
+      <div className={cn(
+        "mb-3 flex items-baseline gap-2",
+        showSidebarPreview && "mb-0 py-4",
+      )}>
+        <h2 className={cn("text-sm", showSidebarPreview ? "font-semibold leading-5" : "font-medium")}>Live preview</h2>
+        <span className="text-xs leading-4 text-muted-foreground">{dirty ? "unsaved draft" : "saved version"}</span>
+      </div>
+      {(fatal.length > 0 || cardError || warnings.length > 0) && (
+        <div className={cn("mb-3 flex flex-col gap-2", showSidebarPreview && "mb-0")}>
+          {fatal.length > 0 && <Problem tone="error" title="The preview can't run" lines={fatal} />}
+          {cardError && <Problem tone="error" title="card.js threw an error" lines={[cardError]} />}
+          {warnings.length > 0 && <Problem tone="warn" title="Sample data doesn't fit the fields" lines={warnings} />}
+        </div>
+      )}
+      <div ref={previewPane}>
+        {preview ? (
+          <CardPreview
+            html={preview.html}
+            version={`draft:${preview.v}`}
+            load={load}
+            faces={preview.def.faces}
+            generated={generated}
+            grade={grader.kind === "script" || grader.kind === "hybrid" ? gradeTest : undefined}
+            onError={setCardError}
+            darkTheme={showSidebarPreview}
+            markdownEditorStyle={showSidebarPreview}
+            revealButtonHost={showSidebarPreview ? previewFooterHost : undefined}
+          />
+        ) : (
+          <div className="flex h-40 items-center justify-center rounded-xl border text-muted-foreground"><Loader2 className="size-5 animate-spin" /></div>
+        )}
+      </div>
+    </>
+  );
 
   return (
-    <div className="mx-auto w-full max-w-[1600px]">
+    <div className="mx-auto w-full max-w-[1600px] pt-6 pb-10 max-md:pt-[calc(1.25rem+env(safe-area-inset-top))] sm:pt-10 sm:pb-12">
       {/* header */}
-      <div className="flex items-start gap-2 px-4 pt-4 sm:px-6 sm:pt-6 lg:px-8">
-        <Button variant="ghost" size="icon" className="-ml-2 size-10 shrink-0" onClick={back} aria-label="All card types"><ArrowLeft className="size-4" /></Button>
-        <div className="min-w-0 flex-1 pt-1">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
           <h1 className="truncate text-xl font-semibold tracking-tight sm:text-2xl">{draft.name || <span className="text-muted-foreground">Untitled type</span>}</h1>
-          <div className="mt-1.5 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-            <code className="font-mono">{draft.id}</code>
-            {isNew ? <Badge variant="outline" className="font-normal text-highlight">new, not saved</Badge> : <Kind summary={summary} />}
-            {!isNew && <span className="tabular">{items} item{items === 1 ? "" : "s"}</span>}
-            {!isNew && archived > 0 && <span className="tabular" title={`Archived items still use this type. Find them in Browse with type:${draft.id} is:archived.`}>· {archived} archived</span>}
-          </div>
+          <Breadcrumb items={[{ label: "Card types", onClick: back }, ...folderBreadcrumbs, { label: draft.id }]} />
         </div>
         <div className="flex shrink-0 items-center gap-1">
           <DropdownMenu>
@@ -373,7 +448,6 @@ export function TypeEditor({ id }: { id: string }) {
             <DropdownMenuContent align="end">
               <DropdownMenuItem onClick={() => setDupOpen(true)}><Copy />Duplicate…</DropdownMenuItem>
               <DropdownMenuItem onClick={() => download(`${draft.id}.type.json`, exportShape(draft))}><Download />Export JSON</DropdownMenuItem>
-              {!isNew && items > 0 && <DropdownMenuItem onClick={() => navigate(`/browse?q=${encodeURIComponent(`type:${id}`)}`)}><Plus />Items of this type</DropdownMenuItem>}
               {(summary?.edited || (!isNew && summary?.shipped && !saved?.builtin)) && (
                 <>
                   <DropdownMenuSeparator />
@@ -396,7 +470,7 @@ export function TypeEditor({ id }: { id: string }) {
       </div>
 
       {saved?.builtin && (
-        <p className="mx-4 mt-4 rounded-lg border border-dashed px-3 py-2 text-xs text-muted-foreground sm:mx-6 lg:mx-8">
+        <p className="text-sm text-muted-foreground">
           This is a built-in type. Saving makes it your own version: Etude updates won't replace it, and you can reset it to the shipped version at any time.
         </p>
       )}
@@ -419,20 +493,20 @@ export function TypeEditor({ id }: { id: string }) {
         </ToggleGroup>
       </div>
 
-      <div className="grid gap-x-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:px-8">
+      <div className="nd-type-editor-grid grid gap-x-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
         {/* editor */}
-        <div ref={editorPane} className={cn("min-w-0 px-4 pb-6 pt-4 sm:px-6 lg:block lg:px-0 lg:pt-6", view === "edit" ? "block" : "hidden")}>
+        <div ref={editorPane} className={cn("min-w-0 pb-6 pt-4 lg:block lg:pt-6", view === "edit" ? "block" : "hidden")}>
           <Tabs value={tab} onValueChange={setTab}>
-            <TabsList className="grid w-full grid-cols-3 gap-1 group-data-[orientation=horizontal]/tabs:h-auto sm:flex sm:w-fit lg:grid lg:w-full xl:flex xl:w-fit">
+            <TabsList variant="line" className="nd-deck-tabs-nav mb-5 h-auto w-full justify-start gap-1.5 rounded-none border-b bg-transparent p-0 pb-3 overflow-x-auto">
               {[
                 ["info", "Info"],
                 ["fields", `Fields`],
                 ["template", "Template"],
                 ["prepare", "Prepare"],
                 ["grader", "Grader"],
-                ["sample", "Sample"],
+                ...(!showSidebarPreview ? [["sample", "Sample"]] : []),
               ].map(([v, l]) => (
-                <TabsTrigger key={v} value={v} className="h-9 px-3">
+                <TabsTrigger key={v} value={v} className="nd-deck-tab">
                   {l}
                   {v === "fields" && <span className="tabular text-muted-foreground">{draft.fields.length}</span>}
                 </TabsTrigger>
@@ -596,56 +670,18 @@ export function TypeEditor({ id }: { id: string }) {
               </Field>
             </TabsContent>
 
-            <TabsContent value="sample" className="mt-5 flex flex-col gap-4">
-              <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                <span>The preview uses these values. Nothing here is saved{sampleFrom ? `; loaded from ${sampleFrom}` : ""}.</span>
-                <div className="flex-1" />
-                <Button variant="ghost" size="sm" className="h-9" onClick={async () => {
-                  const s = isNew && draft.id === id && readPending(id)?.def ? { fields: { ...BLANK_SAMPLE }, from: "starter sample" } : await pickSample(id, draft);
-                  setSample(s.fields);
-                  setSampleFrom(s.from);
-                }}>Reload</Button>
-                <Button variant="ghost" size="sm" className="h-9" onClick={() => { setSample(fieldDefaults(draft)); setSampleFrom("field defaults"); }}>Use defaults</Button>
-              </div>
-              {draft.fields.length ? (
-                <FieldEditor fields={draft.fields.filter((f) => /^[A-Za-z_]\w*$/.test(f.name))} value={sample} onChange={setSample} />
-              ) : (
-                <p className="text-sm text-muted-foreground">Add fields first.</p>
-              )}
-            </TabsContent>
+            {!showSidebarPreview && <TabsContent value="sample" className="mt-5 flex flex-col gap-4">{sampleEditor}</TabsContent>}
           </Tabs>
         </div>
 
-        {/* preview */}
-        <aside className={cn("min-w-0 px-4 pb-6 pt-4 sm:px-6 lg:sticky lg:top-0 lg:block lg:max-h-dvh lg:self-start lg:overflow-y-auto lg:px-0 lg:pt-6", view === "preview" ? "block" : "hidden")}>
-          <div className="mb-3 flex items-baseline gap-2">
-            <h2 className="text-sm font-medium">Live preview</h2>
-            <span className="text-xs text-muted-foreground">{dirty ? "unsaved draft" : "saved version"}</span>
-          </div>
-          {(fatal.length > 0 || cardError || warnings.length > 0) && (
-            <div className="mb-3 flex flex-col gap-2">
-              {fatal.length > 0 && <Problem tone="error" title="The preview can't run" lines={fatal} />}
-              {cardError && <Problem tone="error" title="card.js threw an error" lines={[cardError]} />}
-              {warnings.length > 0 && <Problem tone="warn" title="Sample data doesn't fit the fields" lines={warnings} />}
-            </div>
-          )}
-          <div ref={previewPane}>
-            {preview ? (
-              <CardPreview
-                html={preview.html}
-                version={`draft:${preview.v}`}
-                load={load}
-                faces={preview.def.faces}
-                generated={generated}
-                grade={grader.kind === "script" || grader.kind === "hybrid" ? gradeTest : undefined}
-                onError={setCardError}
-              />
-            ) : (
-              <div className="flex h-40 items-center justify-center rounded-xl border text-muted-foreground"><Loader2 className="size-5 animate-spin" /></div>
-            )}
-          </div>
-        </aside>
+        {showSidebarPreview && previewHost ? createPortal(previewContent, previewHost) : (
+          <aside className={cn("nd-type-editor-preview min-w-0 pb-6 pt-4 lg:sticky lg:top-0 lg:block lg:max-h-dvh lg:self-start lg:overflow-y-auto lg:pt-6", view === "preview" ? "block" : "hidden")}>
+            {previewContent}
+          </aside>
+        )}
       </div>
+
+      {showSidebarPreview && sampleHost && createPortal(sampleEditor, sampleHost)}
 
       <div
         className={cn(

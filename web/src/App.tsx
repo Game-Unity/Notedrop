@@ -28,6 +28,7 @@ import { Onboarding, ONBOARDING_EVENT } from "@/components/onboarding";
 import { api } from "@/lib/api";
 import { NoteDropTree } from "@/components/notedrop-tree";
 import { NoteDropSidePanel } from "@/components/notedrop-side-panel";
+import { TypePreviewSidebar } from "@/components/type-editor/preview-sidebar";
 import { invalidateProgress } from "@/lib/notedrop-progress";
 import { ItemEditor, NewItemDialog } from "@/components/item-editor";
 import type { TypeSummary } from "@/lib/api";
@@ -73,6 +74,9 @@ type SidePanelContext = {
   path: string;
   deckName: string;
   onTypeSidebarHost(host: HTMLDivElement | null): void;
+  onTypePreviewHost(host: HTMLElement | null): void;
+  onTypePreviewFooterHost(host: HTMLElement | null): void;
+  onTypePreviewEditorHost(host: HTMLElement | null): void;
   dataKey: number;
   mode: DeckPanelMode;
   itemId: string | null;
@@ -103,6 +107,11 @@ const SIDE_PANEL_CONTENTS: {
     id: "type-library",
     matches: ({ path, chatOpen }) => !chatOpen && path === "/types",
     render: ({ onTypeSidebarHost }) => <div ref={onTypeSidebarHost} className="nd-types-sidebar-host" />,
+  },
+  {
+    id: "type-card-preview",
+    matches: ({ path, chatOpen }) => !chatOpen && path.startsWith("/types/") && Boolean(path.split("/")[2]),
+    render: ({ onTypePreviewHost, onTypePreviewFooterHost, onTypePreviewEditorHost }) => <TypePreviewSidebar onHost={onTypePreviewHost} onFooterHost={onTypePreviewFooterHost} onEditorHost={onTypePreviewEditorHost} />,
   },
   {
     id: "notedrop-tree",
@@ -230,6 +239,9 @@ export function App() {
   // Bumped after the assistant changed something, so the page remounts and reloads its data.
   const [dataKey, setDataKey] = useState(0);
   const [typeSidebarHost, setTypeSidebarHost] = useState<HTMLDivElement | null>(null);
+  const [typePreviewHost, setTypePreviewHost] = useState<HTMLElement | null>(null);
+  const [typePreviewFooterHost, setTypePreviewFooterHost] = useState<HTMLElement | null>(null);
+  const [typePreviewEditorHost, setTypePreviewEditorHost] = useState<HTMLElement | null>(null);
   const [onboarding, setOnboarding] = useOnboarding(path === "/embed");
   const deckName = params.get("name") ?? "";
   const [panel, setPanel] = useState<{ mode: DeckPanelMode; itemId: string | null }>(() => ({
@@ -344,6 +356,9 @@ export function App() {
     path,
     deckName,
     onTypeSidebarHost: setTypeSidebarHost,
+    onTypePreviewHost: setTypePreviewHost,
+    onTypePreviewFooterHost: setTypePreviewFooterHost,
+    onTypePreviewEditorHost: setTypePreviewEditorHost,
     dataKey,
     mode: panel.mode,
     itemId: panel.itemId,
@@ -366,6 +381,7 @@ export function App() {
     onAgentChanged,
   };
   const chatVisible = agent.open;
+  const typePreviewVisible = path.startsWith("/types/") && Boolean(path.split("/")[2]);
   const sidePanelContents = SIDE_PANEL_CONTENTS
     .filter((registration) => registration.matches(sidePanelContext))
     .map((registration) => <Fragment key={registration.id}>{registration.render(sidePanelContext)}</Fragment>);
@@ -404,7 +420,7 @@ export function App() {
     />
   );
   else if (path === "/browse") page = <BrowsePage initialQuery={params.get("q") ?? ""} openItem={params.get("item")} />;
-  else if (path.startsWith("/types")) page = <TypesPage id={path.split("/")[2] ? decodeURIComponent(path.split("/")[2]) : null} panelHost={typeSidebarHost} />;
+  else if (path.startsWith("/types")) page = <TypesPage id={path.split("/")[2] ? decodeURIComponent(path.split("/")[2]) : null} panelHost={typeSidebarHost} previewHost={typePreviewHost} previewFooterHost={typePreviewFooterHost} sampleHost={typePreviewEditorHost} />;
   else if (path === "/stats") page = <StatsPage deck={params.get("deck") ?? undefined} />;
   else if (path === "/settings") page = <SettingsPage />;
   else if (path === "/market") page = <MarketPage />;
@@ -473,8 +489,8 @@ export function App() {
         ) : page
       ) : (
         <div
-          className={cn("nd-app-shell flex min-h-dvh", path === "/deck" && "nd-app-shell--deck", path === "/types" && "nd-app-shell--types")}
-          data-panel-mode={chatVisible ? "chat" : path === "/types" ? "types" : panel.mode === "overview" ? "overview" : "editor"}
+          className={cn("nd-app-shell flex min-h-dvh", path === "/deck" && "nd-app-shell--deck", path.startsWith("/types") && "nd-app-shell--types")}
+          data-panel-mode={chatVisible ? "chat" : path === "/types" ? "types" : typePreviewVisible ? "type-preview" : panel.mode === "overview" ? "overview" : "editor"}
           data-sidebar-collapsed={collapsed}
         >
           <aside
@@ -515,7 +531,7 @@ export function App() {
             </div>
           </aside>
           <main key={path === "/deck" ? `deck:${deckName}` : dataKey} className="nd-app-content min-w-0 flex-1 pb-16">{page}</main>
-          <NoteDropSidePanel visible={chatVisible || path === "/types" || (path === "/deck" && Boolean(sidePanelContext.deckName))} mode={chatVisible ? "chat" : path === "/types" ? "types" : panel.mode === "overview" ? "overview" : "editor"}>
+          <NoteDropSidePanel visible={chatVisible || path === "/types" || typePreviewVisible || (path === "/deck" && Boolean(sidePanelContext.deckName))} mode={chatVisible ? "chat" : path === "/types" ? "types" : typePreviewVisible ? "type-preview" : panel.mode === "overview" ? "overview" : "editor"}>
             {sidePanelContents}
           </NoteDropSidePanel>
           {!phone && <PhoneTabBar path={path} updateDot={updateDot} onAsk={() => agent.setOpen(true)} />}

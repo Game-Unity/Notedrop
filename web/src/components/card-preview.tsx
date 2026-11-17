@@ -1,10 +1,12 @@
 // Shows a card as the learner sees it, with a toggle to reveal its answer. Used by Browse and the type editor.
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Check, Dices, Eye, EyeOff, Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { CardFrame, type CardFrameHandle, type CardResult } from "@/components/card-frame";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { cn } from "@/lib/utils";
 import type { Grade } from "@/lib/api";
 
 export interface PreviewData {
@@ -21,6 +23,9 @@ export function CardPreview({
   faces,
   generated,
   grade,
+  darkTheme,
+  markdownEditorStyle,
+  revealButtonHost,
   onTry,
   onError,
 }: {
@@ -32,6 +37,12 @@ export function CardPreview({
   load(seed: number, face: string): Promise<PreviewData | null>;
   faces?: string[];
   generated?: boolean;
+  /** Render the card using the built-in dark theme, regardless of the app theme. */
+  darkTheme?: boolean;
+  /** Match Markdown editor typography and widget sizes in the card frame. */
+  markdownEditorStyle?: boolean;
+  /** Render the reveal button in a separate footer target. */
+  revealButtonHost?: HTMLElement | null;
   /** Optional: grade a test answer (script graders only). */
   grade?(answer: unknown, data: PreviewData): Promise<Grade | null>;
   onTry?(): void;
@@ -66,6 +77,11 @@ export function CardPreview({
   }, [seed, face, version, load]);
 
   const result: CardResult | null = tested ?? (reveal && data ? { grade: { score: null, verdict: "ungraded", suggested: null, grader: { kind: "preview" } }, key: data.key, answer: null, preview: true } as CardResult : null);
+  const revealButton = (
+    <Button variant="outline" size="sm" className="gap-1.5" onClick={() => { setReveal(!reveal); setTested(null); }}>
+      {reveal ? <EyeOff className="size-4" /> : <Eye className="size-4" />} {reveal ? "Hide answer" : "Show answer"}
+    </Button>
+  );
 
   return (
     <div className="flex flex-col gap-3">
@@ -75,9 +91,7 @@ export function CardPreview({
             {faces.map((f) => <ToggleGroupItem key={f} value={f} className="px-3 text-xs">{f}</ToggleGroupItem>)}
           </ToggleGroup>
         )}
-        <Button variant="outline" size="sm" className="gap-1.5" onClick={() => { setReveal(!reveal); setTested(null); }}>
-          {reveal ? <EyeOff className="size-4" /> : <Eye className="size-4" />} {reveal ? "Hide answer" : "Show answer"}
-        </Button>
+        {revealButtonHost ? createPortal(revealButton, revealButtonHost) : revealButton}
         {generated && (
           <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setSeed(Math.floor(Math.random() * 1e9))}>
             <Dices className="size-4" /> New variant
@@ -93,7 +107,7 @@ export function CardPreview({
           <Button variant="ghost" size="sm" className="gap-1.5" onClick={onTry}><Play className="size-4" /> Practice this card</Button>
         )}
       </div>
-      <div className="rounded-xl border bg-background p-3 sm:p-5">
+      <div className={cn("rounded-xl border bg-background p-3 sm:p-5", markdownEditorStyle && "mb-3")}>
         {error && <pre className="whitespace-pre-wrap text-sm text-destructive">{error}</pre>}
         {data && !error && (
           <CardFrame
@@ -105,6 +119,8 @@ export function CardPreview({
             mode={result ? "result" : "answer"}
             result={result}
             answer={tested?.answer}
+            darkTheme={darkTheme}
+            markdownEditorStyle={markdownEditorStyle}
             onError={onError}
             onKey={(k) => {
               if (k === "Mod+Enter" && grade && !result) frame.current?.collect();

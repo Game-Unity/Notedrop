@@ -543,7 +543,7 @@ export function AgentPanel({ width, setWidth, onClose, onChanged, embedded }: { 
         <div
           ref={scroller}
           data-agent-scroll
-          className="flex h-full flex-col overflow-y-auto"
+          className="nd-side-panel-scroll flex h-full flex-col overflow-y-auto"
           onScroll={(e) => {
             const el = e.currentTarget;
             stick.current = el.scrollHeight - el.scrollTop - el.clientHeight < 40;

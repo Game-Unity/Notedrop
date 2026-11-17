@@ -224,6 +224,8 @@ function watchCodeBlocks(root) {
 
 function applyTheme(theme) {
   if (!theme) return;
+  if (theme.markdownEditorStyle === true) document.documentElement.setAttribute("data-markdown-editor", "true");
+  else document.documentElement.removeAttribute("data-markdown-editor");
   const css = Object.entries(theme.vars ?? {})
     .map(([k, v]) => `${k}: ${v};`)
     .join(" ");

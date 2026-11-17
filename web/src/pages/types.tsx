@@ -18,8 +18,8 @@ import { navigate, useLocation } from "@/lib/router";
 import { cn } from "@/lib/utils";
 import { Page, PageHeader } from "@/components/page";
 
-export function TypesPage({ id, panelHost }: { id: string | null; panelHost?: HTMLElement | null }) {
-  if (id) return <TypeEditor key={id} id={id} />;
+export function TypesPage({ id, panelHost, previewHost, previewFooterHost, sampleHost }: { id: string | null; panelHost?: HTMLElement | null; previewHost?: HTMLElement | null; previewFooterHost?: HTMLElement | null; sampleHost?: HTMLElement | null }) {
+  if (id) return <TypeEditor key={id} id={id} previewHost={previewHost} previewFooterHost={previewFooterHost} sampleHost={sampleHost} />;
   return <TypeLibrary panelHost={panelHost ?? null} />;
 }
 
@@ -193,7 +193,7 @@ function TypeLibrary({ panelHost }: { panelHost: HTMLElement | null }) {
       </div>
       <RailItem icon={Inbox} label="Not in a folder" active={!here && !q} onClick={() => { setQuery(""); open(""); }} drop={drop("")} dropping={dropAt === ""} />
       <h3 className="nd-types-sidebar-heading mt-4 mb-1.5 shrink-0 text-sm font-medium">Folders</h3>
-      <div className="nd-types-sidebar-scroll min-h-0 flex-1 overflow-y-auto">
+      <div className="nd-types-sidebar-scroll nd-side-panel-scroll min-h-0 flex-1 overflow-y-auto">
         {folders.length ? (
           <RailTree parent="" childFolders={childFolders} here={q ? null : here} drag={drag} drop={drop} dropAt={dropAt} folderActions={folderActions} onOpen={(f) => { setQuery(""); open(f); }} />
         ) : (
@@ -221,7 +221,6 @@ function TypeLibrary({ panelHost }: { panelHost: HTMLElement | null }) {
                   <Crumb label={leaf(c)} onClick={() => open(c)} drop={drop(c)} active={dropAt === c} />
                 </span>
               ))}
-              {here && <ChevronRight className="size-3.5 shrink-0 opacity-50" />}
             </nav>
           )}
           description={inBuiltIn

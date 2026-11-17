@@ -67,11 +67,6 @@
   max-height: calc(100dvh - 42px);
 }
 
-.nd-app-shell--deck[data-panel-mode="overview"] > .nd-side-panel:not([hidden]),
-.nd-app-shell--deck[data-panel-mode="chat"] > .nd-side-panel:not([hidden]) {
-  display: block !important;
-}
-
 .nd-app-shell--deck[data-panel-mode="editor"] > .nd-app-content {
   display: block !important;
 }
