@@ -69,7 +69,7 @@ test("the store apps' own Sync and account text makes sense on a phone and never
   for (const [key, text] of Object.entries(NATIVE_COPY)) assert.doesNotMatch(text, /desktop|computer|etude\.study|website|on the web|browser|US\$|\bbuy\b|subscri|price/i, key);
   // Each native branch uses the shared text, and the desktop wording sits behind isNativeApp().
   const sync = read("web/src/components/settings-sync.tsx");
-  assert.match(sync, /isNativeApp\(\) \? NATIVE_COPY\.syncSetup : "Etude syncs through a server, or through a folder on this computer in the desktop app\."/);
+  assert.match(sync, /isNativeApp\(\) \? NATIVE_COPY\.syncSetup : "Etude Sync connects this Notedrop collection to a server, or to a folder on this computer\."/);
   assert.match(sync, /isNativeApp\(\) \? NATIVE_COPY\.syncFolder : "Syncing through a folder on this computer\."/);
   assert.match(sync, /!\(globalThis as any\)\.__etudeLocal && !isNativeApp\(\) && <TextInput label="Folder/);
   const acct = read("web/src/components/settings-account.tsx");

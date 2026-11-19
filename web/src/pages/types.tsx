@@ -17,6 +17,7 @@ import { api, type TypeSummary } from "@/lib/api";
 import { navigate, useLocation } from "@/lib/router";
 import { cn } from "@/lib/utils";
 import { Page, PageHeader } from "@/components/page";
+import { CardTypes } from "@/components/sidebar/panels/CardTypes";
 
 export function TypesPage({ id, panelHost, previewHost, previewFooterHost, sampleHost }: { id: string | null; panelHost?: HTMLElement | null; previewHost?: HTMLElement | null; previewFooterHost?: HTMLElement | null; sampleHost?: HTMLElement | null }) {
   if (id) return <TypeEditor key={id} id={id} previewHost={previewHost} previewFooterHost={previewFooterHost} sampleHost={sampleHost} />;
@@ -184,25 +185,16 @@ function TypeLibrary({ panelHost }: { panelHost: HTMLElement | null }) {
   const crumbs = here && !inBuiltIn ? ancestors(here) : [];
   const title = inBuiltIn ? "Built in" : here ? leaf(here) : "Card types";
   const typeSidebar = (
-    <nav aria-label="Card type folders" className="nd-types-sidebar flex h-full min-h-0 flex-col gap-0.5 text-sm">
-      <div className="nd-types-sidebar-header nd-item-editor-tabs-nav mb-3 shrink-0">
-        <h2 className="min-w-0 flex-1 text-sm font-semibold">Card types</h2>
-        <TooltipHint label="New folder"><button className="nd-types-sidebar-add flex size-8 items-center justify-center rounded-md transition-colors" onClick={() => setFolderDialog({ mode: "create", parent: here && !inBuiltIn ? here : "" })} aria-label="New folder">
-          <FolderPlus className="size-4" />
-        </button></TooltipHint>
-      </div>
-      <RailItem icon={Inbox} label="Not in a folder" active={!here && !q} onClick={() => { setQuery(""); open(""); }} drop={drop("")} dropping={dropAt === ""} />
-      <h3 className="nd-types-sidebar-heading mt-4 mb-1.5 shrink-0 text-sm font-medium">Folders</h3>
-      <div className="nd-types-sidebar-scroll nd-side-panel-scroll min-h-0 flex-1 overflow-y-auto">
-        {folders.length ? (
-          <RailTree parent="" childFolders={childFolders} here={q ? null : here} drag={drag} drop={drop} dropAt={dropAt} folderActions={folderActions} onOpen={(f) => { setQuery(""); open(f); }} />
-        ) : (
-          <p className="py-1 pr-2.5 pl-[1.625rem] text-[13px] leading-relaxed text-pretty text-muted-foreground/80">No folders yet. Make one, then drag types onto it.</p>
-        )}
-      </div>
-      <div className="nd-types-sidebar-divider my-3 h-px shrink-0" />
-      <RailItem icon={Package} label="Built in" active={inBuiltIn && !q} onClick={() => { setQuery(""); open(BUILT_IN); }} />
-    </nav>
+    <CardTypes
+      onNewFolder={() => setFolderDialog({ mode: "create", parent: here && !inBuiltIn ? here : "" })}
+      topLevelItem={<RailItem icon={Inbox} label="Not in a folder" active={!here && !q} onClick={() => { setQuery(""); open(""); }} drop={drop("")} dropping={dropAt === ""} />}
+      folderContent={folders.length ? (
+        <RailTree parent="" childFolders={childFolders} here={q ? null : here} drag={drag} drop={drop} dropAt={dropAt} folderActions={folderActions} onOpen={(f) => { setQuery(""); open(f); }} />
+      ) : (
+        <p className="py-1 pr-2.5 pl-[1.625rem] text-[13px] leading-relaxed text-pretty text-muted-foreground/80">No folders yet. Make one, then drag types onto it.</p>
+      )}
+      builtInItem={<RailItem icon={Package} label="Built in" active={inBuiltIn && !q} onClick={() => { setQuery(""); open(BUILT_IN); }} />}
+    />
   );
 
   return (
@@ -224,7 +216,7 @@ function TypeLibrary({ panelHost }: { panelHost: HTMLElement | null }) {
             </nav>
           )}
           description={inBuiltIn
-            ? "These ship with Etude. Open one to see how it's made, or duplicate it to start your own."
+            ? "These ship with Notedrop. Open one to see how it's made, or duplicate it to start your own."
             : here
               ? [plural(listed.length, "type"), subfolders.length ? plural(subfolders.length, "folder") : ""].filter(Boolean).join(" · ")
               : "Fields, an HTML/CSS/JS template and a grader. Built\u2011in types are written the same way, so any of them can be copied or changed."}

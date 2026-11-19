@@ -6,6 +6,7 @@ import { command, catalog, CliError, KEEP_OPEN, COMMANDS } from "../registry.ts"
 import { noteDropProfilePort } from "../../core/profile.ts";
 import { LIMIT_FLAG, OFFSET_FLAG } from "../common.ts";
 import { VERSION } from "../version.ts";
+import { updateDistribution } from "../../core/distribution.ts";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
 
@@ -34,7 +35,7 @@ command({
     let server: ReturnType<typeof serve>;
     const allowHosts = [...(ctx.flags["allow-host"] ?? []), ...(process.env.ETUDE_ALLOW_HOSTS ?? "").split(",")].map((h: string) => h.trim()).filter(Boolean);
     const localOnly = host === "127.0.0.1" || host === "localhost";
-    const app = createApp(ctx.e, { token, allowHosts, localOnly, webDist: ctx.flags.dev ? null : existsSync(dist) ? dist : null, onRestart: () => restart(server, ctx) });
+    const app = createApp(ctx.e, { token, allowHosts, localOnly, updateDistribution: updateDistribution(ROOT, ctx.env), webDist: ctx.flags.dev ? null : existsSync(dist) ? dist : null, onRestart: () => restart(server, ctx) });
     // Anonymous error reports and usage counts (Settings → Privacy) go out only from the desktop app's engine, or when
     // ETUDE_TELEMETRY=1 asks for it. A plain `etude serve` (an agent, a script, a server) sends nothing.
     const { startTelemetry, telemetryAllowed } = await import("../../core/telemetry.ts");
@@ -77,19 +78,20 @@ function restart(server: { close(cb?: () => void): unknown; closeAllConnections?
 
 command({
   name: "update",
-  summary: "Update this copy of Etude from its GitHub repo: fetch, fast-forward, install dependencies, rebuild the web app.",
+  summary: "Update this copy of Notedrop from its GitHub repo: fetch, fast-forward, install dependencies, rebuild the web app.",
   description:
-    "Only works in a git checkout with no local changes. A running server keeps the old code until it restarts; the Update button in the app restarts it for you. Package installs (npm, the Mac app) get the latest release's version and a link instead.",
+    "Only works in a git checkout with no local changes. A running server keeps the old code until it restarts; the Update button in the app restarts it for you. Package installs get the latest release's version and a link instead. Microsoft Store installations are updated only by the Store.",
   flags: [{ name: "check", type: "boolean", description: "Only check for new commits; change nothing." }],
   noDb: true,
   writes: true,
-  examples: ["etude update --check", "etude update"],
+  examples: ["notedrop update --check", "notedrop update"],
   output: "--check: { kind: git|package, version, commit, behind, incoming: [{ sha, date, subject }], blocked? } · otherwise { result: updated|current, from, to, commits, steps }",
   async run(ctx) {
     const { applyUpdate, updateStatus, UpdateError } = await import("../../core/update.ts");
     try {
-      if (ctx.flags.check) return await updateStatus({ fetch: true, force: true });
-      const out = await applyUpdate();
+      const distribution = updateDistribution(ROOT, ctx.env);
+      if (ctx.flags.check) return await updateStatus({ distribution, fetch: true, force: true });
+      const out = await applyUpdate({ distribution, data: { home: ctx.home, dbPath: ctx.dbPath } });
       if (out.result === "updated") ctx.note("updated; restart `etude serve` to run the new code");
       return out;
     } catch (e) {

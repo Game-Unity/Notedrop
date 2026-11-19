@@ -1,7 +1,8 @@
-// The market: themes, decks and card types other people shared, from a public GitHub repository.
+// The market: decks and card types other people shared, from a public GitHub repository.
 // Browse and install here; Publish opens a pull request with the user's GitHub CLI.
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Blocks, Check, Download, ExternalLink, Eye, GitPullRequest, Layers, Loader2, Palette, RefreshCw, Search, Store, Upload } from "lucide-react";
+import { createPortal } from "react-dom";
+import { Blocks, Check, Download, ExternalLink, Eye, GitPullRequest, Layers, Loader2, RefreshCw, Search, Store, Upload, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,44 +12,50 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Field, Page, PageHeader } from "@/components/page";
-import { ThemeMiniature, ThemeSwatches } from "@/components/settings-theme-preview";
 import { CardPreview } from "@/components/card-preview";
 import { download } from "@/components/type-editor/starter";
 import { api, ApiError, type CardType, type MarketEntry, type MarketFile, type MarketKind, type PublishResult } from "@/lib/api";
 import { EtudeImg } from "@/lib/local-url";
 import { MarketGallery } from "@/components/market-gallery";
-import { applyTheme } from "@/lib/theme";
 import { navigate, useLocation } from "@/lib/router";
 import { cn } from "@/lib/utils";
 import { serverless } from "@/lib/native";
-import { LibraryView, PaidDialog, PaidTile, SellingView, usePaidIndex } from "@/components/market-paid";
+import { LibraryView, PaidSidebar, PaidTile, SellingView, usePaidIndex } from "@/components/market-paid";
 import type { PaidEntry } from "@/lib/account";
 import { canShowPurchases, isNativeApp } from "@/lib/platform";
 import { track } from "@/lib/telemetry";
+import { SidebarFooter, SidebarHeader, SidebarScroll } from "@/components/sidebar/SidebarLayout";
 
-const KIND_LABEL: Record<MarketKind, string> = { theme: "Theme", deck: "Deck", type: "Card type" };
-const KIND_ICON: Record<MarketKind, React.ComponentType<{ className?: string }>> = { theme: Palette, deck: Layers, type: Blocks };
+type MarketPublishKind = Exclude<MarketKind, "theme">;
+type MarketItem = Omit<MarketEntry, "kind"> & { kind: MarketPublishKind };
+const KIND_LABEL: Record<MarketPublishKind, string> = { deck: "Deck", type: "Card type" };
+const KIND_ICON: Record<MarketPublishKind, React.ComponentType<{ className?: string }>> = { deck: Layers, type: Blocks };
 const GRADER_WORD: Record<string, string> = { self: "self-rated", script: "graded by script", ai: "AI-graded", hybrid: "script + AI" };
 const plural = (n: number, w: string) => `${n} ${w}${n === 1 ? "" : "s"}`;
 const kb = (b: number) => (b < 1e6 ? `${Math.max(1, Math.round(b / 1024))} KB` : `${(b / 1e6).toFixed(1)} MB`);
 
-type Filter = "all" | MarketKind;
+type Filter = "all" | MarketPublishKind;
 type Tab = "browse" | "library" | "selling";
 
-export function MarketPage() {
+function isMarketItem(entry: MarketEntry): entry is MarketItem {
+  return entry.kind !== "theme";
+}
+
+export function MarketPage({ sidebarHost, onSidebarOpenChange }: { sidebarHost: HTMLElement | null; onSidebarOpenChange(open: boolean): void }) {
   // Usage count (only when the person turned usage stats on).
   useEffect(() => track("market.open"), []);
   const { params } = useLocation();
-  const filter = (params.get("kind") as Filter) || "all";
+  const requestedFilter = params.get("kind");
+  const filter: Filter = requestedFilter === "deck" || requestedFilter === "type" ? requestedFilter : "all";
   // Store apps never sell, so they don't get the Selling tab.
   const tabs: Tab[] = isNativeApp() ? ["browse", "library"] : ["browse", "library", "selling"];
   const tab: Tab = tabs.includes(params.get("tab") as Tab) ? (params.get("tab") as Tab) : "browse";
   const paid = usePaidIndex();
   const [openPaid, setOpenPaid] = useState<PaidEntry | null>(null);
-  const [data, setData] = useState<{ repo: string; url: string; selectedTheme: string; entries: MarketEntry[] } | null>(null);
+  const [data, setData] = useState<{ repo: string; url: string; entries: MarketItem[] } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
-  const [open, setOpen] = useState<MarketEntry | null>(null);
+  const [open, setOpen] = useState<MarketItem | null>(null);
   const [publishing, setPublishing] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -56,9 +63,10 @@ export function MarketPage() {
     setRefreshing(refresh);
     try {
       const d = await api.market(refresh);
-      setData(d);
+      const visible = { repo: d.repo, url: d.url, entries: d.entries.filter(isMarketItem) };
+      setData(visible);
       setError(null);
-      return d;
+      return visible;
     } catch (e) {
       setError((e as Error).message);
       return null;
@@ -76,8 +84,12 @@ export function MarketPage() {
     if (!want || !data) return;
     const [k, id] = want.split("/");
     const hit = data.entries.find((e) => e.kind === k && e.id === id);
-    if (hit) setOpen(hit);
-  }, [data, params.get("entry")]);
+    if (hit) {
+      setOpen(hit);
+      setOpenPaid(null);
+      onSidebarOpenChange(true);
+    }
+  }, [data, params.get("entry"), onSidebarOpenChange]);
 
   const shown = useMemo(() => {
     const words = query.toLowerCase().split(/\s+/).filter(Boolean);
@@ -92,8 +104,11 @@ export function MarketPage() {
   }, [paid.entries, filter, query]);
 
   const counts = useMemo(() => {
-    const c = { all: 0, theme: 0, deck: 0, type: 0 } as Record<Filter, number>;
-    for (const e of data?.entries ?? []) (c.all++, c[e.kind]++);
+    const c: Record<Filter, number> = { all: 0, deck: 0, type: 0 };
+    for (const e of data?.entries ?? []) {
+      c.all++;
+      c[e.kind]++;
+    }
     c.all += paid.entries.length;
     c.deck += paid.entries.length;
     return c;
@@ -102,9 +117,32 @@ export function MarketPage() {
 
   const setFilter = (f: Filter) => navigate(f === "all" ? "/market" : `/market?kind=${f}`, { replace: true });
   const tabLabel: Record<Tab, string> = { browse: "Browse", library: "Library", selling: "Selling" };
+  const openFreeEntry = (entry: MarketItem) => {
+    setOpen(entry);
+    setOpenPaid(null);
+    onSidebarOpenChange(true);
+  };
+  const openPaidEntry = (entry: PaidEntry) => {
+    setOpenPaid(entry);
+    setOpen(null);
+    onSidebarOpenChange(true);
+  };
+  const closePaidEntry = () => {
+    setOpenPaid(null);
+    onSidebarOpenChange(false);
+  };
   const closeEntry = () => {
     setOpen(null);
+    onSidebarOpenChange(false);
     if (params.get("entry")) navigate(filter === "all" ? "/market" : `/market?kind=${filter}`, { replace: true });
+  };
+  const selectTab = (t: Tab) => {
+    if (t !== "browse") {
+      setOpen(null);
+      setOpenPaid(null);
+      onSidebarOpenChange(false);
+    }
+    setTab(t);
   };
 
   return (
@@ -114,7 +152,7 @@ export function MarketPage() {
         crumbs={[{ label: "Market", onClick: () => navigate("/market") }]}
         description={
           <>
-            Themes, decks and card types people made and shared.{" "}
+            Decks and card types people made and shared.{" "}
             {data && (
               <a className="whitespace-nowrap underline decoration-muted-foreground/40 underline-offset-2 hover:text-foreground" href={`https://github.com/${data.repo}`} target="_blank" rel="noreferrer">
                 Browse on GitHub
@@ -137,13 +175,14 @@ export function MarketPage() {
         }
       />
 
-      <nav className="mb-5 flex gap-1.5 border-b pb-3" aria-label="Market sections" data-market-tabs>
+      <nav className="nd-deck-tabs-nav mb-5 h-auto w-full justify-start gap-1.5 rounded-none border-b bg-transparent p-0 pb-3" aria-label="Market sections" data-market-tabs>
         {tabs.map((t) => (
           <button
             key={t}
-            onClick={() => setTab(t)}
+            onClick={() => selectTab(t)}
             aria-current={tab === t ? "page" : undefined}
-            className={cn("flex h-10 items-center rounded-full border border-transparent px-4 text-sm text-muted-foreground transition-colors hover:text-foreground md:h-8 md:px-3.5", tab === t && "border-border bg-accent text-foreground")}
+            data-state={tab === t ? "active" : "inactive"}
+            className="nd-deck-tab"
           >
             {tabLabel[t]}
           </button>
@@ -156,7 +195,7 @@ export function MarketPage() {
       {tab === "browse" && (<>
       <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center">
         <ToggleGroup type="single" variant="outline" value={filter} onValueChange={(v) => v && setFilter(v as Filter)} className="h-10 w-full sm:w-auto">
-          {(["all", "theme", "deck", "type"] as Filter[]).map((f) => (
+          {(["all", "deck", "type"] as Filter[]).map((f) => (
             <ToggleGroupItem key={f} value={f} className="h-10 flex-1 gap-1.5 px-2.5 text-[13px] sm:flex-none sm:px-3">
               {f === "all" ? "All" : f === "type" ? "Types" : `${KIND_LABEL[f]}s`}
               {data && <span className="text-muted-foreground tabular-nums">{counts[f]}</span>}
@@ -177,8 +216,10 @@ export function MarketPage() {
           <Button variant="outline" size="sm" className="mt-4" onClick={() => load(true)}>Try again</Button>
         </div>
       ) : !data ? (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {Array.from({ length: 6 }, (_, i) => <Skeleton key={i} className="h-64 rounded-xl" />)}
+        <div className="nd-deck-overview-container">
+          <div className="nd-deck-overview-grid">
+            {Array.from({ length: 6 }, (_, i) => <Skeleton key={i} className="h-64 rounded-xl" />)}
+          </div>
         </div>
       ) : shown.length === 0 && paidShown.length === 0 ? (
         <div className="rounded-xl border px-5 py-10 text-center text-sm text-muted-foreground">{query ? `Nothing matches “${query}”.` : "Nothing here yet. Be the first to publish one."}</div>
@@ -188,34 +229,46 @@ export function MarketPage() {
             <section className="mb-8" data-paid-section>
               <div className="mb-3 flex items-baseline gap-2">
                 <h2 className="text-base font-semibold">{canShowPurchases() ? "Paid decks" : "Your decks"}</h2>
-                <span className="text-xs text-muted-foreground">{canShowPurchases() ? "From creators, sold on etude.study" : "Bought with your Etude account"}</span>
+                <span className="text-xs text-muted-foreground">{canShowPurchases() ? "From creators, sold on the Etude website" : "Bought with your Etude account"}</span>
               </div>
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {paidShown.map((e) => <PaidTile key={e.listing} entry={e} onOpen={() => setOpenPaid(e)} />)}
+              <div className="nd-deck-overview-container">
+                <div className="nd-deck-overview-grid">
+                  {paidShown.map((e) => <PaidTile key={e.listing} entry={e} onOpen={() => openPaidEntry(e)} />)}
+                </div>
               </div>
             </section>
           )}
           {shown.length > 0 && paidShown.length > 0 && <h2 className="mb-3 text-base font-semibold">Free</h2>}
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {shown.map((e) => <EntryTile key={`${e.kind}/${e.id}`} entry={e} onOpen={() => setOpen(e)} />)}
+          <div className="nd-deck-overview-container">
+            <div className="nd-deck-overview-grid">
+              {shown.map((e) => <EntryTile key={`${e.kind}/${e.id}`} entry={e} onOpen={() => openFreeEntry(e)} />)}
+            </div>
           </div>
         </>
       )}
       </>)}
-      {openPaid && <PaidDialog entry={openPaid} signedIn={paid.signedIn} onClose={() => setOpenPaid(null)} onChanged={() => void paid.reload().then(() => setOpenPaid(null))} />}
+      {sidebarHost && openPaid && createPortal(
+        <PaidSidebar
+          entry={openPaid}
+          signedIn={paid.signedIn}
+          onClose={closePaidEntry}
+          onChanged={() => void paid.reload().then(closePaidEntry)}
+        />,
+        sidebarHost,
+      )}
 
-      {open && (
-        <EntryDialog
+      {sidebarHost && open && createPortal(
+        <EntrySidebar
           entry={open}
           repo={data?.repo ?? ""}
-          inUse={open.kind === "theme" && open.installedIds[0] === data?.selectedTheme}
           onClose={closeEntry}
           onInstalled={async () => {
             const d = await load(true);
             const fresh = d?.entries.find((x) => x.kind === open.kind && x.id === open.id);
             if (fresh) setOpen(fresh);
           }}
-        />
+        />,
+        sidebarHost,
       )}
       {publishing && <PublishDialog repo={data?.repo ?? ""} onClose={() => setPublishing(false)} />}
     </Page>
@@ -227,20 +280,19 @@ export function MarketPage() {
 function InstalledMark({ state }: { state: MarketEntry["installed"] }) {
   if (!state) return null;
   return (
-    <span className={cn("inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium", state === "update" ? "bg-highlight/15 text-highlight" : "bg-success/12 text-success")}>
+    <span className="nd-deck-overview-badge gap-1">
       {state === "update" ? <RefreshCw className="size-3" /> : <Check className="size-3" strokeWidth={3} />}
       {state === "update" ? "Update" : "Installed"}
     </span>
   );
 }
 
-function Cover({ entry, large }: { entry: MarketEntry; large?: boolean }) {
+function Cover({ entry, large }: { entry: MarketItem; large?: boolean }) {
   const s = entry.summary as any;
-  if (entry.kind === "theme") return <ThemeMiniature theme={s.theme} className={large ? "" : "rounded-lg"} />;
   const Icon = KIND_ICON[entry.kind];
   if (entry.cover) {
     return (
-      <div className={cn("aspect-[16/10] min-w-0 overflow-hidden rounded-lg bg-[#070707]", large && "rounded-xl")}>
+      <div className={cn("aspect-[16/10] min-w-0 overflow-hidden rounded-lg", large && "rounded-xl")}>
         <EtudeImg src={api.marketCoverUrl(entry.kind, entry.id)} alt="" loading="lazy" className="size-full object-contain" />
       </div>
     );
@@ -281,20 +333,19 @@ function Cover({ entry, large }: { entry: MarketEntry; large?: boolean }) {
   );
 }
 
-function metaLine(entry: MarketEntry): string {
+function metaLine(entry: MarketItem): string {
   const s = entry.summary as any;
-  if (entry.kind === "theme") return `Theme · ${s.theme.scheme}`;
   if (entry.kind === "deck") return `Deck · ${plural(s.items, "card")}${s.watch ? " · tour" : ""}`;
   return `Card type · ${(s.types as any[]).map((t) => GRADER_WORD[t.grader] ?? t.grader).join(", ")}`;
 }
 
-function EntryTile({ entry, onOpen }: { entry: MarketEntry; onOpen(): void }) {
+function EntryTile({ entry, onOpen }: { entry: MarketItem; onOpen(): void }) {
   return (
-    <button onClick={onOpen} className="group flex min-w-0 flex-col gap-3 rounded-xl border p-2 text-left transition-colors hover:border-ring/70 focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none">
+    <button onClick={onOpen} className="nd-deck-card-tile nd-deck-overview-tile group relative flex w-full flex-col rounded-xl border bg-card/40 px-4 py-4 text-left transition-colors hover:border-foreground/20 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50">
       <Cover entry={entry} />
       <div className="flex flex-col gap-1 px-1.5 pb-1.5">
-        <div className="flex items-center gap-2">
-          <span className="min-w-0 flex-1 truncate text-sm font-medium">{entry.name}</span>
+        <div className="nd-deck-overview-heading flex min-w-0 items-center gap-2">
+          <span className="min-w-0 flex-1 truncate text-sm font-semibold">{entry.name}</span>
           <InstalledMark state={entry.installed} />
         </div>
         <div className="line-clamp-2 min-h-[2.5em] text-[13px] leading-snug text-muted-foreground">{entry.description || KIND_LABEL[entry.kind]}</div>
@@ -302,7 +353,6 @@ function EntryTile({ entry, onOpen }: { entry: MarketEntry; onOpen(): void }) {
           <span className="truncate">{metaLine(entry)}</span>
           <span aria-hidden="true">·</span>
           <span className="truncate">by {entry.author}</span>
-          {entry.kind === "theme" && <ThemeSwatches theme={(entry.summary as any).theme} className="ml-auto" />}
         </div>
       </div>
     </button>
@@ -311,30 +361,22 @@ function EntryTile({ entry, onOpen }: { entry: MarketEntry; onOpen(): void }) {
 
 // ------------------------------------------------------------------ detail
 
-function EntryDialog({ entry, repo, inUse, onClose, onInstalled }: { entry: MarketEntry; repo: string; inUse: boolean; onClose(): void; onInstalled(): void }) {
+function EntrySidebar({ entry, repo, onClose, onInstalled }: { entry: MarketItem; repo: string; onClose(): void; onInstalled(): void }) {
   const [file, setFile] = useState<MarketFile | null>(null);
-  const [busy, setBusy] = useState<null | "install" | "use">(null);
+  const [busy, setBusy] = useState<null | "install">(null);
   const s = entry.summary as any;
 
   useEffect(() => {
     if (entry.kind === "type") api.marketEntry(entry.kind, entry.id).then(setFile).catch((e) => toast.error("Couldn't load the card type", { description: (e as Error).message }));
   }, [entry.kind, entry.id]);
 
-  const install = async (use = false) => {
-    setBusy(use ? "use" : "install");
+  const install = async () => {
+    setBusy("install");
     try {
-      const r = await api.marketInstall(entry.id, entry.kind, { use });
-      if (entry.kind === "theme" && use) {
-        const t = await api.themes();
-        const sel = t.themes.find((x) => x.id === r.ids[0]);
-        if (sel) applyTheme(sel);
-      }
-      const what = entry.kind === "theme" ? "theme" : entry.kind === "deck" ? "deck" : "card type";
+      const r = await api.marketInstall(entry.id, entry.kind);
+      const what = entry.kind === "deck" ? "deck" : "card type";
       toast.success(r.result === "unchanged" ? `You already have the latest ${what}` : `${r.result === "updated" ? "Updated" : "Installed"} ${entry.name}`, {
-        description:
-          entry.kind === "theme"
-            ? use ? "It's on now." : "Pick it in Settings → Appearance."
-            : `${r.report.items.created} new, ${r.report.items.updated} updated item${r.report.items.updated === 1 ? "" : "s"}${r.report.types.created ? `, ${plural(r.report.types.created, "card type")}` : ""}.`,
+        description: `${r.report.items.created} new, ${r.report.items.updated} updated item${r.report.items.updated === 1 ? "" : "s"}${r.report.types.created ? `, ${plural(r.report.types.created, "card type")}` : ""}.`,
       });
       onInstalled();
     } catch (e) {
@@ -347,33 +389,25 @@ function EntryDialog({ entry, repo, inUse, onClose, onInstalled }: { entry: Mark
   const goTo = () => {
     onClose();
     if (entry.kind === "deck") navigate(`/deck?name=${encodeURIComponent(s.decks[0])}`);
-    else if (entry.kind === "type") navigate(`/types/${encodeURIComponent(s.types[0].id)}`);
-    else navigate("/settings#appearance");
+    else navigate(`/types/${encodeURIComponent(s.types[0].id)}`);
   };
 
   return (
-    <Dialog open onOpenChange={(o) => !o && onClose()}>
-      <DialogContent
-        className="market-detail"
-        aria-describedby="market-about"
-        // The screenshot lightbox is portaled to <body>; clicks in it aren't "outside" the dialog.
-        onInteractOutside={(e) => { if ((e.target as Element | null)?.closest?.(".market-lightbox")) e.preventDefault(); }}
-      >
-        <div className="market-detail-scroll">
-        <DialogHeader className="text-left">
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 pr-8 text-xs text-muted-foreground [&>span]:whitespace-nowrap">
-            <span>{KIND_LABEL[entry.kind]}</span>
-            <span aria-hidden="true">·</span>
-            <span>by {entry.author}</span>
-            <span aria-hidden="true">·</span>
-            <span>v{entry.version}{entry.updated && `, ${entry.updated}`}</span>
-            <InstalledMark state={entry.installed} />
-          </div>
-          <DialogTitle className="pr-6 text-2xl leading-tight tracking-tight sm:text-3xl">{entry.name}</DialogTitle>
-        </DialogHeader>
-
+    <section className="nd-market-sidebar" aria-label={`${entry.name} details`}>
+      <SidebarHeader className="shrink-0">
+        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+          <h2 className="min-w-0 text-sm font-semibold">{entry.name}</h2>
+          <span className="text-xs text-muted-foreground">{KIND_LABEL[entry.kind]}</span>
+          <InstalledMark state={entry.installed} />
+        </div>
+        <Button variant="ghost" size="icon" className="nd-types-sidebar-add size-8 transition-colors" aria-label="Close market details" onClick={onClose}>
+          <X className="size-4" />
+        </Button>
+      </SidebarHeader>
+      <SidebarScroll className="min-h-0 flex-1">
+        <div className="nd-market-sidebar-content">
         <div className="market-facts">
-          <div className="market-fact"><span>{entry.kind === "theme" ? "Appearance" : "Includes"}</span><strong>{entry.kind === "deck" ? plural(s.items, "card") : entry.kind === "theme" ? (s.theme.scheme === "light" ? "Light theme" : "Dark theme") : plural(s.items, "example")}</strong></div>
+          <div className="market-fact"><span>Includes</span><strong>{entry.kind === "deck" ? plural(s.items, "card") : plural(s.items, "example")}</strong></div>
           <div className="market-fact"><span>{entry.kind === "deck" ? "Collection" : "Version"}</span><strong>{entry.kind === "deck" ? plural(s.decks.filter((d: string) => !s.decks.some((x: string) => x.startsWith(d + "::"))).length, "topic") : `v${entry.version}`}</strong></div>
           <div className="market-fact"><span>Download</span><strong>{kb(entry.bytes)}</strong></div>
           <div className="market-fact"><span>Creator</span><strong>{entry.author}</strong></div>
@@ -381,11 +415,10 @@ function EntryDialog({ entry, repo, inUse, onClose, onInstalled }: { entry: Mark
         <MarketGallery key={`${entry.kind}/${entry.id}`} entry={entry} fallback={<Cover entry={entry} large />} />
 
         <section id="market-about" className="market-description mb-6">
-          <h3 className="mb-3 text-base font-semibold">About this {entry.kind === "type" ? "card type" : entry.kind}</h3>
+          <h3 className="mb-3 text-sm font-medium">About this {entry.kind === "type" ? "card type" : entry.kind}</h3>
           <div className="text-sm leading-relaxed text-muted-foreground whitespace-pre-line">{(entry.description || "No description yet.").split(/\n\s*\n/).map((p, i) => <p key={i}>{p}</p>)}</div>
         </section>
-        {entry.kind === "theme" && <Button variant="link" className="mb-5 h-auto p-0 text-xs text-muted-foreground" disabled={!!busy} onClick={() => install(false)}>Install without changing my theme</Button>}
-        {entry.kind === "type" && <section className="mb-6"><h3 className="mb-3 text-base font-semibold">Try it</h3><TypePreview file={file} /></section>}
+        {entry.kind === "type" && <section className="mb-6"><h3 className="mb-3 text-sm font-medium">Try it</h3><TypePreview file={file} /></section>}
 
         <div className="flex flex-wrap gap-x-6 gap-y-2 text-[13px] text-muted-foreground">
           {entry.kind === "deck" && (
@@ -401,13 +434,12 @@ function EntryDialog({ entry, repo, inUse, onClose, onInstalled }: { entry: Mark
               </span>
             ))}
           {entry.kind === "type" && s.items > 0 && <span>{plural(s.items, "example card")}</span>}
-          {entry.kind === "theme" && <span>{s.theme.scheme === "light" ? "Light" : "Dark"}{s.theme.css ? ", with extra CSS" : ""}</span>}
           <span>{kb(entry.bytes)}</span>
           {entry.tags.length > 0 && <span>{entry.tags.map((t) => `#${t}`).join(" ")}</span>}
         </div>
         </div>
-
-        <DialogFooter className="flex-row items-center justify-between gap-3 border-t bg-background px-5 py-4 sm:justify-between">
+      </SidebarScroll>
+      <SidebarFooter className="flex shrink-0 items-center justify-between gap-3">
           <Button variant="ghost" size="sm" className="gap-1.5" asChild>
             <a href={`https://github.com/${repo}/blob/main/${entry.path}`} target="_blank" rel="noreferrer">
               <ExternalLink className="size-4" /> Source
@@ -415,14 +447,13 @@ function EntryDialog({ entry, repo, inUse, onClose, onInstalled }: { entry: Mark
           </Button>
           <div className="flex flex-wrap justify-end gap-2">
             {entry.installed && <Button variant="outline" onClick={goTo}>Open</Button>}
-            <Button className="gap-1.5" disabled={!!busy || (entry.installed === "installed" && (entry.kind !== "theme" || inUse))} onClick={() => install(entry.kind === "theme")}>
-              {busy ? <Loader2 className="size-4 animate-spin" /> : entry.installed === "installed" && (entry.kind !== "theme" || inUse) ? <Check className="size-4" /> : <Download className="size-4" />}
-              {entry.kind === "theme" ? (entry.installed === "installed" ? (inUse ? "In use" : "Use") : entry.installed === "update" ? "Update and use" : "Install and use") : entry.installed === "update" ? "Update" : entry.installed ? "Installed" : "Install"}
+            <Button className="gap-1.5" disabled={!!busy || entry.installed === "installed"} onClick={() => install()}>
+              {busy ? <Loader2 className="size-4 animate-spin" /> : entry.installed === "installed" ? <Check className="size-4" /> : <Download className="size-4" />}
+              {entry.installed === "update" ? "Update" : entry.installed ? "Installed" : "Install"}
             </Button>
           </div>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+      </SidebarFooter>
+    </section>
   );
 }
 
@@ -452,7 +483,7 @@ function TypePreview({ file }: { file: MarketFile | null }) {
   return (
     <div>
       <div className="mb-2 flex items-center gap-1.5 text-xs text-muted-foreground"><Eye className="size-3.5" /> Try it: this preview runs the card here and saves nothing.</div>
-      <CardPreview html={html} version={`market:${def.id}`} load={load} faces={def.faces} generated={!!def.prepare} grade={def.grader.kind === "script" || def.grader.kind === "hybrid" ? grade : undefined} />
+      <CardPreview html={html} version={`market:${def.id}`} load={load} faces={def.faces} generated={!!def.prepare} grade={def.grader.kind === "script" || def.grader.kind === "hybrid" ? grade : undefined} darkTheme markdownEditorStyle />
     </div>
   );
 }
@@ -460,8 +491,8 @@ function TypePreview({ file }: { file: MarketFile | null }) {
 // ------------------------------------------------------------------ publish
 
 function PublishDialog({ repo, onClose }: { repo: string; onClose(): void }) {
-  const [kind, setKind] = useState<MarketKind>("deck");
-  const [options, setOptions] = useState<Record<MarketKind, { value: string; label: string }[]> | null>(null);
+  const [kind, setKind] = useState<MarketPublishKind>("deck");
+  const [options, setOptions] = useState<Record<MarketPublishKind, { value: string; label: string }[]> | null>(null);
   const [ref, setRef] = useState("");
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -476,9 +507,8 @@ function PublishDialog({ repo, onClose }: { repo: string; onClose(): void }) {
 
   useEffect(() => {
     api.publishStatus().then(setGh).catch(() => setGh({ ok: false, reason: "couldn't check gh" }));
-    Promise.all([api.themes(), api.decks(), api.types()]).then(([t, d, ty]) => {
+    Promise.all([api.decks(), api.types()]).then(([d, ty]) => {
       setOptions({
-        theme: t.themes.filter((x) => !x.builtin).map((x) => ({ value: x.id, label: x.name })),
         deck: d.filter((x) => x.cards > 0).map((x) => ({ value: x.name, label: `${"  ".repeat(x.depth)}${x.name.split("::").pop()}` })),
         type: ty.filter((x) => !x.builtin).map((x) => ({ value: x.id, label: `${x.name} (${x.id})` })),
       });
@@ -567,8 +597,8 @@ function PublishDialog({ repo, onClose }: { repo: string; onClose(): void }) {
         </DialogHeader>
 
         <div className="flex flex-col gap-4">
-          <ToggleGroup type="single" variant="outline" value={kind} onValueChange={(v) => v && setKind(v as MarketKind)} className="w-full">
-            {(["deck", "type", "theme"] as MarketKind[]).map((k) => {
+          <ToggleGroup type="single" variant="outline" value={kind} onValueChange={(v) => v && setKind(v as MarketPublishKind)} className="w-full">
+            {(["deck", "type"] as MarketPublishKind[]).map((k) => {
               const Icon = KIND_ICON[k];
               return (
                 <ToggleGroupItem key={k} value={k} className="flex-1 gap-1.5 text-[13px]">
@@ -578,7 +608,7 @@ function PublishDialog({ repo, onClose }: { repo: string; onClose(): void }) {
             })}
           </ToggleGroup>
 
-          <Field label={kind === "deck" ? "Deck" : kind === "type" ? "Card type" : "Theme"} hint={list.length === 0 && options ? (kind === "theme" ? "Make a custom theme in Settings → Appearance first." : kind === "type" ? "Only your own card types can be published." : "No decks with cards yet.") : undefined}>
+          <Field label={kind === "deck" ? "Deck" : "Card type"} hint={list.length === 0 && options ? (kind === "type" ? "Only your own card types can be published." : "No decks with cards yet.") : undefined}>
             <Select value={ref} onValueChange={setRef} disabled={!list.length}>
               <SelectTrigger className="h-10 w-full"><SelectValue placeholder={options ? "Choose one" : "Loading…"} /></SelectTrigger>
               <SelectContent>
@@ -613,7 +643,7 @@ function PublishDialog({ repo, onClose }: { repo: string; onClose(): void }) {
           )}
           {gh && !gh.ok && (
             <p className="rounded-md border px-3 py-2 text-[13px] text-muted-foreground">
-              To open the pull request from here, Etude needs the GitHub CLI signed in on the machine running it ({gh.reason}). You can also save the file and add it on GitHub yourself.
+              To open the pull request from here, Notedrop needs the GitHub CLI signed in on the machine running it ({gh.reason}). You can also save the file and add it on GitHub yourself.
             </p>
           )}
         </div>

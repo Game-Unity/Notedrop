@@ -1,4 +1,4 @@
-// "Ask Etude": the assistant's side panel. The panel pushes the page on desktop and is a full-screen sheet on phones; the launcher lives in the sidebar dock.
+// "Ask Notedrop": the assistant's side panel. The panel pushes the page on desktop and is a full-screen sheet on phones; the launcher lives in the sidebar dock.
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { ArrowUp, Ban, CalendarCheck, Check, ChevronDown, ChevronLeft, ChevronRight, CornerDownRight, Ellipsis, FileText, FileUp, FolderTree, ImageIcon, Loader2, Package, Palette, Pencil, Plus, RotateCcw, Settings2, Square, SquarePen, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
@@ -18,6 +18,7 @@ import { cn } from "@/lib/utils";
 import { isNativeApp } from "@/lib/platform";
 import { track } from "@/lib/telemetry";
 import { usePhone } from "@/lib/phone";
+import { SidebarHeader, SidebarScroll } from "@/components/sidebar/SidebarLayout";
 
 // In the iOS app a file input with no accept list offers "Take Video", which needs the microphone; the
 // app only takes images, PDFs, text and .apkg, so it asks for those and iOS offers photos, camera and files.
@@ -455,7 +456,7 @@ export function AgentPanel({ width, setWidth, onClose, onChanged, embedded }: { 
     <div
       ref={panel}
       role="complementary"
-      aria-label="Ask Etude"
+      aria-label="Ask Notedrop"
       data-agent-panel
       className={cn(
         "flex flex-col bg-background text-foreground",
@@ -483,7 +484,7 @@ export function AgentPanel({ width, setWidth, onClose, onChanged, embedded }: { 
       }}
     >
       {!phone && !embedded && <div onPointerDown={startResize} className="absolute inset-y-0 -left-1 z-10 w-2 cursor-col-resize" aria-hidden />}
-      <header className="flex h-11 shrink-0 items-center gap-1 border-b border-border pb-3 pointer-coarse:h-12">
+      <SidebarHeader className="flex h-11 shrink-0 items-center gap-1 border-b border-border pb-3 pointer-coarse:h-12">
         {phone && (
           <HeaderButton label="Close" tip="Close" onClick={onClose}>
             <ChevronLeft />
@@ -536,14 +537,14 @@ export function AgentPanel({ width, setWidth, onClose, onChanged, embedded }: { 
             <X />
           </HeaderButton>
         )}
-      </header>
+      </SidebarHeader>
 
       <div className="relative min-h-0 flex-1">
         <div aria-hidden data-agent-fade className={cn("pointer-events-none absolute inset-x-0 top-0 z-10 h-6 bg-gradient-to-b from-background to-transparent transition-opacity duration-200", scrolled ? "opacity-100" : "opacity-0")} />
-        <div
+        <SidebarScroll
           ref={scroller}
           data-agent-scroll
-          className="nd-side-panel-scroll flex h-full flex-col overflow-y-auto"
+          className="flex h-full flex-col"
           onScroll={(e) => {
             const el = e.currentTarget;
             stick.current = el.scrollHeight - el.scrollTop - el.clientHeight < 40;
@@ -556,7 +557,7 @@ export function AgentPanel({ width, setWidth, onClose, onChanged, embedded }: { 
             <div className="mt-auto flex flex-col items-start gap-3 pb-2">
               <Logo className="size-11" />
               <p className="text-[17px] font-semibold tracking-tight">Set up an AI provider first</p>
-              <p className="text-[13px] text-muted-foreground">Ask Etude uses the model you connect in Settings: your ChatGPT plan, an API key, or a local server.</p>
+              <p className="text-[13px] text-muted-foreground">Ask Notedrop uses the model you connect in Settings: your ChatGPT plan, an API key, or a local server.</p>
               <Button size="sm" variant="outline" onClick={openAiSettings}>
                 Settings → AI
               </Button>
@@ -576,7 +577,7 @@ export function AgentPanel({ width, setWidth, onClose, onChanged, embedded }: { 
               )}
             </div>
           )}
-        </div>
+        </SidebarScroll>
       </div>
 
       <div className="shrink-0">
@@ -613,7 +614,7 @@ export function AgentPanel({ width, setWidth, onClose, onChanged, embedded }: { 
                 addFiles(files);
               }
             }}
-            placeholder="Ask Etude…"
+            placeholder="Ask Notedrop…"
             aria-label="Message"
             className="block max-h-52 min-h-11 w-full resize-none bg-transparent px-3 pt-3 pb-1.5 text-sm text-foreground leading-normal outline-none placeholder:text-muted-foreground [field-sizing:content] max-sm:text-base"
           />

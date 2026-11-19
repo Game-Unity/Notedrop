@@ -1,5 +1,5 @@
 // Images, video and downloads that point at the app's own URLs (/media/…, /api/market/cover/…,
-// /api/export) load from the Etude server on the desktop. With no server (the web edition and the
+// /api/export) load from the Notedrop server on the desktop. With no server (the web edition and the
 // phone apps, see transport.ts) the browser can't fetch them, so they're answered by the core worker
 // and handed to the page as blob: URLs.
 import { useEffect, useState, type ComponentProps } from "react";

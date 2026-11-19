@@ -64,7 +64,7 @@ export function DataSection({ dbPath, mediaDir }: { dbPath: string; mediaDir: st
       description={
         serverless()
           ? "The collection lives in this browser, on this device: cards, review history and the media you add. Clearing this site's data in the browser deletes it, so keep a backup or turn on Sync."
-          : "The collection lives in a SQLite file. Pasted images, audio, video, imported media and drawings are copied into Etude's own media folder next to it."
+          : "The collection lives in a SQLite file. Pasted images, audio, video, imported media and drawings are copied into Notedrop's own media folder next to it."
       }
     >
       {serverless() ? (

@@ -9,7 +9,7 @@
 .market-shot { position: relative; flex: none; height: var(--shot-h); margin: 0; overflow: hidden; scroll-snap-align: start; border-radius: 14px; background: #000; }
 .market-shot > img, .market-shot > video { display: block; height: 100%; width: auto; max-width: none; }
 .market-shot > img { pointer-events: none; user-select: none; }
-button.market-shot { padding: 0; border: 0; cursor: zoom-in; transition: transform .2s, filter .2s; }
+button.market-shot { padding: 0; border: 0; background: transparent; cursor: zoom-in; transition: transform .2s, filter .2s; }
 button.market-shot:hover { filter: brightness(1.08); }
 button.market-shot:focus-visible { outline: 3px solid color-mix(in oklab, var(--ring) 60%, transparent); outline-offset: 2px; }
 .market-lightbox { position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; background: rgb(0 0 0 / .95); backdrop-filter: blur(6px); cursor: zoom-out; animation: market-fade .15s ease-out; pointer-events: auto; }

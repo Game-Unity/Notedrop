@@ -9,8 +9,10 @@ import updater from "electron-updater";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { log } from "./log.ts";
+import { createUpdateBackup } from "../src/core/update-backup.ts";
+import { updatesManagedExternally, type UpdateDistribution } from "../src/core/distribution.ts";
 
-export type UpdateMode = "self" | "link" | "system" | "none";
+export type UpdateMode = "self" | "link" | "system" | "store" | "none";
 
 export interface UpdateState {
   mode: UpdateMode;
@@ -24,6 +26,7 @@ export interface UpdateState {
 }
 
 const EVERY = 6 * 60 * 60 * 1000;
+const RELEASE_SOURCE = { provider: "github" as const, owner: "Game-Unity", repo: "Notedrop" };
 
 /** What went wrong, in a line someone can act on. */
 function plain(e: unknown): string {
@@ -33,7 +36,8 @@ function plain(e: unknown): string {
   return m.split("\n")[0].slice(0, 160);
 }
 
-function updateMode(): UpdateMode {
+function updateMode(distribution: UpdateDistribution): UpdateMode {
+  if (updatesManagedExternally(distribution)) return "store";
   if (!app.isPackaged) return "none";
   if (process.platform === "win32" || process.env.APPIMAGE) return "self";
   if (process.platform === "darwin") {
@@ -50,6 +54,7 @@ function updateMode(): UpdateMode {
 
 let state: UpdateState = { mode: "none", version: "", latest: null, ready: false, percent: null, checked: null };
 let notify: (s: UpdateState) => void = () => {};
+let dataPaths: { home: string; dbPath: string } | null = null;
 
 function set(patch: Partial<UpdateState>) {
   state = { ...state, ...patch };
@@ -58,15 +63,17 @@ function set(patch: Partial<UpdateState>) {
 
 export const updateState = () => state;
 
-export function startUpdates(onChange: (s: UpdateState) => void) {
+export function startUpdates(distribution: UpdateDistribution, onChange: (s: UpdateState) => void, data: { home: string; dbPath: string } | null = null) {
   notify = onChange;
-  state = { ...state, mode: updateMode(), version: app.getVersion() };
+  dataPaths = data;
+  state = { ...state, mode: updateMode(distribution), version: app.getVersion() };
   log(`updates: ${state.mode}`);
   if (state.mode !== "self") return;
   const { autoUpdater } = updater;
+  autoUpdater.setFeedURL(RELEASE_SOURCE);
   autoUpdater.logger = { info: (m) => log(`update: ${m}`), warn: (m) => log(`update: ${m}`), error: (m) => log(`update error: ${m}`), debug: () => {} };
   autoUpdater.autoDownload = true;
-  autoUpdater.autoInstallOnAppQuit = true;
+  autoUpdater.autoInstallOnAppQuit = false;
   autoUpdater.on("update-available", (info) => set({ latest: info.version, percent: 0, error: undefined }));
   autoUpdater.on("download-progress", (p) => set({ percent: Math.round(p.percent) }));
   autoUpdater.on("update-downloaded", (info) => set({ latest: info.version, ready: true, percent: 100 }));
@@ -77,6 +84,7 @@ export function startUpdates(onChange: (s: UpdateState) => void) {
 }
 
 export async function checkForUpdates(): Promise<UpdateState> {
+  if (state.mode === "store") return state;
   if (state.mode !== "self" || state.ready) return state;
   set({ checked: new Date().toISOString() });
   try {
@@ -87,6 +95,18 @@ export async function checkForUpdates(): Promise<UpdateState> {
   return state;
 }
 
-export function restartToUpdate() {
-  if (state.ready) updater.autoUpdater.quitAndInstall();
+export async function restartToUpdate(): Promise<boolean> {
+  if (state.mode === "store" || !state.ready) return false;
+  if (!dataPaths) {
+    set({ error: "The update can't install because the Notedrop data directory isn't known." });
+    return false;
+  }
+  try {
+    await createUpdateBackup({ ...dataPaths, appVersion: state.version, kind: "update" });
+    updater.autoUpdater.quitAndInstall();
+    return true;
+  } catch (error) {
+    set({ error: `Safety backup failed: ${(error as Error).message}` });
+    return false;
+  }
 }

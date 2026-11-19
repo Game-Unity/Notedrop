@@ -1,4 +1,4 @@
-// Where the app's own requests (/api, /frame) go. Normally the Etude server; in the serverless
+// Where the app's own requests (/api, /frame) go. Normally the local Notedrop server; in the serverless
 // build (src/browser) the core runs in a worker in this tab and answers them instead.
 type Transport = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
 
@@ -23,7 +23,7 @@ const isApi = (input: RequestInfo | URL) => {
   return u.origin === location.origin && u.pathname.startsWith("/api/");
 };
 
-/** `fetch` for Etude's own URLs, with the server's token on API calls. */
+/** `fetch` for Notedrop's own URLs, with the server's token on API calls. */
 export const etudeFetch: Transport = (input, init) => {
   const l = local();
   if (l) return l(input, init);

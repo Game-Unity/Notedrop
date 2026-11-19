@@ -1,5 +1,5 @@
-// Where Etude is running, read from the Capacitor bridge when there is one (no Capacitor import).
-// Store rules follow from it. The store apps sell one thing, Etude Sync, through Apple In-App
+// Where Notedrop is running, read from the Capacitor bridge when there is one (no Capacitor import).
+// Store rules follow from it. The store apps sell one thing, Notedrop Sync, through Apple In-App
 // Purchase or Google Play Billing (lib/storekit.ts, prices from the store); everything else bought on etude.study stays out of
 // the apps: purchased decks show as a library only (no prices, no buy buttons, no links to buy), and
 // nothing points to the website to pay. The desktop app and the browser link to etude.study.
@@ -55,15 +55,17 @@ export function storeSafeMessage(message: string, code?: string | null, native =
  * How the desktop app gets new versions: "self" downloads and installs on restart, "link" points to
  * the download, "system" comes with the system's updates (the AUR), "none" is a checkout (git).
  */
-export type DesktopUpdateState = { mode: "self" | "link" | "system" | "none"; version: string; latest: string | null; ready: boolean; percent: number | null; checked: string | null; error?: string };
+export type DesktopUpdateState = { mode: "self" | "link" | "system" | "store" | "none"; version: string; latest: string | null; ready: boolean; percent: number | null; checked: string | null; error?: string };
 export type DesktopCommandState = { path: string | null; ours: boolean; canInstall: boolean; note: string; error?: string };
 
 /** What the desktop app lets the page ask for (desktop/preload.cjs); undefined in browsers and the phone apps. */
 export type DesktopBridge = {
   platform: string;
+  distribution: "development" | "github" | "microsoft-store";
   pickFolder(): Promise<string | null>;
   showLogs(): Promise<void>;
   updates: { status(check?: boolean): Promise<DesktopUpdateState>; restart(): Promise<void>; onChange(callback: (s: DesktopUpdateState) => void): () => void };
   command: { status(): Promise<DesktopCommandState>; install(): Promise<DesktopCommandState> };
 };
 export const desktopApp = (): DesktopBridge | undefined => (globalThis as { etudeDesktop?: DesktopBridge }).etudeDesktop;
+export const internalUpdatesAvailable = () => desktopApp()?.distribution !== "microsoft-store";

@@ -377,7 +377,7 @@ export function TypeEditor({ id, previewHost, previewFooterHost, sampleHost }: {
   const problemCount = fatal.length + (cardError ? 1 : 0);
   const sampleEditor = (
     <>
-      <div className="flex items-baseline gap-2 mb-0 pt-4">
+      <div className={cn("flex items-baseline gap-2 mb-0", !showSidebarPreview && "pt-4")}>
         <h2 className="text-sm font-semibold leading-5">Sample editor</h2>
       </div>
       <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
@@ -401,7 +401,7 @@ export function TypeEditor({ id, previewHost, previewFooterHost, sampleHost }: {
     <>
       <div className={cn(
         "mb-3 flex items-baseline gap-2",
-        showSidebarPreview && "mb-0 py-4",
+        showSidebarPreview && "mb-0",
       )}>
         <h2 className={cn("text-sm", showSidebarPreview ? "font-semibold leading-5" : "font-medium")}>Live preview</h2>
         <span className="text-xs leading-4 text-muted-foreground">{dirty ? "unsaved draft" : "saved version"}</span>
@@ -471,7 +471,7 @@ export function TypeEditor({ id, previewHost, previewFooterHost, sampleHost }: {
 
       {saved?.builtin && (
         <p className="text-sm text-muted-foreground">
-          This is a built-in type. Saving makes it your own version: Etude updates won't replace it, and you can reset it to the shipped version at any time.
+          This is a built-in type. Saving makes it your own version: Notedrop updates won't replace it, and you can reset it to the shipped version at any time.
         </p>
       )}
 
@@ -705,7 +705,7 @@ export function TypeEditor({ id, previewHost, previewFooterHost, sampleHost }: {
           <AlertDialogHeader>
             <AlertDialogTitle>Make {saved?.name} your own?</AlertDialogTitle>
             <AlertDialogDescription>
-              Saving replaces the built-in version for every item that uses it{items ? ` (${items} item${items === 1 ? "" : "s"})` : ""}. Later Etude updates won't change your version. You can reset to the shipped version at any time.
+              Saving replaces the built-in version for every item that uses it{items ? ` (${items} item${items === 1 ? "" : "s"})` : ""}. Later Notedrop updates won't change your version. You can reset to the shipped version at any time.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

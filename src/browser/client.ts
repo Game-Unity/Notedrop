@@ -151,7 +151,7 @@ function showCover(movedAway: boolean, useHere: () => void): HTMLElement {
     "position:fixed;inset:0;z-index:2147483647;display:grid;place-items:center;padding:24px;background:var(--background,#0b0b0b);color:var(--foreground,#f2f2f2);font:15px/1.5 Inter,system-ui,sans-serif;text-align:center";
   el.innerHTML = `<div style="max-width:340px">
     <img src="${import.meta.env.BASE_URL}logo.svg" alt="" width="72" height="72" style="display:block;margin:0 auto 16px">
-    <h1 id="etude-tab-cover-h" style="font-size:20px;font-weight:600;margin:0 0 6px">Etude is open in another tab</h1>
+    <h1 id="etude-tab-cover-h" style="font-size:20px;font-weight:600;margin:0 0 6px">Notedrop is open in another tab</h1>
     <p style="margin:0 0 20px;opacity:.65">${movedAway ? "You moved it to another tab." : "Your collection can be open in one tab at a time."} Close that tab, or keep studying here.</p>
     <button type="button" style="font:inherit;font-weight:600;padding:10px 22px;border:0;border-radius:999px;background:var(--foreground,#f2f2f2);color:var(--background,#0b0b0b);cursor:pointer">Use it here</button>
   </div>`;

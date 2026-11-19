@@ -61,3 +61,7 @@ ETUDE_CLI='/opt/${sanitizedProductName}/resources/app/desktop/bin/etude'
 if [ ! -e /usr/bin/etude ] || [ "`readlink /usr/bin/etude`" = "$ETUDE_CLI" ]; then
     ln -sf "$ETUDE_CLI" /usr/bin/etude
 fi
+NOTEDROP_CLI='/opt/${sanitizedProductName}/resources/app/desktop/bin/notedrop'
+if [ ! -e /usr/bin/notedrop ] || [ "`readlink /usr/bin/notedrop`" = "$NOTEDROP_CLI" ]; then
+    ln -sf "$NOTEDROP_CLI" /usr/bin/notedrop
+fi

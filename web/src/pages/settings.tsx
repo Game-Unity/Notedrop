@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { BookOpen, Globe, Loader2, RotateCcw, Save } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -12,7 +12,6 @@ import { navigate } from "@/lib/router";
 import { Breadcrumb, PHONE_H1 } from "@/components/page";
 import { ONBOARDING_EVENT } from "@/components/onboarding";
 import { AiSection } from "@/components/settings-ai";
-import { AppearanceSection } from "@/components/settings-appearance";
 import { DataSection } from "@/components/settings-data";
 import { CleanupSection } from "@/components/settings-cleanup";
 import { ShortcutsSection } from "@/components/settings-shortcuts";
@@ -20,24 +19,9 @@ import { SyncSection } from "@/components/settings-sync";
 import { AccountSection } from "@/components/settings-account";
 import { DesktopSection } from "@/components/settings-desktop";
 import { PrivacySection } from "@/components/settings-privacy";
-import { canShowPurchases, desktopApp } from "@/lib/platform";
+import { canShowPurchases, internalUpdatesAvailable } from "@/lib/platform";
 import { Block, NumberField, Section } from "@/components/settings-ui";
 import { draftOf, normalize, validate, type SettingsDraft, type SettingsResponse } from "@/components/settings-model";
-
-const NAV = [
-  { id: "account", label: "Account" },
-  { id: "sync", label: "Sync" },
-  { id: "ai", label: "AI grading" },
-  { id: "study", label: "Study" },
-  { id: "appearance", label: "Appearance" },
-  { id: "data", label: "Data" },
-  { id: "privacy", label: "Privacy" },
-  // Only inside the desktop app.
-  ...(desktopApp() ? [{ id: "desktop", label: "Desktop app" }] : []),
-  { id: "keys", label: "Keyboard" },
-  { id: "cleanup", label: "Clean up" },
-  { id: "about", label: "About" },
-];
 
 function GithubMark({ className }: { className?: string }) {
   return (
@@ -48,9 +32,9 @@ function GithubMark({ className }: { className?: string }) {
 }
 
 const ABOUT_LINKS = [
-  { label: "GitHub", href: "https://github.com/Zibhelina/etude", icon: GithubMark },
-  { label: "Website", href: "https://etude.study/", icon: Globe },
-  { label: "Docs", href: "https://github.com/Zibhelina/etude/tree/main/docs", icon: BookOpen },
+  { label: "GitHub", href: "https://github.com/Game-Unity/Notedrop", icon: GithubMark },
+  { label: "Etude website", href: "https://etude.study/", icon: Globe },
+  { label: "Docs", href: "https://github.com/Game-Unity/Notedrop/tree/main/docs", icon: BookOpen },
 ];
 
 export function SettingsPage() {
@@ -58,9 +42,6 @@ export function SettingsPage() {
   const [draft, setDraft] = useState<SettingsDraft | null>(null);
   const [saving, setSaving] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [active, setActive] = useState(NAV[0].id);
-  const navRef = useRef<HTMLElement>(null);
-
   const load = useCallback(async () => {
     try {
       const s = (await api.settings()) as SettingsResponse;
@@ -118,57 +99,6 @@ export function SettingsPage() {
     return () => window.removeEventListener("beforeunload", h);
   }, [dirty]);
 
-  // A click on a tab: highlight it at once, glide there, and land exactly on it even if sections above
-  // grew while scrolling (Account and Sync load on their own). The scroll spy waits until it lands.
-  const jumping = useRef<number | null>(null);
-  const jumpTo = (id: string) => {
-    const el = document.getElementById(id);
-    if (!el) return;
-    setActive(id);
-    history.replaceState(null, "", `#${id}`);
-    if (jumping.current) window.clearTimeout(jumping.current);
-    el.scrollIntoView({ behavior: "smooth", block: "start" });
-    let done = false;
-    const land = () => {
-      if (done) return;
-      done = true;
-      window.removeEventListener("scrollend", land);
-      window.clearTimeout(fallback);
-      document.getElementById(id)?.scrollIntoView({ block: "start" });
-      jumping.current = window.setTimeout(() => (jumping.current = null), 120);
-    };
-    window.addEventListener("scrollend", land);
-    // Browsers without scrollend, or a page that didn't need to move.
-    const fallback = window.setTimeout(land, 900);
-    jumping.current = fallback;
-  };
-
-  // Highlight the section under the sticky nav.
-  useEffect(() => {
-    if (!saved) return;
-    const onScroll = () => {
-      if (jumping.current) return;
-      const top = (navRef.current?.getBoundingClientRect().bottom ?? 0) + 120;
-      let cur = NAV[0].id;
-      for (const n of NAV) {
-        const el = document.getElementById(n.id);
-        if (el && el.getBoundingClientRect().top <= top) cur = n.id;
-      }
-      if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 4) cur = NAV[NAV.length - 1].id;
-      setActive(cur);
-    };
-    onScroll();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, [saved]);
-
-  useEffect(() => {
-    // Scroll only the strip. scrollIntoView would also move the page and cancel a jump in progress.
-    const nav = navRef.current;
-    const pill = nav?.querySelector<HTMLElement>(`[data-id="${active}"]`);
-    if (nav && pill && nav.scrollWidth > nav.clientWidth) nav.scrollTo({ left: pill.offsetLeft - (nav.clientWidth - pill.offsetWidth) / 2, behavior: "smooth" });
-  }, [active]);
-
   // /settings#sync (from first-run setup): open at that section once it has rendered.
   useEffect(() => {
     if (!saved || !location.hash) return;
@@ -192,35 +122,6 @@ export function SettingsPage() {
 
   return (
     <div className="nd-settings-page w-full py-10 max-md:pt-[calc(1.25rem+env(safe-area-inset-top))]">
-      {saved && draft && (
-        <nav
-          ref={navRef}
-          className="mb-8 flex overflow-x-auto [scrollbar-width:none]"
-          aria-label="Sections"
-        >
-          <div className="mx-auto inline-flex h-9 w-max min-w-max items-center justify-center rounded-lg bg-muted p-[3px] text-muted-foreground">
-            {NAV.map((n) => (
-              <a
-                key={n.id}
-                data-id={n.id}
-                href={`#${n.id}`}
-                aria-current={active === n.id ? "true" : undefined}
-                onClick={(e) => {
-                  e.preventDefault();
-                  jumpTo(n.id);
-                }}
-                className={cn(
-                  "relative inline-flex h-[calc(100%-1px)] shrink-0 items-center justify-center gap-1.5 rounded-md border border-transparent px-4 py-1 text-sm font-medium whitespace-nowrap text-foreground/60 transition-all hover:text-foreground",
-                  active === n.id && "bg-background text-foreground shadow-sm",
-                )}
-              >
-                {n.label}
-              </a>
-            ))}
-          </div>
-        </nav>
-      )}
-
       <div className="mb-6">
         <h1 className={cn("text-2xl font-semibold tracking-tight", PHONE_H1)}>Settings</h1>
         <Breadcrumb items={[{ label: "Settings", onClick: () => navigate("/settings") }]} />
@@ -274,8 +175,6 @@ export function SettingsPage() {
               </Block>
             </Section>
 
-            <AppearanceSection />
-
             <DataSection dbPath={saved.dbPath} mediaDir={saved.mediaDir} />
 
             <PrivacySection />
@@ -288,9 +187,13 @@ export function SettingsPage() {
             <Section id="about" title="About">
               <Block>
                 <div className="flex items-center gap-3.5">
-                  <Logo tile className="size-11 shrink-0 rounded-[10px]" />
+                  <Logo tile className="shrink-0 rounded-[10px]" />
                   <div className="min-w-0 flex-1">
                     <Wordmark className="text-[1.35rem] leading-none" />
+                    <div className="mt-0.5 text-xs text-muted-foreground">Based on Etude</div>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Notedrop is an open-source fork of Etude focused on improving the interface and workflows. It builds on Etude’s platform, including its accounts, Sync, and Market.
+                    </p>
                     <div className="mt-1 text-xs text-muted-foreground">
                       Version <span className="font-mono text-[12px] text-foreground/90">{saved.version ?? "unknown"}</span> · FSRS-6 · AGPL-3.0
                     </div>
@@ -299,20 +202,20 @@ export function SettingsPage() {
                 <UpdateSettingsRow />
                 <div className="flex flex-wrap gap-x-5 gap-y-2 text-sm" data-about-links>
                   {/* The website sells Sync and paid decks, so the store apps don't link to it. */}
-                  {ABOUT_LINKS.filter((l) => canShowPurchases() || l.label !== "Website").map((l) => (
+                  {ABOUT_LINKS.filter((l) => canShowPurchases() || l.label !== "Etude website").map((l) => (
                     <a key={l.href} href={l.href} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 text-muted-foreground transition-colors hover:text-foreground">
                       <l.icon className="size-3.5" />
                       {l.label}
                     </a>
                   ))}
                 </div>
-                {!serverless() && <p className="text-xs text-muted-foreground">
-                  From a terminal: <code className="rounded bg-muted px-1 py-0.5 font-mono text-[11.5px] text-foreground/85">etude update --check</code>
+                {!serverless() && internalUpdatesAvailable() && <p className="text-xs text-muted-foreground">
+                  From a terminal: <code className="rounded bg-muted px-1 py-0.5 font-mono text-[11.5px] text-foreground/85">notedrop update --check</code>
                 </p>}
               </Block>
               <Block
                 title="First-run setup"
-                description="The questions Etude asks on a new install: AI grading, Sync, and something to start with. Your decks stay as they are."
+                description="The questions Notedrop asks on a new install: AI grading, Sync, and something to start with. Your decks stay as they are."
                 stackAside
                 aside={
                   <Button variant="outline" size="sm" className="h-10 gap-1.5 md:h-8" onClick={() => window.dispatchEvent(new Event(ONBOARDING_EVENT))}>

@@ -101,7 +101,7 @@ export function useChatGptSignIn() {
         win?.close();
         // In the phone apps this means the app's own sign-in didn't load (see NATIVE_COPY); no CLI there.
         if (inNativeShell()) setRemote({ message: NATIVE_COPY.chatGptUnavailable, cli: "" });
-        else setRemote({ message: r.message ?? "Sign-in has to finish on the machine running Etude.", cli: r.cli ?? "etude settings chatgpt login" });
+        else setRemote({ message: r.message ?? "Sign-in has to finish on the machine running Notedrop.", cli: r.cli ?? "etude settings chatgpt login" });
         return;
       }
       if (r.url) {
@@ -151,7 +151,7 @@ export function ChatGptBlock({ provider, error, onChange }: { provider: ChatGptP
       description={
         signedIn
           ? "Eligible grading uses your ChatGPT plan or credits balance instead of an API key. Manage the limit in ChatGPT settings."
-          : "Use your ChatGPT Plus or Pro plan for grading, with no API key. Etude stays free; this only changes who pays for the model."
+          : "Use your ChatGPT Plus or Pro plan for grading, with no API key. Notedrop stays free; this only changes who pays for the model."
       }
       stackAside
       aside={
@@ -218,7 +218,7 @@ export function ChatGptBlock({ provider, error, onChange }: { provider: ChatGptP
                 <CircleAlert className="mt-0.5 size-4 shrink-0 text-warning" />
                 <p className="leading-relaxed">{remote.message}</p>
               </div>
-              {remote.cli && <CopyValue label="Run on the machine that runs Etude" value={remote.cli} />}
+              {remote.cli && <CopyValue label="Run on the machine that runs Notedrop" value={remote.cli} />}
             </div>
           )}
           {failure && (
@@ -253,7 +253,7 @@ export function ChatGptBlock({ provider, error, onChange }: { provider: ChatGptP
                 <CircleAlert className="mt-0.5 size-4 shrink-0 text-warning" />
                 <p className="leading-relaxed">{remote.message}</p>
               </div>
-              {remote.cli && <CopyValue label="Run on the machine that runs Etude" value={remote.cli} />}
+              {remote.cli && <CopyValue label="Run on the machine that runs Notedrop" value={remote.cli} />}
             </div>
           )}
           {failure && (
@@ -263,11 +263,11 @@ export function ChatGptBlock({ provider, error, onChange }: { provider: ChatGptP
             </div>
           )}
           {inNativeShell() ? (
-            <p className="text-xs leading-relaxed text-muted-foreground">Sign-in opens auth.openai.com and comes back to Etude. Your sign-in stays on this device.</p>
+            <p className="text-xs leading-relaxed text-muted-foreground">Sign-in opens auth.openai.com and comes back to Notedrop. Your sign-in stays on this device.</p>
           ) : (
             <p className="text-xs leading-relaxed text-muted-foreground">
               Sign-in opens auth.openai.com and returns to a callback on 127.0.0.1, so the browser must be on this machine. On a phone or another computer, run{" "}
-              <code className="font-mono text-foreground/90">etude settings chatgpt login</code> where Etude runs.
+              <code className="font-mono text-foreground/90">etude settings chatgpt login</code> where Notedrop runs.
             </p>
           )}
         </div>

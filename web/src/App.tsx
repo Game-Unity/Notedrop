@@ -1,13 +1,13 @@
 import { autoSync } from "@/lib/sync";
 import { Archive, BarChart3, Blocks, Layers, Settings, Sparkles, Store, X } from "lucide-react";
-import { Fragment, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Toaster } from "@/components/ui/sonner";
 import { Tooltip, TooltipContent, TooltipHint, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { SidebarIcon } from "@/components/sidebar-icon";
 import { navigate, useLocation } from "@/lib/router";
-import { Wordmark } from "@/components/logo";
+import { Logo, Wordmark } from "@/components/logo";
 import { cn } from "@/lib/utils";
 import { DecksPage } from "@/pages/decks";
 import { StudyPage } from "@/pages/study";
@@ -19,20 +19,16 @@ import { StatsPage } from "@/pages/stats";
 import { SettingsPage } from "@/pages/settings";
 import { EmbedStudy } from "@/pages/embed";
 import { MarketPage } from "@/pages/market";
-import { AGENT_SHORTCUT, AgentPanel, announceDataChange, useAgentPanel } from "@/components/agent-panel";
+import { AGENT_SHORTCUT, announceDataChange, useAgentPanel } from "@/components/agent-panel";
 import { SidebarUpdate, useUpdateDot } from "@/components/update-bar";
 import { PhoneTabBar } from "@/components/phone-shell";
 import { MorePage } from "@/pages/more";
 import { usePhone } from "@/lib/phone";
 import { Onboarding, ONBOARDING_EVENT } from "@/components/onboarding";
 import { api } from "@/lib/api";
-import { NoteDropTree } from "@/components/notedrop-tree";
-import { NoteDropSidePanel } from "@/components/notedrop-side-panel";
-import { TypePreviewSidebar } from "@/components/type-editor/preview-sidebar";
 import { invalidateProgress } from "@/lib/notedrop-progress";
-import { ItemEditor, NewItemDialog } from "@/components/item-editor";
-import type { TypeSummary } from "@/lib/api";
-import { toast } from "sonner";
+import { SidebarManager } from "@/components/sidebar/SidebarManager";
+import type { SidebarContext } from "@/components/sidebar/SidebarTypes";
 
 /** First-run setup: shown when the collection has no decks and setup wasn't finished or skipped, or on request. */
 function useOnboarding(skip: boolean) {
@@ -68,114 +64,8 @@ const COLLAPSED_KEY = "etude.sidebar.collapsed.v2";
 const RELOAD_ON_SYNC = new Set(["/", "/archive", "/deck", "/stats", "/more"]);
 const toggleKey = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform) ? "⌘B" : "Ctrl+B";
 
-type DeckPanelMode = "overview" | "create" | "edit";
+type DeckPanelMode = SidebarContext["mode"];
 type PanelDestination = { mode: "overview" | "create" } | { mode: "edit"; itemId: string } | { mode: "chat" };
-type SidePanelContext = {
-  path: string;
-  deckName: string;
-  onTypeSidebarHost(host: HTMLDivElement | null): void;
-  onTypePreviewHost(host: HTMLElement | null): void;
-  onTypePreviewFooterHost(host: HTMLElement | null): void;
-  onTypePreviewEditorHost(host: HTMLElement | null): void;
-  dataKey: number;
-  mode: DeckPanelMode;
-  itemId: string | null;
-  chatOpen: boolean;
-  phone: boolean;
-  saveRef: { current: (() => Promise<boolean>) | null };
-  onChanged(): void;
-  onClose(): void;
-  onOpenCard(itemId: string): void;
-  onSavedEdit(): void;
-  onDeletedEdit(): void;
-  onDirtyChange(dirty: boolean): void;
-  onCloseChat(): void;
-  onAgentChanged(final: boolean): void;
-};
-const SIDE_PANEL_CONTENTS: {
-  id: string;
-  matches(context: SidePanelContext): boolean;
-  render(context: SidePanelContext): React.ReactNode;
-}[] = [
-  {
-    // The chat is global: it overlays whatever the panel would show, on every screen.
-    id: "agent-chat",
-    matches: ({ chatOpen }) => chatOpen,
-    render: ({ onCloseChat, onAgentChanged }) => <AgentPanel embedded onClose={onCloseChat} onChanged={onAgentChanged} />,
-  },
-  {
-    id: "type-library",
-    matches: ({ path, chatOpen }) => !chatOpen && path === "/types",
-    render: ({ onTypeSidebarHost }) => <div ref={onTypeSidebarHost} className="nd-types-sidebar-host" />,
-  },
-  {
-    id: "type-card-preview",
-    matches: ({ path, chatOpen }) => !chatOpen && path.startsWith("/types/") && Boolean(path.split("/")[2]),
-    render: ({ onTypePreviewHost, onTypePreviewFooterHost, onTypePreviewEditorHost }) => <TypePreviewSidebar onHost={onTypePreviewHost} onFooterHost={onTypePreviewFooterHost} onEditorHost={onTypePreviewEditorHost} />,
-  },
-  {
-    id: "notedrop-tree",
-    matches: ({ path, deckName, mode, chatOpen }) => !chatOpen && path === "/deck" && Boolean(deckName) && mode === "overview",
-    render: ({ deckName, dataKey }) => <NoteDropTree deckName={deckName} dataKey={dataKey} />,
-  },
-  {
-    id: "deck-card-editor",
-    matches: ({ path, deckName, mode, itemId, chatOpen }) => !chatOpen && (
-      (path === "/deck" && Boolean(deckName) && mode !== "overview")
-      || (path === "/study" && mode === "edit" && Boolean(itemId))
-    ),
-    render: (context) => <DeckCardPanel {...context} />,
-  },
-];
-
-function DeckCardPanel({ deckName, mode, itemId, saveRef, onChanged, onClose, onOpenCard, onSavedEdit, onDeletedEdit, onDirtyChange }: SidePanelContext) {
-  const [decks, setDecks] = useState<string[]>([]);
-  const [tags, setTags] = useState<string[]>([]);
-  const [types, setTypes] = useState<TypeSummary[]>([]);
-
-  useEffect(() => {
-    let active = true;
-    Promise.all([api.decks(), api.tags(), api.types()]).then(([deckRows, tagRows, typeRows]) => {
-      if (!active) return;
-      setDecks(deckRows.map((deck) => deck.name));
-      setTags(tagRows.map((tag) => tag.tag));
-      setTypes(typeRows);
-    }).catch((error) => {
-      if (active) toast.error("Couldn't load card editor options", { description: (error as Error).message });
-    });
-    return () => { active = false; };
-  }, []);
-
-  if (mode === "create") {
-    return (
-      <div className="nd-card-create-panel flex h-full min-h-0 flex-col">
-        <div className="nd-card-create-title nd-item-editor-tabs-nav shrink-0">
-          <h2 className="min-w-0 flex-1 text-sm font-semibold">Add a card</h2>
-          <TooltipHint label="Close card editor"><Button variant="ghost" size="icon" className="nd-types-sidebar-add size-8 transition-colors" aria-label="Close card editor" onClick={onClose}><X className="size-4" /></Button></TooltipHint>
-        </div>
-        <NewItemDialog open inline onOpenChange={(open) => !open && onClose()} decks={decks} types={types} defaultDeck={deckName} onCreated={onChanged} />
-      </div>
-    );
-  }
-
-  if (!itemId) return null;
-  return (
-    <ItemEditor
-      key={itemId}
-      id={itemId}
-      decks={decks}
-      tags={tags}
-      closeAlways
-      saveRef={saveRef}
-      onBack={onClose}
-      onSaved={onChanged}
-      onSaveSuccess={onSavedEdit}
-      onDirtyChange={onDirtyChange}
-      onDeleted={() => { onDeletedEdit(); onChanged(); }}
-      onDuplicate={(id) => { onChanged(); onOpenCard(id); }}
-    />
-  );
-}
 
 function useSidebarCollapsed() {
   const [collapsed, setCollapsed] = useState(() => localStorage.getItem(COLLAPSED_KEY) !== "0");
@@ -242,6 +132,8 @@ export function App() {
   const [typePreviewHost, setTypePreviewHost] = useState<HTMLElement | null>(null);
   const [typePreviewFooterHost, setTypePreviewFooterHost] = useState<HTMLElement | null>(null);
   const [typePreviewEditorHost, setTypePreviewEditorHost] = useState<HTMLElement | null>(null);
+  const [marketSidebarHost, setMarketSidebarHost] = useState<HTMLDivElement | null>(null);
+  const [marketSidebarOpen, setMarketSidebarOpen] = useState(false);
   const [onboarding, setOnboarding] = useOnboarding(path === "/embed");
   const deckName = params.get("name") ?? "";
   const [panel, setPanel] = useState<{ mode: DeckPanelMode; itemId: string | null }>(() => ({
@@ -257,7 +149,11 @@ export function App() {
   const panelSaveRef = useRef<(() => Promise<boolean>) | null>(null);
   const panelRoute = path === "/deck" ? `${path}:${deckName}` : path;
   const studyEditorOpen = path === "/study" && panel.mode === "edit" && Boolean(panel.itemId);
+  const marketPanelVisible = path === "/market" && marketSidebarOpen;
   const previousPanelRoute = useRef(panelRoute);
+  useEffect(() => {
+    if (path !== "/market") setMarketSidebarOpen(false);
+  }, [path]);
   useEffect(() => {
     if (previousPanelRoute.current === panelRoute) return;
     previousPanelRoute.current = panelRoute;
@@ -352,13 +248,14 @@ export function App() {
       setDataKey((k) => k + 1);
     }
   };
-  const sidePanelContext: SidePanelContext = {
+  const sidePanelContext: SidebarContext = {
     path,
     deckName,
     onTypeSidebarHost: setTypeSidebarHost,
     onTypePreviewHost: setTypePreviewHost,
     onTypePreviewFooterHost: setTypePreviewFooterHost,
     onTypePreviewEditorHost: setTypePreviewEditorHost,
+    onMarketSidebarHost: setMarketSidebarHost,
     dataKey,
     mode: panel.mode,
     itemId: panel.itemId,
@@ -382,14 +279,11 @@ export function App() {
   };
   const chatVisible = agent.open;
   const typePreviewVisible = path.startsWith("/types/") && Boolean(path.split("/")[2]);
-  const sidePanelContents = SIDE_PANEL_CONTENTS
-    .filter((registration) => registration.matches(sidePanelContext))
-    .map((registration) => <Fragment key={registration.id}>{registration.render(sidePanelContext)}</Fragment>);
   if (path === "/embed") {
     const deck = params.get("deck") ?? undefined;
     const q = params.get("q") ?? undefined;
     const card = params.get("card") ? Number(params.get("card")) : undefined;
-    const title = params.get("title") ?? (deck ? deck.split("::").pop()! : q ? q : "Etude");
+    const title = params.get("title") ?? (deck ? deck.split("::").pop()! : q ? q : "Notedrop");
     return (
       <TooltipProvider delayDuration={300}>
         <EmbedStudy scope={{ deck, q }} limit={Math.max(1, Number(params.get("n") ?? 10))} cardId={card} title={title} />
@@ -423,7 +317,7 @@ export function App() {
   else if (path.startsWith("/types")) page = <TypesPage id={path.split("/")[2] ? decodeURIComponent(path.split("/")[2]) : null} panelHost={typeSidebarHost} previewHost={typePreviewHost} previewFooterHost={typePreviewFooterHost} sampleHost={typePreviewEditorHost} />;
   else if (path === "/stats") page = <StatsPage deck={params.get("deck") ?? undefined} />;
   else if (path === "/settings") page = <SettingsPage />;
-  else if (path === "/market") page = <MarketPage />;
+  else if (path === "/market") page = <MarketPage sidebarHost={marketSidebarHost} onSidebarOpenChange={setMarketSidebarOpen} />;
   else if (path === "/more") page = <MorePage />;
   else page = <DecksPage key={path} archived={path === "/archive"} />;
 
@@ -456,7 +350,7 @@ export function App() {
     const btn = (
       <button
         onClick={toggleChat}
-        aria-label="Ask Etude"
+        aria-label="Ask Notedrop"
         data-agent-launcher
         className={cn(
           "flex h-8 items-center gap-2.5 rounded-md text-sm text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-foreground",
@@ -465,14 +359,14 @@ export function App() {
         )}
       >
         <Sparkles className={cn("size-4 shrink-0", agent.open && "text-highlight")} />
-        {!collapsed && !phone && <span className="nd-primary-sidebar-label whitespace-nowrap">Ask Etude</span>}
+        {!collapsed && !phone && <span className="nd-primary-sidebar-label whitespace-nowrap">Ask Notedrop</span>}
       </button>
     );
     return (
       <Tooltip>
         <TooltipTrigger asChild>{btn}</TooltipTrigger>
         <TooltipContent side="right">
-          Ask Etude <span className="opacity-60">· {AGENT_SHORTCUT}</span>
+          Ask Notedrop <span className="opacity-60">· {AGENT_SHORTCUT}</span>
         </TooltipContent>
       </Tooltip>
     );
@@ -484,13 +378,13 @@ export function App() {
         path === "/study" ? (
           <div className={cn("flex h-dvh min-w-0", studyEditorOpen && "nd-app-shell nd-app-shell--study-editor")} data-panel-mode={studyEditorOpen ? "editor" : undefined} data-sidebar-collapsed={collapsed}>
             <div className={cn("min-w-0 flex-1", studyEditorOpen && "nd-app-content")}>{page}</div>
-            <NoteDropSidePanel visible={studyEditorOpen} mode="editor">{sidePanelContents}</NoteDropSidePanel>
+            <SidebarManager context={sidePanelContext} visible={studyEditorOpen} mode="editor" />
           </div>
         ) : page
       ) : (
         <div
-          className={cn("nd-app-shell flex min-h-dvh", path === "/deck" && "nd-app-shell--deck", path.startsWith("/types") && "nd-app-shell--types")}
-          data-panel-mode={chatVisible ? "chat" : path === "/types" ? "types" : typePreviewVisible ? "type-preview" : panel.mode === "overview" ? "overview" : "editor"}
+          className={cn("nd-app-shell flex min-h-dvh", path === "/deck" && "nd-app-shell--deck", path.startsWith("/types") && "nd-app-shell--types", path === "/market" && "nd-app-shell--market", path === "/settings" && "nd-app-shell--settings")}
+          data-panel-mode={chatVisible ? "chat" : marketPanelVisible ? "market" : path === "/types" ? "types" : typePreviewVisible ? "type-preview" : path === "/settings" ? "settings" : panel.mode === "overview" ? "overview" : "editor"}
           data-sidebar-collapsed={collapsed}
         >
           <aside
@@ -501,9 +395,10 @@ export function App() {
           >
             <div className={cn("nd-primary-sidebar-header mb-6 flex h-8 items-center", collapsed || phone ? "justify-center" : "justify-between pl-2")}>
               {!collapsed && !phone && (
-                <button onClick={() => navigate("/")} className="nd-primary-sidebar-brand text-left">
-                  <Wordmark className="text-[1.45rem] leading-none" />
-                </button>
+                <div className="nd-primary-sidebar-brand flex h-8 items-center gap-2.5 rounded-md px-2 text-sm text-muted-foreground">
+                  <Logo className="size-4 shrink-0" />
+                  <Wordmark className="whitespace-nowrap" />
+                </div>
               )}
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -531,9 +426,11 @@ export function App() {
             </div>
           </aside>
           <main key={path === "/deck" ? `deck:${deckName}` : dataKey} className="nd-app-content min-w-0 flex-1 pb-16">{page}</main>
-          <NoteDropSidePanel visible={chatVisible || path === "/types" || typePreviewVisible || (path === "/deck" && Boolean(sidePanelContext.deckName))} mode={chatVisible ? "chat" : path === "/types" ? "types" : typePreviewVisible ? "type-preview" : panel.mode === "overview" ? "overview" : "editor"}>
-            {sidePanelContents}
-          </NoteDropSidePanel>
+          <SidebarManager
+            context={sidePanelContext}
+            visible={chatVisible || marketPanelVisible || path === "/types" || typePreviewVisible || path === "/settings" || (path === "/deck" && Boolean(sidePanelContext.deckName))}
+            mode={chatVisible ? "chat" : marketPanelVisible ? "market" : path === "/types" ? "types" : typePreviewVisible ? "type-preview" : path === "/settings" ? "settings" : panel.mode === "overview" ? "overview" : "editor"}
+          />
           {!phone && <PhoneTabBar path={path} updateDot={updateDot} onAsk={() => agent.setOpen(true)} />}
         </div>
       )}

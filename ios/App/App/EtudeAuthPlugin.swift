@@ -186,7 +186,7 @@ public class EtudeAuthPlugin: CAPPlugin, CAPBridgedPlugin, SFSafariViewControlle
             let query = parts.count > 1 ? String(parts[1]) : ""
             let isCallback = path == "/auth/callback"
             let page = isCallback
-                ? "<!doctype html><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width\"><title>Etude</title><body style=\"font:17px/1.5 -apple-system,system-ui,sans-serif;margin:4rem auto;max-width:28rem;padding:0 1.5rem;background:#0f0f0f;color:#f2f2f2\"><h1 style=\"font-size:1.2rem\">Back to Etude…</h1><p>You can close this page.</p></body>"
+                ? "<!doctype html><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width\"><title>Notedrop</title><body style=\"font:17px/1.5 -apple-system,system-ui,sans-serif;margin:4rem auto;max-width:28rem;padding:0 1.5rem;background:#0f0f0f;color:#f2f2f2\"><h1 style=\"font-size:1.2rem\">Back to Notedrop…</h1><p>You can close this page.</p></body>"
                 : "not found"
             let head = "HTTP/1.1 \(isCallback ? "200 OK" : "404 Not Found")\r\nContent-Type: text/html; charset=utf-8\r\nCache-Control: no-store\r\nConnection: close\r\nContent-Length: \(page.utf8.count)\r\n\r\n"
             conn.send(content: Data((head + page).utf8), completion: .contentProcessed { _ in conn.cancel() })

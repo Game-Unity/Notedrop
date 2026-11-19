@@ -28,7 +28,7 @@ export interface SyncStatus {
   server?: string;
   folder?: string;
   signedIn: boolean;
-  /** Signed in through the Etude account rather than Sync's own code. */
+  /** Signed in through the Notedrop account rather than Sync's own code. */
   account?: boolean;
   email?: string;
   unlocked: boolean;
@@ -128,7 +128,7 @@ export function SyncSection() {
   useEffect(() => {
     void load();
     void loadAccount();
-    // Signing in to the Etude account also signs Sync in when both use the same server.
+    // Signing in to the Notedrop account also signs Sync in when both use the same server.
     const h = () => {
       void load(true);
       account.status().then((a) => {
@@ -146,7 +146,7 @@ export function SyncSection() {
     if (!status || seeded.current) return;
     seeded.current = true;
     setServer(status.server ?? DEFAULT_SERVER);
-    // Not set up yet: offer the server the Etude account uses.
+    // Not set up yet: offer the server the Notedrop account uses.
     if (!status.server) account.status().then((a) => setServer((cur) => (cur === DEFAULT_SERVER ? (suggested.current = a.server) : cur))).catch(() => {});
     setFolder(status.folder ?? "");
     setEmail(status.email ?? "");
@@ -383,7 +383,7 @@ export function SyncSection() {
           ? "Not synced yet"
           : "Up to date";
 
-  // Etude Sync on a server that charges: the plan step comes between the code and the password.
+  // Notedrop Sync on a server that charges: the plan step comes between the code and the password.
   const billingOn = !!acct?.offering?.billing;
   const planActive = !!acct?.me?.sync.active;
   const cloud = status?.kind === "cloud";
@@ -447,7 +447,7 @@ export function SyncSection() {
                 void start();
               }}
             >
-              <StepTitle title="Turn on Etude Sync" lead={status.configured && status.kind === "cloud" && status.server && status.server !== DEFAULT_SERVER ? <>Codes are sent by <span className="font-mono text-[13px] text-foreground/85">{status.server}</span>.</> : "We'll email you a code. No account password to remember."} />
+              <StepTitle title="Turn on Etude Sync" lead={status.configured && status.kind === "cloud" && status.server && status.server !== DEFAULT_SERVER ? <>Codes are sent by <span className="font-mono text-[13px] text-foreground/85">{status.server}</span>.</> : "We'll email you a code. No account password to remember. This connects Notedrop to Etude's Sync service."} />
               {(!status.configured ? !folder.trim() : status.kind === "cloud") && (
                 <TextInput label="Email" type="email" value={email} onChange={setEmail} autoComplete="email" inputMode="email" placeholder="you@example.com" />
               )}
@@ -455,9 +455,9 @@ export function SyncSection() {
                 <details className="group text-sm" open={advanced} onToggle={(e) => setAdvanced((e.target as HTMLDetailsElement).open)}>
                   <summary className="cursor-pointer select-none text-muted-foreground hover:text-foreground">Your own server{!(globalThis as any).__etudeLocal && !isNativeApp() ? " or a folder" : ""}</summary>
                   <div className="mt-3 flex flex-col gap-4">
-                    <p className="text-muted-foreground">{isNativeApp() ? NATIVE_COPY.syncSetup : "Etude syncs through a server, or through a folder on this computer in the desktop app."}</p>
+                    <p className="text-muted-foreground">{isNativeApp() ? NATIVE_COPY.syncSetup : "Etude Sync connects this Notedrop collection to a server, or to a folder on this computer."}</p>
                     <TextInput label="Server" value={server} onChange={setServer} placeholder={DEFAULT_SERVER} mono autoComplete="url" hint="Leave it as it is to use Etude Sync." />
-                    {!(globalThis as any).__etudeLocal && !isNativeApp() && <TextInput label="Folder (optional)" value={folder} onChange={setFolder} placeholder="/home/you/Etude" mono autoComplete="off" hint="Desktop app only. Syncs through this folder instead of a server." action={<ChooseFolder onPick={setFolder} />} />}
+                    {!(globalThis as any).__etudeLocal && !isNativeApp() && <TextInput label="Folder (optional)" value={folder} onChange={setFolder} placeholder="/home/you/Notedrop" mono autoComplete="off" hint="Desktop app only. Syncs through this folder instead of a server." action={<ChooseFolder onPick={setFolder} />} />}
                   </div>
                 </details>
               )}
@@ -523,7 +523,7 @@ export function SyncSection() {
           {flow === "plan" && acct && (
             <div className="flex flex-col gap-4" data-sync-step="plan">
               <StepTitle
-                title={canShowPurchases() ? "Pick a plan" : "Etude Sync"}
+                title={canShowPurchases() ? "Pick an Etude Sync plan" : "Etude Sync"}
                 lead={<>Signed in{status.email ? <> as <span className="text-foreground/90">{status.email}</span></> : null}. 1 GB of end-to-end encrypted storage.</>}
               />
               <PlanChooser st={acct} onActive={afterPlan} onRefresh={loadAccount} />
@@ -547,7 +547,7 @@ export function SyncSection() {
                 title={newVault ? "Create your sync password" : "Unlock sync"}
                 lead={
                   newVault
-                    ? "It encrypts your collection before it leaves this device. You'll type it once on each new device; Etude never sees it."
+                    ? "It encrypts your collection before it leaves this device. You'll type it once on each new device; Notedrop never sees it."
                     : <>Signed in{status.email ? <> as <span className="text-foreground/90">{status.email}</span></> : null}. Enter the sync password you chose on your first device.</>
                 }
               />

@@ -19,7 +19,7 @@ function CommandStatus({ cmd }: { cmd: DesktopCommandState | null }) {
   if (cmd.path)
     return (
       <p className="text-sm text-muted-foreground">
-        There's already an etude at <code className="rounded bg-muted px-1 py-0.5 font-mono text-[12px] text-foreground/85">{cmd.path}</code>, from npm or a copy of the source code. Etude leaves it as it is.
+        There's already an etude at <code className="rounded bg-muted px-1 py-0.5 font-mono text-[12px] text-foreground/85">{cmd.path}</code>, from npm or a copy of the source code. Notedrop leaves it as it is.
       </p>
     );
   return <p className="text-sm text-muted-foreground">{cmd.note}</p>;

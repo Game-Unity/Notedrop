@@ -29,3 +29,6 @@ fi
 if [ "`readlink /usr/bin/etude`" = '/opt/${sanitizedProductName}/resources/app/desktop/bin/etude' ]; then
     rm -f /usr/bin/etude
 fi
+if [ "`readlink /usr/bin/notedrop`" = '/opt/${sanitizedProductName}/resources/app/desktop/bin/notedrop' ]; then
+    rm -f /usr/bin/notedrop
+fi

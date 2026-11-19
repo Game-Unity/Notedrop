@@ -1,4 +1,4 @@
-// Client for /api/account/*: the Etude account, Sync plan, purchased decks and selling.
+// Client for /api/account/*: the Notedrop account, Sync plan, purchased decks and selling.
 import { etudeFetch } from "./transport";
 import { storeSafeMessage } from "./platform";
 
@@ -114,7 +114,7 @@ export interface ListingRevision {
   updated: string;
   reviewed: string | null;
 }
-/** `setupRequired`: the creator set up selling before Etude moved to direct charges and has to set up again (their
+/** `setupRequired`: the creator set up selling before Notedrop moved to direct charges and has to set up again (their
  *  old Stripe account can't take sales; `stripeAccount` is then null and the three flags false). */
 export interface Creator { country: string; displayName: string; stripeAccount: string | null; chargesEnabled: boolean; payoutsEnabled: boolean; detailsSubmitted: boolean; setupRequired?: boolean }
 export interface Sales { sales: { order: string; listing: string; amount: number; fee: number; earnings: number; currency: string; country: string; status: string; at: string }[]; totals: { count: number; gross: number; earnings: number } }
@@ -176,7 +176,7 @@ export const account = {
 export const money = (cents: number, currency = "usd") => new Intl.NumberFormat("en-US", { style: "currency", currency: currency.toUpperCase() }).format(cents / 100);
 export const bytes = (b: number) => (b < 1024 ** 2 ? `${Math.max(0, Math.round(b / 1024))} KB` : b < 1024 ** 3 ? `${(b / 1024 ** 2).toFixed(1)} MB` : `${(b / 1024 ** 3).toFixed(2)} GB`);
 
-/** Opens a page outside Etude (checkout, billing, Stripe onboarding) in the browser. */
+/** Opens a page outside Notedrop (checkout, billing, Stripe onboarding) in the browser. */
 export function openOutside(url: string) {
   window.open(url, "_blank", "noopener,noreferrer");
 }

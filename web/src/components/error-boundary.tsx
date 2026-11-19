@@ -19,7 +19,7 @@ export class ErrorBoundary extends Component<{ children: ReactNode }, { failed: 
       <div role="alert" className="flex min-h-dvh items-center justify-center bg-background p-6 text-foreground">
         <div className="max-w-sm text-center">
           <h1 className="text-lg font-semibold tracking-tight">This screen ran into a problem</h1>
-          <p className="mt-2 text-sm leading-relaxed text-muted-foreground">Your cards and reviews are safe. Going back to Decks usually fixes it; if it keeps happening, reload Etude.</p>
+          <p className="mt-2 text-sm leading-relaxed text-muted-foreground">Your cards and reviews are safe. Going back to Decks usually fixes it; if it keeps happening, reload Notedrop.</p>
           <div className="mt-5 flex justify-center gap-2">
             <button type="button" className="h-9 rounded-md border px-4 text-sm hover:bg-accent" onClick={() => location.assign(`${BASE}/`)}>
               Back to Decks

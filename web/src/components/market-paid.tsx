@@ -3,7 +3,7 @@
 // Store rule: the iOS and Android apps never sell. They show no prices, no buy buttons and no links
 // to buy; only the Library of decks the account already owns.
 import { useCallback, useEffect, useState } from "react";
-import { BadgeCheck, Check, Download, ExternalLink, Layers, Loader2, RefreshCw, ShoppingBag, Upload } from "lucide-react";
+import { BadgeCheck, Check, Download, ExternalLink, Layers, Loader2, RefreshCw, ShoppingBag, Tag, Upload, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,6 +17,7 @@ import { api } from "@/lib/api";
 import { canShowPurchases } from "@/lib/platform";
 import { navigate } from "@/lib/router";
 import { cn } from "@/lib/utils";
+import { SidebarFooter, SidebarHeader, SidebarScroll } from "@/components/sidebar/SidebarLayout";
 
 const msg = (e: unknown) => (e instanceof Error ? e.message : "The request failed.");
 const plural = (n: number, w: string) => `${n} ${w}${n === 1 ? "" : "s"}`;
@@ -26,7 +27,7 @@ function SignInFirst({ what }: { what: string }) {
     <div className="rounded-xl border px-5 py-10 text-center">
       <ShoppingBag className="mx-auto mb-3 size-6 text-muted-foreground" />
       <div className="text-sm font-medium">Sign in to see {what}</div>
-      <div className="mx-auto mt-1 max-w-md text-[13px] text-muted-foreground">Purchased decks and selling are tied to your Etude account.</div>
+      <div className="mx-auto mt-1 max-w-md text-[13px] text-muted-foreground">Purchased decks and selling use your Etude account and the Etude Market.</div>
       <Button variant="outline" size="sm" className="mt-4" onClick={() => navigate("/settings#account")}>Sign in</Button>
     </div>
   );
@@ -36,7 +37,7 @@ function SignInFirst({ what }: { what: string }) {
 export function PaidCover({ entry, large }: { entry: PaidEntry; large?: boolean }) {
   if (entry.cover)
     return (
-      <div className={cn("aspect-[16/10] min-w-0 overflow-hidden rounded-lg bg-[#070707]", large && "rounded-xl")}>
+      <div className={cn("aspect-[16/10] min-w-0 overflow-hidden rounded-lg", large && "rounded-xl")}>
         <img src={entry.cover} alt="" loading="lazy" className="size-full object-contain" />
       </div>
     );
@@ -52,18 +53,18 @@ export function PaidCover({ entry, large }: { entry: PaidEntry; large?: boolean 
 }
 
 export function PriceMark({ entry }: { entry: PaidEntry }) {
-  if (entry.owned) return <span className="inline-flex items-center gap-1 rounded-full bg-success/12 px-2 py-0.5 text-[11px] font-medium text-success"><BadgeCheck className="size-3" />Owned</span>;
+  if (entry.owned) return <span className="nd-deck-overview-badge gap-1"><BadgeCheck className="size-3" />Owned</span>;
   if (!canShowPurchases()) return null;
-  return <span className="rounded-full bg-highlight/15 px-2 py-0.5 text-[11px] font-medium text-highlight tabular-nums" data-price>{money(entry.price, entry.currency)}</span>;
+  return <span className="nd-deck-overview-badge tabular-nums" data-price>{money(entry.price, entry.currency)}</span>;
 }
 
 export function PaidTile({ entry, onOpen }: { entry: PaidEntry; onOpen(): void }) {
   return (
-    <button onClick={onOpen} data-paid={entry.id} className="group flex min-w-0 flex-col gap-3 rounded-xl border p-2 text-left transition-colors hover:border-ring/70 focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none">
+    <button onClick={onOpen} data-paid={entry.id} className="nd-deck-card-tile nd-deck-overview-tile group relative flex w-full flex-col rounded-xl border bg-card/40 px-4 py-4 text-left transition-colors hover:border-foreground/20 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50">
       <PaidCover entry={entry} />
       <div className="flex flex-col gap-1 px-1.5 pb-1.5">
-        <div className="flex items-center gap-2">
-          <span className="min-w-0 flex-1 truncate text-sm font-medium">{entry.name}</span>
+        <div className="nd-deck-overview-heading flex min-w-0 items-center gap-2">
+          <span className="min-w-0 flex-1 truncate text-sm font-semibold">{entry.name}</span>
           <PriceMark entry={entry} />
         </div>
         <div className="line-clamp-2 min-h-[2.5em] text-[13px] leading-snug text-muted-foreground">{entry.description || "Deck"}</div>
@@ -77,7 +78,7 @@ export function PaidTile({ entry, onOpen }: { entry: PaidEntry; onOpen(): void }
   );
 }
 
-export function PaidDialog({ entry, signedIn, onClose, onChanged }: { entry: PaidEntry; signedIn: boolean; onClose(): void; onChanged(): void }) {
+export function PaidSidebar({ entry, signedIn, onClose, onChanged }: { entry: PaidEntry; signedIn: boolean; onClose(): void; onChanged(): void }) {
   const [busy, setBusy] = useState<null | "buy" | "install">(null);
   const buy = async () => {
     if (!signedIn) return navigate("/settings#account");
@@ -105,30 +106,33 @@ export function PaidDialog({ entry, signedIn, onClose, onChanged }: { entry: Pai
   };
   const s = entry.summary ?? {};
   return (
-    <Dialog open onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="market-detail" aria-describedby="paid-about">
-        <div className="market-detail-scroll">
-          <DialogHeader className="text-left">
-            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 pr-8 text-xs text-muted-foreground [&>span]:whitespace-nowrap">
-              <span>Deck</span><span aria-hidden="true">·</span><span>by {entry.author}</span><span aria-hidden="true">·</span><span>v{entry.version}</span>
-              <PriceMark entry={entry} />
-            </div>
-            <DialogTitle className="pr-6 text-2xl leading-tight tracking-tight sm:text-3xl">{entry.name}</DialogTitle>
-          </DialogHeader>
+    <section className="nd-market-sidebar" aria-label={`${entry.name} details`}>
+      <SidebarHeader className="shrink-0">
+        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+          <h2 className="min-w-0 text-sm font-semibold">{entry.name}</h2>
+          <span className="text-xs text-muted-foreground">Deck</span>
+          {entry.owned && <PriceMark entry={entry} />}
+        </div>
+        <Button variant="ghost" size="icon" className="nd-types-sidebar-add size-8 transition-colors" aria-label="Close market details" onClick={onClose}>
+          <X className="size-4" />
+        </Button>
+      </SidebarHeader>
+      <SidebarScroll className="min-h-0 flex-1">
+        <div className="nd-market-sidebar-content">
           <div className="market-facts">
             <div className="market-fact"><span>Includes</span><strong>{plural(s.items ?? 0, "card")}</strong></div>
             <div className="market-fact"><span>Updates</span><strong>Included</strong></div>
             <div className="market-fact"><span>Download</span><strong>{bytes(entry.bytes)}</strong></div>
             <div className="market-fact"><span>Creator</span><strong>{entry.author}</strong></div>
           </div>
-          <div className="mb-6"><PaidCover entry={entry} large /></div>
+          <div className="nd-market-cover-box mb-6"><PaidCover entry={entry} large /></div>
           <section id="paid-about" className="market-description mb-6">
-            <h3 className="mb-3 text-base font-semibold">About this deck</h3>
+            <h3 className="mb-3 text-sm font-medium">About this deck</h3>
             <div className="text-sm leading-relaxed whitespace-pre-line text-muted-foreground">{entry.description || "No description yet."}</div>
           </section>
           {entry.preview.length > 0 && (
             <section className="mb-6">
-              <h3 className="mb-3 text-base font-semibold">Sample cards</h3>
+              <h3 className="mb-3 text-sm font-medium">Sample cards</h3>
               <ul className="grid gap-2 sm:grid-cols-2">
                 {entry.preview.map((p: any, i: number) => (
                   <li key={i} className="rounded-lg border bg-card px-3 py-2 text-sm">
@@ -142,7 +146,13 @@ export function PaidDialog({ entry, signedIn, onClose, onChanged }: { entry: Pai
           )}
           {canShowPurchases() && !entry.owned && <p className="text-xs text-muted-foreground">Prices in US dollars before tax. Sold to buyers in Canada and the United States. Buying gives you every future version.</p>}
         </div>
-        <DialogFooter className="flex-row items-center justify-end gap-2 border-t bg-background px-5 py-4">
+      </SidebarScroll>
+      <SidebarFooter className="flex shrink-0 items-center justify-end gap-2">
+          {!entry.owned && canShowPurchases() && (
+            <span className="mr-auto inline-flex h-8 items-center gap-1.5 px-2.5 text-sm font-medium tabular-nums pointer-coarse:h-10" data-price>
+              <Tag className="size-4" aria-hidden="true" />{money(entry.price, entry.currency)}
+            </span>
+          )}
           {entry.owned ? (
             <Button className="gap-1.5" disabled={!!busy || entry.installed === "installed"} onClick={install}>
               {busy ? <Loader2 className="size-4 animate-spin" /> : entry.installed === "installed" ? <Check className="size-4" /> : <Download className="size-4" />}
@@ -151,12 +161,11 @@ export function PaidDialog({ entry, signedIn, onClose, onChanged }: { entry: Pai
           ) : canShowPurchases() ? (
             <Button className="gap-1.5" disabled={!!busy} onClick={buy} data-buy>
               {busy ? <Loader2 className="size-4 animate-spin" /> : <ExternalLink className="size-4" />}
-              {signedIn ? `Buy on etude.study · ${money(entry.price, entry.currency)}` : "Sign in to buy"}
+              {signedIn ? "Buy on etude.study" : "Sign in to buy"}
             </Button>
           ) : null}
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+      </SidebarFooter>
+    </section>
   );
 }
 
@@ -205,7 +214,7 @@ export function LibraryView() {
   if (!lib.length)
     return (
       <div className="rounded-xl border px-5 py-10 text-center text-sm text-muted-foreground" data-library-empty>
-        {canShowPurchases() ? "Decks you buy appear here, on every device signed in to your account." : "Decks on your Etude account appear here."}
+        {canShowPurchases() ? "Decks you buy appear here, on every device signed in to your Etude account." : "Decks on your Etude account appear here."}
       </div>
     );
   const install = async (l: LibraryItem) => {
@@ -302,8 +311,8 @@ export function SellingView() {
       {!c || c.setupRequired ? (
         <div className="rounded-xl border p-5" data-creator-setup={c ? "again" : "new"}>
           <h3 className="text-base font-semibold">{c ? "Set up selling again" : "Sell your decks"}</h3>
-          {c && <p className="mt-2 max-w-prose rounded-lg border border-warning/40 bg-warning/10 px-3 py-2 text-sm text-foreground/90" data-setup-again>Etude now sells through your own Stripe account, so your earlier payout setup no longer works. Set it up once more; your decks stay as they are.</p>}
-          <p className="mt-2 max-w-prose text-sm text-muted-foreground">You sell through your own Stripe account. Set a price of US$5 or more; Stripe's processing fee comes out of each sale and Etude keeps 20%. Refunds, disputes and your own sales tax are yours to handle, and payouts follow your Stripe settings. Open to creators in the US, Canada, the UK, the EEA and Switzerland.</p>
+          {c && <p className="mt-2 max-w-prose rounded-lg border border-warning/40 bg-warning/10 px-3 py-2 text-sm text-foreground/90" data-setup-again>Notedrop now sells through your own Stripe account, so your earlier payout setup no longer works. Set it up once more; your decks stay as they are.</p>}
+          <p className="mt-2 max-w-prose text-sm text-muted-foreground">You sell through your own Stripe account. Set a price of US$5 or more; Stripe's processing fee comes out of each sale and Notedrop keeps 20%. Refunds, disputes and your own sales tax are yours to handle, and payouts follow your Stripe settings. Open to creators in the US, Canada, the UK, the EEA and Switzerland.</p>
           <div className="mt-4 flex flex-wrap items-end gap-2">
             <label className="flex flex-col gap-1.5 text-xs font-medium text-muted-foreground">
               Where you live or your business is registered
@@ -319,7 +328,7 @@ export function SellingView() {
               {busy === "start" ? <Loader2 className="size-4 animate-spin" /> : <ExternalLink className="size-4" />} Set up with Stripe
             </Button>
           </div>
-          <p className="mt-3 max-w-prose text-xs text-muted-foreground">Stripe verifies your identity and holds your bank details; Etude never sees them.</p>
+          <p className="mt-3 max-w-prose text-xs text-muted-foreground">Stripe verifies your identity and holds your bank details; Notedrop never sees them.</p>
         </div>
       ) : null}
       {c && (
@@ -327,7 +336,7 @@ export function SellingView() {
           <div className="grid gap-3 sm:grid-cols-3" data-sales>
             <Stat label="Stripe account" value={c.setupRequired ? "Set up again" : c.chargesEnabled ? "Ready to sell" : c.detailsSubmitted ? "Under review by Stripe" : "Setup not finished"} tone={c.chargesEnabled && !c.setupRequired ? "ok" : "warn"} />
             <Stat label="Sales" value={String(state.sales?.totals.count ?? 0)} />
-            <Stat label="Your earnings" value={money(state.sales?.totals.earnings ?? 0)} sub={state.sales?.totals.gross ? `of ${money(state.sales.totals.gross)} gross, before Stripe's fees` : "after Etude's 20%, before Stripe's fees"} />
+            <Stat label="Your earnings" value={money(state.sales?.totals.earnings ?? 0)} sub={state.sales?.totals.gross ? `of ${money(state.sales.totals.gross)} gross, before Stripe's fees` : "after Notedrop's 20%, before Stripe's fees"} />
           </div>
           <div className="flex flex-wrap gap-2">
             {!c.setupRequired && !c.chargesEnabled && <Button variant="outline" size="sm" className="h-10 gap-1.5 md:h-8" onClick={() => void act("onb", async () => openOutside((await account.onboarding()).url))}><ExternalLink className="size-4" />Finish Stripe setup</Button>}
@@ -368,7 +377,7 @@ export function SellingView() {
           {state.sales && state.sales.sales.length > 0 && (
             <div className="overflow-hidden rounded-xl border">
               <table className="w-full text-sm">
-                <thead className="bg-muted/40 text-xs text-muted-foreground"><tr><th className="px-3 py-2 text-left font-medium">Date</th><th className="px-3 py-2 text-left font-medium">Deck</th><th className="px-3 py-2 text-right font-medium">Price</th><th className="px-3 py-2 text-right font-medium" title="After Etude's 20%, before Stripe's processing fee">Yours</th></tr></thead>
+                <thead className="bg-muted/40 text-xs text-muted-foreground"><tr><th className="px-3 py-2 text-left font-medium">Date</th><th className="px-3 py-2 text-left font-medium">Deck</th><th className="px-3 py-2 text-right font-medium">Price</th><th className="px-3 py-2 text-right font-medium" title="After Notedrop's 20%, before Stripe's processing fee">Yours</th></tr></thead>
                 <tbody>
                   {state.sales.sales.map((s) => (
                     <tr key={s.order} className="border-t">
@@ -380,7 +389,7 @@ export function SellingView() {
                   ))}
                 </tbody>
               </table>
-              <div className="border-t px-3 py-2 text-xs text-muted-foreground">Yours: after Etude's 20%, before Stripe's processing fee.</div>
+              <div className="border-t px-3 py-2 text-xs text-muted-foreground">Yours: after Notedrop's 20%, before Stripe's processing fee.</div>
             </div>
           )}
         </>
@@ -436,7 +445,7 @@ function ChangesNote({ l, busy, onEdit, onWithdraw }: { l: Listing; busy: boolea
         {r.changed.includes("cover") && <PrivateCover url={r.cover} className="h-10 w-16 shrink-0" />}
         <div className="min-w-0 flex-1">
           <div className="font-medium text-warning">Changes waiting for review</div>
-          <div className="text-foreground/80">New {what}{detail}. Buyers still see the approved page until the Etude team approves this.</div>
+          <div className="text-foreground/80">New {what}{detail}. Buyers still see the approved page until the Notedrop team approves this.</div>
         </div>
         <div className="flex shrink-0 gap-1.5">
           <Button variant="outline" size="sm" className="h-9 md:h-7" disabled={busy} onClick={onEdit}>Edit</Button>
@@ -500,7 +509,7 @@ function EditListingDialog({ listing, onClose, onDone }: { listing: Listing; onC
     try {
       if (Object.keys(patch).length) await account.updateListing(listing.id, patch);
       if (cover) await account.setCover(listing.id, { type: cover.type, data: cover.data });
-      toast.success(reviewed ? "Changes sent for review" : "Listing updated", reviewed ? { description: "Buyers see the approved page until the Etude team approves them." } : undefined);
+      toast.success(reviewed ? "Changes sent for review" : "Listing updated", reviewed ? { description: "Buyers see the approved page until the Notedrop team approves them." } : undefined);
       onDone();
     } catch (e) {
       setError(msg(e));
@@ -515,7 +524,7 @@ function EditListingDialog({ listing, onClose, onDone }: { listing: Listing; onC
           <DialogTitle>Edit {listing.name}</DialogTitle>
           <DialogDescription>
             {reviewed
-              ? "Every change to a deck on the Market is checked by the Etude team first. Until it's approved, buyers see the page as it is now."
+              ? "Every change to a deck on the Market is checked by the Notedrop team first. Until it's approved, buyers see the page as it is now."
               : "This listing hasn't been on sale yet, so changes apply right away. It's reviewed when you submit it."}
           </DialogDescription>
         </DialogHeader>
@@ -601,7 +610,7 @@ function NewListingDialog({ onClose, onCreated }: { onClose(): void; onCreated()
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>List a deck</DialogTitle>
-          <DialogDescription>Etude exports the deck as it is now. Buyers get later versions you upload, after review.</DialogDescription>
+          <DialogDescription>Notedrop exports the deck as it is now. Buyers get later versions you upload, after review.</DialogDescription>
         </DialogHeader>
         <div className="flex flex-col gap-4">
           <label className="flex flex-col gap-1.5 text-xs font-medium text-muted-foreground">

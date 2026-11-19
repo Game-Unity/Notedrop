@@ -250,7 +250,7 @@ function AgentBlock({ ai, onChange }: { ai: AiSettings; onChange(patch: { model?
   const value = ai.agent?.model ?? "";
   const known = (groups ?? []).some((g) => g.models.some((m) => m.ref === value));
   return (
-    <Block title="Assistant" description="The model Ask Etude starts new chats with, and how long it thinks before acting. You can switch the model per chat; the last one you picked is remembered. Lower effort answers much faster.">
+    <Block title="Assistant" description="The model Ask Notedrop starts new chats with, and how long it thinks before acting. You can switch the model per chat; the last one you picked is remembered. Lower effort answers much faster.">
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Default model">
           <Select value={value || "__feedback"} onValueChange={(v) => onChange({ model: v === "__feedback" ? null : v })}>
@@ -300,8 +300,8 @@ function KeysBlock({ ai, saved }: { ai: AiSettings; saved: SettingsResponse }) {
       saved={saved}
       description={
         <>
-          Saved to <code className="font-mono text-foreground/90">~/.etude/.env</code>, readable only by you, and used right away. Etude never shows a key again after you save it.
-          {" "}From a terminal: <code className="font-mono text-foreground/90">etude settings key set NAME</code> reads the key from stdin.
+          Saved to <code className="font-mono text-foreground/90">~/.etude/.env</code>, readable only by you, and used right away. Notedrop never shows a key again after you save it.
+          {" "}From a terminal: <code className="font-mono text-foreground/90">notedrop settings key set NAME</code> reads the key from stdin.
         </>
       }
     />
@@ -327,7 +327,7 @@ function LocalKeysBlock({ vars, saved, description }: { vars: { name: string; us
     }
   };
   return (
-    <Block title="API keys" description={description ?? "Stored only on this device, in the app's private storage. Etude never shows a key again after you save it."}>
+    <Block title="API keys" description={description ?? "Stored only on this device, in the app's private storage. Notedrop never shows a key again after you save it."}>
       <ul className="flex flex-col gap-4">
         {vars.map((v) => (
           <li key={v.name} className="flex flex-col gap-2" data-local-key={v.name}>

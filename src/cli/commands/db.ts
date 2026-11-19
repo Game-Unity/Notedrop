@@ -81,16 +81,25 @@ command({
 
 command({
   name: "db restore",
-  summary: "Replace the database with a backup. The current file is backed up first. Stop the server before restoring.",
-  args: [{ name: "backup", description: "Backup file.", required: true }],
+  summary: "Restore a database or Notedrop update backup. The current data is backed up first; stop the server before restoring.",
+  args: [{ name: "backup", description: "Database file or update-backup directory.", required: true }],
   writes: true,
   confirm: true,
   noDb: true,
-  examples: ["etude db restore ~/.etude/backups/etude-20261020-190000.db --yes"],
-  output: "{ restored, previous }",
+  examples: ["notedrop db restore ~/.notedrop/backups/etude-20261020-190000.db --yes", "notedrop db restore ~/.notedrop/update-backups/update-1.0.0-20261020-190000 --yes"],
+  output: "{ restored, previous, from? }",
   async run(ctx) {
     const src = resolve(ctx.args.backup);
     if (!existsSync(src)) throw new CliError(`no such file: ${src}`, "not_found");
+    if (statSync(src).isDirectory()) {
+      const { restoreUpdateBackup } = await import("../../core/update-backup.ts");
+      try {
+        const result = await restoreUpdateBackup(src, ctx.home, ctx.dbPath);
+        return { restored: result.restored, previous: result.previous.directory, from: src };
+      } catch (error) {
+        throw new CliError((error as Error).message, "validation");
+      }
+    }
     let previous: string | null = null;
     if (existsSync(ctx.dbPath)) {
       const { DatabaseSync } = await import("node:sqlite");

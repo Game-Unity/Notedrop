@@ -10,6 +10,7 @@ import { ScriptError } from "../core/sandbox.ts";
 import { AiError } from "../core/ai.ts";
 import { CliError, COMMANDS, Failed, GLOBAL_FLAGS, GROUPS, KEEP_OPEN, flagsOf, type CommandSpec, type Ctx, type FlagSpec } from "./registry.ts";
 import { commandHelp, groupHelp, topHelp } from "./help.ts";
+import { CLI_NAME } from "./name.ts";
 import { renderTable } from "./table.ts";
 import "./commands/index.ts";
 import { VERSION } from "./version.ts";
@@ -191,7 +192,7 @@ export function errorCode(e: unknown): CliError {
   // The Sync server's 402: not a bug, the account has no active Sync.
   if ((e as { code?: unknown })?.code === "sync_required") {
     const m = (e as Error).message || "Etude Sync isn't active on this account. Your local data is untouched.";
-    return new CliError(`${m} See \`etude account status\` for the plan.`, "sync_required");
+    return new CliError(`${m} See \`${CLI_NAME} account status\` for the plan.`, "sync_required");
   }
   if (e instanceof EtudeError) {
     const m = e.message;
@@ -273,7 +274,7 @@ export async function run(argv: string[], io: Io = defaultIo(), opts: RunOptions
   try {
     const loc = locate(argv);
     const wantsHelp = argv.includes("--help") || argv.includes("-h");
-    if (loc.unknown) throw new CliError(`unknown command "${loc.unknown}". Run \`etude --help\` or \`etude commands\`.`);
+    if (loc.unknown) throw new CliError(`unknown command "${loc.unknown}". Run \`${CLI_NAME} --help\` or \`${CLI_NAME} commands\`.`);
     if (!loc.cmd) {
       io.stdout(loc.group ? groupHelp(loc.group) : topHelp(VERSION));
       return 0;
@@ -287,7 +288,7 @@ export async function run(argv: string[], io: Io = defaultIo(), opts: RunOptions
     if (values.json) values.format = "json";
     if (values.pretty) pretty = true;
     if (values.compact) pretty = false;
-    if (cmd.confirm && !values.yes && !values["dry-run"]) throw new CliError(`\`etude ${cmd.name}\` is destructive; add --yes to confirm (or --dry-run to preview)`);
+    if (cmd.confirm && !values.yes && !values["dry-run"]) throw new CliError(`\`${CLI_NAME} ${cmd.name}\` is destructive; add --yes to confirm (or --dry-run to preview)`);
 
     const profileValue = io.env.NOTEDROP_PROFILE;
     if (profileValue !== undefined && profileValue !== "dev" && profileValue !== "stable") {

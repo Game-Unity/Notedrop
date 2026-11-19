@@ -44,7 +44,7 @@ export function MarketGallery({ entry, fallback }: { entry: MarketEntry; fallbac
     el.scrollBy({ left: dir * el.clientWidth * 0.8, behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth" });
   };
 
-  if (!media.length) return <section className="market-gallery market-gallery-single">{fallback}</section>;
+  if (!media.length) return <section className="market-gallery market-gallery-single nd-market-cover-box">{fallback}</section>;
 
   return (
     <section className={cn("market-gallery", !edges.start && "fade-start", !edges.end && "fade-end")} aria-label={`${entry.name} previews`}>

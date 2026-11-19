@@ -1,4 +1,4 @@
-// Etude Sync bought inside the store apps: Apple In-App Purchase on iOS
+// Notedrop Sync bought inside the store apps: Apple In-App Purchase on iOS
 // (ios/App/App/EtudeStorePlugin.swift, StoreKit 2) and Google Play Billing on Android
 // (android/app/src/main/java/study/etude/app/EtudeStorePlugin.kt). Both plugins have the same shape;
 // src/browser/native-shell.ts exposes the one for this platform as globalThis.__etudeStoreKit, so
@@ -106,7 +106,7 @@ export async function submitTransaction(t: StoreTransaction): Promise<AppleResul
   }
 }
 
-/** Buys a plan for the signed-in Etude account. */
+/** Buys a plan for the signed-in Notedrop account. */
 export async function buy(productId: string): Promise<PurchaseOutcome> {
   const p = storeKit();
   if (!p) throw new Error("App Store purchases aren't available here.");

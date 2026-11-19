@@ -33,7 +33,7 @@ const VERDICT: Record<string, { label: string; cls: string }> = {
 const host = window.parent !== window ? window.parent : null;
 const toHost = (msg: Record<string, unknown>) => host?.postMessage({ lotus: 1, ...msg }, "*");
 
-/** Maps a host's palette onto Etude's tokens so the widget matches the app around it. */
+/** Maps a host's palette onto Notedrop's tokens so the widget matches the app around it. */
 function applyHostTheme(theme: any) {
   // A frame whose color-scheme differs from its host's gets an opaque canvas, so follow the host.
   if (theme?.mode === "light" || theme?.mode === "dark") document.documentElement.style.colorScheme = theme.mode;
@@ -216,7 +216,7 @@ export function EmbedStudy({ scope, limit, cardId, title }: { scope: Scope; limi
     const tally = ([1, 2, 3, 4] as Rating[]).map((r) => [RATING_LABEL[r], done.filter((d) => d.rating === r).length] as const).filter(([, c]) => c);
     const missed = done.filter((d) => d.rating === 1 || d.verdict === "incorrect" || d.verdict === "partial");
     const lines = [
-      `[Etude] Finished ${n} card${n === 1 ? "" : "s"} in ${title}: ${tally.map(([l, c]) => `${c} ${l.toLowerCase()}`).join(", ")}.`,
+      `[Notedrop] Finished ${n} card${n === 1 ? "" : "s"} in ${title}: ${tally.map(([l, c]) => `${c} ${l.toLowerCase()}`).join(", ")}.`,
       ...(missed.length ? [`Struggled with: ${missed.map((d) => `${d.title.trim()} (${d.itemId})`).join("; ")}.`] : []),
       counts ? `Still due here: ${counts.new} new, ${counts.learning} learning, ${counts.review} review.` : "",
     ].filter(Boolean);

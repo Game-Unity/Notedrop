@@ -33,17 +33,17 @@ jobs:
           if [ -z "$AUR_SSH_KEY" ]; then echo "No AUR_SSH_KEY secret yet: skipping."; exit 0; fi
           pacman -Syu --noconfirm --needed git openssh
           version=${TAG#v}
-          curl -fsSL -o etude.deb "https://github.com/$GITHUB_REPOSITORY/releases/download/$TAG/Etude-linux-amd64.deb"
+          curl -fsSL -o etude.deb "https://github.com/$GITHUB_REPOSITORY/releases/download/$TAG/Notedrop-linux-amd64.deb"
           sum=$(sha256sum etude.deb | cut -d' ' -f1)
           mkdir -p ~/.ssh && printf '%s\n' "$AUR_SSH_KEY" > ~/.ssh/aur && chmod 600 ~/.ssh/aur
           printf 'Host aur.archlinux.org\n  IdentityFile ~/.ssh/aur\n  User aur\n' > ~/.ssh/config
           ssh-keyscan aur.archlinux.org >> ~/.ssh/known_hosts
-          git clone ssh://aur@aur.archlinux.org/etude-bin.git aur
+          git clone ssh://aur@aur.archlinux.org/notedrop-bin.git aur
           cp desktop/aur/PKGBUILD aur/PKGBUILD
           sed -i "s/^pkgver=.*/pkgver=$version/; s/^pkgrel=.*/pkgrel=1/; s/^sha256sums=.*/sha256sums=('$sum')/" aur/PKGBUILD
           useradd -m builder && chown -R builder aur
           su builder -c "cd aur && makepkg --printsrcinfo > .SRCINFO"
           cd aur
           git add PKGBUILD .SRCINFO
-          git -c user.name="Etude" -c user.email="hello@etude.study" commit -m "$version"
+          git -c user.name="Notedrop" -c user.email="hello@etude.study" commit -m "$version"
           git push origin HEAD:master

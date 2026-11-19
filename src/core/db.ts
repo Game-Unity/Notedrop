@@ -2,7 +2,7 @@ import { openSql, type SqlConnection, type SqlDriver, type SqlValue } from "./sq
 import { registerSearchFunctions } from "./query.ts";
 import { install as installSync } from "./sync/log.ts";
 
-const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 2;
 
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS meta (
@@ -159,8 +159,15 @@ export class Db {
   readonly sql: SqlConnection;
 
   /** Opens a collection file (or ":memory:") on node:sqlite or the WebAssembly build. */
-  static async open(path: string, driver?: SqlDriver): Promise<Db> {
-    return new Db(await openSql(path, driver));
+  static async open(path: string, driver?: SqlDriver, beforeMigrate?: (sql: SqlConnection) => Promise<void>): Promise<Db> {
+    const sql = await openSql(path, driver);
+    try {
+      if (beforeMigrate) await beforeMigrate(sql);
+      return new Db(sql);
+    } catch (error) {
+      sql.close();
+      throw error;
+    }
   }
 
   constructor(sql: SqlConnection) {
@@ -184,6 +191,7 @@ export class Db {
     registerSearchFunctions(this.sql);
     const v = this.get("SELECT value FROM meta WHERE key = 'schema_version'");
     if (!v) this.run("INSERT INTO meta (key, value) VALUES ('schema_version', ?)", String(SCHEMA_VERSION));
+    else if (Number(v.value) < SCHEMA_VERSION) this.run("UPDATE meta SET value = ? WHERE key = 'schema_version'", String(SCHEMA_VERSION));
     if (this.get("SELECT 1 FROM sqlite_master WHERE name='sync_control'")) installSync(this);
     // Statistics for the query planner, gathered only where missing or stale and within a budget.
     // Without them SQLite reads every card to list one deck's.

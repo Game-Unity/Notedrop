@@ -16,6 +16,8 @@ test("desktop: the collection is the one the CLI would open", () => {
 test("desktop: an engine is reused only when it opens this same collection", () => {
   const mine = "/home/ana/.etude/etude.db";
   assert.deepEqual(choose({ kind: "etude", db: mine, version: "2.5.0" }, mine), { reuse: true });
+  assert.deepEqual(choose({ kind: "etude", db: mine, version: "2.5.0", updateDistribution: "development" }, mine, "microsoft-store"), { reuse: false, port: "any" });
+  assert.deepEqual(choose({ kind: "etude", db: mine, version: "2.5.0", updateDistribution: "microsoft-store" }, mine, "microsoft-store"), { reuse: true });
   // Another account's engine, or another collection: start our own beside it.
   assert.deepEqual(choose({ kind: "etude", db: "/home/bia/.etude/etude.db", version: "2.5.0" }, mine), { reuse: false, port: "any" });
   // Something else on the port, or an engine with a password (it answers 401).

@@ -123,7 +123,7 @@ export function Onboarding({ onFinish }: { onFinish(): void }) {
     return next;
   });
 
-  // The last step's "Help improve Etude" box: off unless ticked.
+  // The last step's "Help improve Notedrop" box: off unless ticked.
   const [shareUsage, setShareUsage] = useState(false);
 
   const finish = async (then?: () => void) => {
@@ -357,14 +357,14 @@ function Welcome({ onStart, onSignIn, onSkip }: { onStart(): void; onSignIn(): v
       </div>
       <div className="mt-12 flex flex-col items-center text-center md:mt-10">
         <Logo className="size-28" />
-        <div className="mt-3 text-[32px] font-semibold tracking-[-0.02em]">Etude</div>
+        <div className="mt-3 text-[32px] font-semibold tracking-[-0.02em]">Notedrop</div>
         <p className="mt-2.5 max-w-[22rem] px-2 text-[15px] leading-normal text-muted-foreground">
           Flashcards that check your answers, schedule your reviews and adapt to what you actually know.
         </p>
       </div>
       <Spacer />
       <Primary onClick={onStart}>Get started</Primary>
-      <Ghost onClick={onSignIn}>I already use Etude · Sign in to Sync</Ghost>
+      <Ghost onClick={onSignIn}>I already use Notedrop · Sign in to Sync</Ghost>
     </>
   );
 }
@@ -504,8 +504,8 @@ function ChatGptSetup({ apply, onDone }: { apply: Apply; onDone(o: AiOutcome): v
 
   return (
     <>
-      <Title lead="A browser window opens, you sign in, and come back here. Etude never sees your password.">Connect ChatGPT</Title>
-      <Steps items={[<>Tap <b>Sign in with ChatGPT</b></>, <>Approve Etude on the OpenAI page</>, <>We grade a sample answer to make sure it works</>]} />
+      <Title lead="A browser window opens, you sign in, and come back here. Notedrop never sees your password.">Connect ChatGPT</Title>
+      <Steps items={[<>Tap <b>Sign in with ChatGPT</b></>, <>Approve Notedrop on the OpenAI page</>, <>We grade a sample answer to make sure it works</>]} />
       <Note>Grading counts toward your ChatGPT usage, like any chat. Free ChatGPT accounts don't work.</Note>
       {signedIn && status && (
         <p className="mt-3 flex items-center gap-1.5 text-[13px] text-foreground/90">
@@ -518,7 +518,7 @@ function ChatGptSetup({ apply, onDone }: { apply: Apply; onDone(o: AiOutcome): v
       {remote && (
         <div className="mt-3 flex flex-col gap-3 rounded-xl border border-warning/40 bg-warning/[0.04] px-3.5 py-3">
           <p className="text-[13px] leading-relaxed">{remote.message}</p>
-          {remote.cli && <CopyValue label="Run on the machine that runs Etude" value={remote.cli} />}
+          {remote.cli && <CopyValue label="Run on the machine that runs Notedrop" value={remote.cli} />}
         </div>
       )}
       {failure && <Problem>{failure}</Problem>}
@@ -731,7 +731,7 @@ function SyncStep({ level, onDone }: { level: OnboardingLevel; onDone(o: SyncOut
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const noFolder = serverless();
-  /** Etude Sync: sign in and subscribe without leaving the setup. */
+  /** Notedrop Sync: sign in and subscribe without leaving the setup. */
   const [cloud, setCloud] = useState<CloudStage | null>(null);
 
   const next = async () => {
@@ -753,7 +753,7 @@ function SyncStep({ level, onDone }: { level: OnboardingLevel; onDone(o: SyncOut
         }
         body = { server: u };
       } else {
-        // The server the Etude account uses, like Settings → Sync suggests.
+        // The server the Notedrop account uses, like Settings → Sync suggests.
         const s = await account.status().then((a) => a.server).catch(() => DEFAULT_SYNC_SERVER);
         body = { server: s || DEFAULT_SYNC_SERVER };
       }
@@ -772,7 +772,7 @@ function SyncStep({ level, onDone }: { level: OnboardingLevel; onDone(o: SyncOut
 
   return (
     <>
-      <Title lead="Your cards and reviews stay the same on the phone and the computer.">Use Etude on more than one device?</Title>
+      <Title lead="Your cards and reviews stay the same on the phone and the computer. This connects Notedrop to Etude's existing Sync service.">Use Notedrop on more than one device?</Title>
       <Options role="radiogroup">
         <Option
           kind="radio"
@@ -794,13 +794,13 @@ function SyncStep({ level, onDone }: { level: OnboardingLevel; onDone(o: SyncOut
         >
           {choice === "folder" && (
             <div className="flex gap-2 px-3.5 pb-3">
-              <Input autoFocus value={folder} onChange={(e) => setFolder(e.target.value)} placeholder="/home/you/Dropbox/Etude" spellCheck={false} aria-label="Folder" className="h-10 min-w-0 flex-1 rounded-xl bg-background font-mono text-[13px]" />
+              <Input autoFocus value={folder} onChange={(e) => setFolder(e.target.value)} placeholder="/home/you/Dropbox/Notedrop" spellCheck={false} aria-label="Folder" className="h-10 min-w-0 flex-1 rounded-xl bg-background font-mono text-[13px]" />
               <ChooseFolder onPick={setFolder} className="rounded-xl md:h-10" />
             </div>
           )}
         </Option>}
         {level === "tinker" && (
-          <Option kind="radio" icon={Server} title="My own server" hint="An Etude Sync server you run yourself." selected={choice === "server"} onClick={() => setChoice("server")}>
+          <Option kind="radio" icon={Server} title="My own server" hint="An Etude Sync-compatible server you run yourself." selected={choice === "server"} onClick={() => setChoice("server")}>
             {choice === "server" && (
               <div className="px-3.5 pb-3">
                 <Input autoFocus value={server} onChange={(e) => setServer(e.target.value)} placeholder="https://sync.example.com" spellCheck={false} aria-label="Server address" className="h-10 rounded-xl bg-background font-mono text-[13px]" />
@@ -819,7 +819,7 @@ function SyncStep({ level, onDone }: { level: OnboardingLevel; onDone(o: SyncOut
 
 type CloudStage = "email" | "code" | "plan" | "waiting";
 
-/** Etude Sync inside the setup: email code, then the plan and checkout on etude.study, then back here. */
+/** Notedrop Sync inside the setup: email code, then the plan and checkout on etude.study, then back here. */
 function CloudSignup({ stage, onStage, onDone }: { stage: CloudStage; onStage(s: CloudStage): void; onDone(next: string | null): void }) {
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");

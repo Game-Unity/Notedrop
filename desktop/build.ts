@@ -14,6 +14,7 @@ import { chmodSync, cpSync, existsSync, mkdtempSync, readdirSync, readFileSync, 
 import { tmpdir } from "node:os";
 import { join, relative } from "node:path";
 import { build, type Configuration } from "electron-builder";
+import { parseUpdateDistribution, updatesManagedExternally } from "../src/core/distribution.ts";
 
 const DESKTOP = import.meta.dirname;
 const ROOT = join(DESKTOP, "..");
@@ -22,6 +23,22 @@ const OUT = join(DESKTOP, "dist", "out");
 const read = (path: string) => JSON.parse(readFileSync(path, "utf8"));
 const pkg = read(join(ROOT, "package.json"));
 const desktopPkg = read(join(DESKTOP, "package.json"));
+const distribution = parseUpdateDistribution(process.env.NOTEDROP_DISTRIBUTION ?? "github");
+const storeBuild = updatesManagedExternally(distribution);
+if (storeBuild && process.platform !== "win32") throw new Error("A Microsoft Store build is only supported on Windows.");
+const required = (name: string) => {
+  const value = process.env[name]?.trim();
+  if (!value) throw new Error(`${name} is required for a Microsoft Store build; verify it against the old package manifest and Partner Center.`);
+  return value;
+};
+const storeIdentity = storeBuild
+  ? {
+      identityName: required("MSIX_IDENTITY_NAME"),
+      publisher: required("MSIX_PUBLISHER"),
+      publisherDisplayName: required("MSIX_PUBLISHER_DISPLAY_NAME"),
+      applicationId: required("MSIX_APPLICATION_ID"),
+    }
+  : null;
 // CI passes the signing secrets even when they don't exist yet, as empty strings, and electron-builder
 // would take an empty CSC_LINK for a certificate. Without them the Mac app is signed ad hoc.
 const SIGNING = ["CSC_LINK", "CSC_KEY_PASSWORD", "APPLE_API_KEY", "APPLE_API_KEY_ID", "APPLE_API_ISSUER"];
@@ -62,8 +79,8 @@ writeFileSync(
   join(APP, "package.json"),
   JSON.stringify(
     {
-      name: "etude",
-      productName: "Etude",
+      name: "notedrop",
+      productName: "Notedrop",
       version: pkg.version,
       description: pkg.description,
       author: pkg.author,
@@ -72,9 +89,10 @@ writeFileSync(
       type: "module",
       main: "desktop/main.mjs",
       // Linux desktops match the window to its menu entry by this name.
-      desktopName: "etude-desktop.desktop",
+      desktopName: "notedrop-desktop.desktop",
       dependencies: { ...pkg.dependencies, ...desktopPkg.dependencies },
       optionalDependencies: pkg.optionalDependencies,
+      notedrop: { distribution },
       // How this build updates on a Mac: by itself once signed, else through a link.
       etudeDesktop: { macSigned: signed },
     },
@@ -106,8 +124,8 @@ const hasRpmbuild = (() => {
 if (process.platform === "linux" && !hasRpmbuild) console.warn("rpmbuild isn't installed: skipping the .rpm");
 
 const config: Configuration = {
-  appId: "study.etude.desktop",
-  productName: "Etude",
+  appId: "com.gameunity.notedrop.desktop",
+  productName: "Notedrop",
   copyright: "© 2026 Etude contributors",
   directories: { app: "dist/app", output: "dist/out", buildResources: "build" },
   // The engine reads its own files from disk, as in a checkout.
@@ -121,14 +139,14 @@ const config: Configuration = {
     enableNodeOptionsEnvironmentVariable: false,
     enableNodeCliInspectArguments: false,
   },
-  publish: { provider: "github", owner: "Zibhelina", repo: "etude" },
+  ...(storeBuild ? {} : { publish: { provider: "github" as const, owner: "Game-Unity", repo: "Notedrop" } }),
   mac: {
     category: "public.app-category.education",
     target: [
       { target: "dmg", arch: ["arm64", "x64"] },
       { target: "zip", arch: ["arm64", "x64"] },
     ],
-    artifactName: "Etude-mac-${arch}.${ext}",
+    artifactName: "Notedrop-mac-${arch}.${ext}",
     minimumSystemVersion: "12.0",
     hardenedRuntime: true,
     // Absolute: codesign doesn't run from this folder.
@@ -140,20 +158,32 @@ const config: Configuration = {
   },
   // Signed with the same certificate; notarized and stapled below, after electron-builder.
   dmg: { sign: signed },
-  win: { target: [{ target: "nsis", arch: ["x64"] }] },
-  nsis: { oneClick: true, perMachine: false, artifactName: "Etude-windows-setup.${ext}" },
+  win: { target: [{ target: storeBuild ? "appx" : "nsis", arch: ["x64"] }] },
+  ...(storeIdentity
+    ? {
+        appx: {
+          ...storeIdentity,
+          displayName: "Notedrop",
+          backgroundColor: "#0f0f0f",
+          artifactName: "Notedrop-microsoft-store.${ext}",
+          // Prevent an updater-specific application manifest extension in Store packages.
+          electronUpdaterAware: false,
+        },
+      }
+    : {}),
+  nsis: { oneClick: true, perMachine: false, artifactName: "Notedrop-windows-setup.${ext}" },
   linux: {
     target: ["AppImage", "deb", ...(hasRpmbuild ? ["rpm"] : [])],
     // /usr/bin/etude is the etude command; the app's program gets another name.
-    executableName: "etude-desktop",
+    executableName: "notedrop-desktop",
     category: "Education",
-    maintainer: "Etude <hello@etude.study>",
+    maintainer: "Notedrop contributors",
     synopsis: "Spaced repetition with programmable card types",
     syncDesktopName: true,
   },
-  appImage: { artifactName: "Etude-linux-x86_64.AppImage" },
-  deb: { artifactName: "Etude-linux-amd64.deb", ...linuxScripts },
-  rpm: { artifactName: "Etude-linux-x86_64.rpm", ...linuxScripts },
+  appImage: { artifactName: "Notedrop-linux-x86_64.AppImage" },
+  deb: { artifactName: "Notedrop-linux-amd64.deb", ...linuxScripts },
+  rpm: { artifactName: "Notedrop-linux-x86_64.rpm", ...linuxScripts },
 };
 
 try {
@@ -164,12 +194,12 @@ try {
     let text = readFileSync(yml, "utf8");
     for (const [arch, name] of Object.entries(MAC_NAMES)) {
       for (const ext of [".dmg", ".dmg.blockmap"]) {
-        const from = join(OUT, `Etude-mac-${arch}${ext}`);
-        if (existsSync(from)) renameSync(from, join(OUT, `Etude-mac-${name}${ext}`));
+        const from = join(OUT, `Notedrop-mac-${arch}${ext}`);
+        if (existsSync(from)) renameSync(from, join(OUT, `Notedrop-mac-${name}${ext}`));
       }
-      text = text.replaceAll(`Etude-mac-${arch}.dmg`, `Etude-mac-${name}.dmg`);
+      text = text.replaceAll(`Notedrop-mac-${arch}.dmg`, `Notedrop-mac-${name}.dmg`);
     }
-    if (notarized) for (const name of Object.values(MAC_NAMES)) text = notarizeDmg(`Etude-mac-${name}.dmg`, text);
+    if (notarized) for (const name of Object.values(MAC_NAMES)) text = notarizeDmg(`Notedrop-mac-${name}.dmg`, text);
     writeFileSync(yml, text);
   }
 } finally {

@@ -12,11 +12,14 @@ import { offerAppMenuEntry, offerApplicationsFolder } from "./integrate.ts";
 import { log, logDir, logEngine } from "./log.ts";
 import { loginShellEnv } from "./shell-env.ts";
 import { checkForUpdates, restartToUpdate, startUpdates, updateState } from "./updates.ts";
+import { updateDistribution } from "../src/core/distribution.ts";
 
 const HERE = import.meta.dirname;
 const ROOT = join(HERE, "..");
 const PAGES = pathToFileURL(join(HERE, "pages")).href + "/";
 const VERSION: string = JSON.parse(readFileSync(join(ROOT, "package.json"), "utf8")).version;
+const DISTRIBUTION = updateDistribution(ROOT, process.env, app.isPackaged);
+process.env.NOTEDROP_DISTRIBUTION = DISTRIBUTION;
 const DEFAULT_BG = "#0f0f0f";
 const isMac = process.platform === "darwin";
 /** What Etude's own pages may use. Everything else (camera, microphone, location, notifications…) is refused. */
@@ -29,6 +32,7 @@ let bg = DEFAULT_BG;
 let booting = false;
 let lastCrash = 0;
 let watching: NodeJS.Timeout | null = null;
+let updateDataPaths: { home: string; dbPath: string } | null = null;
 
 if (!app.requestSingleInstanceLock()) app.quit();
 else {
@@ -40,7 +44,7 @@ else {
   });
   app.on("window-all-closed", () => app.quit());
   app.on("before-quit", stopEngine);
-  app.setAboutPanelOptions({ applicationName: "Etude", applicationVersion: VERSION, website: "https://etude.study" });
+  app.setAboutPanelOptions({ applicationName: "Notedrop", applicationVersion: VERSION, website: "https://github.com/Game-Unity/Notedrop" });
   app.whenReady().then(async () => {
     log(`Etude ${VERSION} starting (Electron ${process.versions.electron}, ${process.platform})`);
     protect();
@@ -56,7 +60,7 @@ else {
       log(`took PATH and ${Object.keys(shellEnv).length - 1} other settings from the login shell`);
     }
     await boot();
-    startUpdates((s) => win?.webContents.send("etude:update", s));
+    startUpdates(DISTRIBUTION, (s) => win?.webContents.send("etude:update", s), updateDataPaths);
     // Niceties: if one fails, Etude still works.
     try {
       refreshAppImageCommand();
@@ -82,13 +86,14 @@ async function boot(path = "/") {
     const profileEnv = profileEnvironment(profile, env, ROOT);
     claimNoteDropProfile(profile, profileEnv.ETUDE_HOME!);
     engine = await Engine.start({ root: ROOT, env: profileEnv, log, output: logEngine });
+    updateDataPaths = { home: profileEnv.ETUDE_HOME!, dbPath: engine.collection };
     engine.onExit = stopped;
     log(engine.owned ? `engine ${engine.version} ready at ${engine.origin}` : `using the engine already running at ${engine.origin} (${engine.version}) for the same collection`);
     if (!engine.owned) watch(engine);
     await win?.loadURL(engine.url(path));
   } catch (e) {
     log(`couldn't start: ${(e as Error).message}`);
-    showError("Etude couldn't start.", (e as Error).message);
+    showError("Notedrop couldn't start.", (e as Error).message);
   } finally {
     booting = false;
   }
@@ -139,7 +144,7 @@ function stopped(code: number) {
     lastCrash = Date.now();
     return void boot(path);
   }
-  showError("Etude stopped.", `It stopped twice in a minute (exit code ${code}). The logs say why.`);
+  showError("Notedrop stopped.", `It stopped twice in a minute (exit code ${code}). The logs say why.`);
 }
 
 /** An engine started in a terminal can stop at any time; show it instead of a page that no longer answers. */
@@ -148,7 +153,7 @@ function watch(e: Engine) {
   watching = setInterval(async () => {
     if ((await probe(port)).kind === "etude") return;
     stopEngine();
-    showError("The Etude engine stopped.", "This window was using the engine started in a terminal (etude serve), which stopped. Try again starts one here.");
+    showError("The Notedrop engine stopped.", "This window was using the engine started in a terminal (etude serve), which stopped. Try again starts one here.");
   }, 5000);
 }
 
@@ -201,7 +206,7 @@ function createWindow() {
     height: state.height,
     minWidth: 360,
     minHeight: 480,
-    title: "Etude",
+    title: "Notedrop",
     backgroundColor: bg,
     show: false,
     autoHideMenuBar: !isMac,
@@ -305,7 +310,8 @@ function answer() {
   });
   ipcMain.handle("etude:update-status", (e, check: unknown) => (fromWindow(e) ? (check ? checkForUpdates() : updateState()) : null));
   ipcMain.handle("etude:update-restart", (e) => {
-    if (fromWindow(e)) restartToUpdate();
+    if (fromWindow(e)) return restartToUpdate();
+    return false;
   });
   ipcMain.handle("etude:command-status", (e) => (fromWindow(e) ? commandState(env) : null));
   ipcMain.handle("etude:command-install", async (e) => {
@@ -342,7 +348,7 @@ function menu(): Menu {
   const settings: MenuItemConstructorOptions = { label: isMac ? "Settings…" : "Settings", accelerator: "CmdOrCtrl+,", click: () => go("/settings") };
   const template: MenuItemConstructorOptions[] = [
     ...(isMac
-      ? [{ label: "Etude", submenu: [{ role: "about" }, { type: "separator" }, settings, { type: "separator" }, { role: "services" }, { type: "separator" }, { role: "hide" }, { role: "hideOthers" }, { role: "unhide" }, { type: "separator" }, { role: "quit" }] } as MenuItemConstructorOptions]
+      ? [{ label: "Notedrop", submenu: [{ role: "about" }, { type: "separator" }, settings, { type: "separator" }, { role: "services" }, { type: "separator" }, { role: "hide" }, { role: "hideOthers" }, { role: "unhide" }, { type: "separator" }, { role: "quit" }] } as MenuItemConstructorOptions]
       : []),
     {
       label: "File",
@@ -377,7 +383,7 @@ function menu(): Menu {
       role: "help",
       submenu: [
         { label: "Etude Website", click: () => void shell.openExternal("https://etude.study") },
-        { label: "Report a Problem", click: () => void shell.openExternal("https://github.com/Zibhelina/etude/issues") },
+        { label: "Report a Problem", click: () => void shell.openExternal("https://github.com/Game-Unity/Notedrop/issues") },
         { type: "separator" },
         { label: "Show Logs", click: () => void shell.openPath(logDir()) },
         ...(isMac ? [] : ([{ type: "separator" }, { role: "about" }] as MenuItemConstructorOptions[])),

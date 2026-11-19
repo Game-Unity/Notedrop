@@ -41,13 +41,13 @@ export function MorePage() {
       <div className="mt-8 px-5">
         <div className="score-kicker mb-3">Bring cards in</div>
         <ImportButton onDone={() => navigate("/")} phone />
-        <p className="mt-2 text-[13px] text-muted-foreground">An Etude pack (.json) or an Anki deck (.apkg, .colpkg).</p>
+        <p className="mt-2 text-[13px] text-muted-foreground">An Notedrop pack (.json) or an Anki deck (.apkg, .colpkg).</p>
       </div>
 
       {behind > 0 && st && (
         <button onClick={() => navigate("/settings")} className="mx-5 mt-8 flex w-[calc(100%-2.5rem)] items-center gap-3 rounded-2xl border bg-card px-4 py-3.5 text-left">
           <CircleArrowUp className="size-5 shrink-0 text-highlight" />
-          <span className="min-w-0 flex-1 text-[15px]">{st.kind === "git" ? `Update Etude · ${behind} new` : `Etude ${st.latest} is out`}</span>
+          <span className="min-w-0 flex-1 text-[15px]">{st.kind === "git" ? `Update Notedrop · ${behind} new` : `Notedrop ${st.latest} is out`}</span>
           <ChevronRight className="size-4 text-muted-foreground" />
         </button>
       )}

@@ -23,13 +23,17 @@ jobs:
         with:
           node-version: 24
           cache: npm
+      - name: Release version matches the input tag
+        env:
+          TAG: ${{ inputs.tag }}
+        run: node scripts/check-release.ts "$TAG"
       - run: npm ci
       - run: npm run build
       - run: packaging/macos/build.sh arm64
       - run: packaging/macos/build.sh x64
       - name: Smoke test (the bundled server starts and serves the app)
         run: |
-          APP=dist/macos/arm64/Etude.app/Contents/Resources
+          APP=dist/macos/arm64/Notedrop.app/Contents/Resources
           export ETUDE_HOME="$RUNNER_TEMP/etude-home"
           "$APP/node/bin/node" "$APP/app/bin/etude.js" pack import "$APP/app/examples/showcase.pack.json" > /dev/null
           "$APP/node/bin/node" "$APP/app/bin/etude.js" serve --port 4699 &
@@ -40,4 +44,4 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ github.event.release.tag_name || inputs.tag }}
-        run: gh release upload "$TAG" dist/macos/Etude-mac-apple-silicon.dmg dist/macos/Etude-mac-intel.dmg --clobber
+        run: gh release upload "$TAG" dist/macos/Notedrop-mac-apple-silicon.dmg dist/macos/Notedrop-mac-intel.dmg --clobber

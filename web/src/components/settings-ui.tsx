@@ -30,11 +30,11 @@ export function Block({ title, description, aside, stackAside, children, classNa
 }) {
   return (
     <div className={cn("flex flex-col gap-4 border-b px-4 py-5 last:border-b-0 sm:px-5", className)}>
-      {(title || aside) && (
+      {(title || description || aside) && (
         <div className={cn("flex gap-x-4 gap-y-3", stackAside ? "flex-col sm:flex-row sm:items-start" : "items-start")}>
           <div className="min-w-0 flex-1">
             {title && <div className="text-sm font-medium text-foreground/95">{title}</div>}
-            {description && <div className="mt-1 text-xs leading-relaxed text-muted-foreground">{description}</div>}
+            {description && <div className={cn("text-xs leading-relaxed text-muted-foreground", title && "mt-1")}>{description}</div>}
           </div>
           {aside && <div className="shrink-0">{aside}</div>}
         </div>

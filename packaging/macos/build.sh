@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Builds Etude.app and Etude-<version>-<arch>.dmg on macOS.
+# Builds Notedrop.app and Notedrop-mac-<arch>.dmg on macOS.
 # Needs: Xcode command line tools (swiftc), node + npm (to build the web app), curl.
 # Usage: packaging/macos/build.sh [arm64|x64]   (default: this Mac's architecture)
 set -euo pipefail
@@ -10,10 +10,10 @@ ARCH="${1:-$(uname -m)}"; [ "$ARCH" = "x86_64" ] && ARCH=x64
 NODE_VERSION="${NODE_VERSION:-24.22.1}"
 VERSION="$(node -p "require('$ROOT/package.json').version")"
 OUT="$ROOT/dist/macos"
-APP="$OUT/$ARCH/Etude.app"
+APP="$OUT/$ARCH/Notedrop.app"
 RES="$APP/Contents/Resources"
 
-echo "Etude $VERSION for macOS $ARCH (Node $NODE_VERSION)"
+echo "Notedrop $VERSION for macOS $ARCH (Node $NODE_VERSION)"
 rm -rf "$OUT/$ARCH" && mkdir -p "$RES" "$APP/Contents/MacOS"
 
 # 1. The web app.
@@ -44,15 +44,15 @@ cp "$CACHE/node-v$NODE_VERSION-darwin-$ARCH/LICENSE" "$RES/node/LICENSE"
 
 # 4. The native window.
 TARGET="arm64-apple-macos12"; [ "$ARCH" = x64 ] && TARGET="x86_64-apple-macos12"
-swiftc -O -target "$TARGET" "$HERE/Etude.swift" -o "$APP/Contents/MacOS/Etude" -framework Cocoa -framework WebKit
+swiftc -O -target "$TARGET" "$HERE/Etude.swift" -o "$APP/Contents/MacOS/Notedrop" -framework Cocoa -framework WebKit
 
 # 5. Icon and Info.plist.
-ICONSET="$OUT/Etude.iconset"; rm -rf "$ICONSET"; mkdir -p "$ICONSET"
+ICONSET="$OUT/Notedrop.iconset"; rm -rf "$ICONSET"; mkdir -p "$ICONSET"
 for s in 16 32 128 256 512; do
   sips -z $s $s "$HERE/icon1024.png" --out "$ICONSET/icon_${s}x${s}.png" >/dev/null
   sips -z $((s*2)) $((s*2)) "$HERE/icon1024.png" --out "$ICONSET/icon_${s}x${s}@2x.png" >/dev/null
 done
-iconutil -c icns "$ICONSET" -o "$RES/Etude.icns"
+iconutil -c icns "$ICONSET" -o "$RES/Notedrop.icns"
 sed "s/{{VERSION}}/$VERSION/g" "$HERE/Info.plist" > "$APP/Contents/Info.plist"
 
 # 6. Sign (ad hoc unless SIGN_IDENTITY is a Developer ID) and pack the disk image.
@@ -62,11 +62,11 @@ codesign --force --sign "$IDENTITY" --options runtime --entitlements "$HERE/enti
 codesign --verify --deep --strict "$APP"
 
 NAME=$([ "$ARCH" = x64 ] && echo intel || echo apple-silicon)
-DMG="$OUT/Etude-mac-$NAME.dmg"
+DMG="$OUT/Notedrop-mac-$NAME.dmg"
 STAGE="$OUT/$ARCH/dmg"; rm -rf "$STAGE"; mkdir -p "$STAGE"
 cp -R "$APP" "$STAGE/" && ln -s /Applications "$STAGE/Applications"
 rm -f "$DMG"
-for i in 1 2 3 4 5; do hdiutil create -volname "Etude" -srcfolder "$STAGE" -fs HFS+ -format UDZO -ov "$DMG" >/dev/null && break; sleep 3; done
+for i in 1 2 3 4 5; do hdiutil create -volname "Notedrop" -srcfolder "$STAGE" -fs HFS+ -format UDZO -ov "$DMG" >/dev/null && break; sleep 3; done
 [ -f "$DMG" ]
 rm -rf "$STAGE"
 if [ "$IDENTITY" != "-" ]; then codesign --force --sign "$IDENTITY" "$DMG"; fi

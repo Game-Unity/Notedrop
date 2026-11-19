@@ -1,7 +1,7 @@
 {
-  "name": "etude-desktop",
-  "productName": "Etude",
-  "description": "The Etude desktop app: the engine from this repo in an Electron window.",
+  "name": "notedrop-desktop",
+  "productName": "Notedrop",
+  "description": "The Notedrop desktop app: the Etude-based engine in an Electron window.",
   "private": true,
   "type": "module",
   "main": "main.mjs",

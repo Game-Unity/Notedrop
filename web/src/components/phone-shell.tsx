@@ -49,7 +49,7 @@ export function PhoneTabBar({ path, updateDot, onAsk }: { path: string; updateDo
             );
           })}
         </div>
-        <button onClick={onAsk} aria-label="Ask Etude" data-agent-launcher className="score-capsule flex size-[3.375rem] shrink-0 items-center justify-center rounded-full border transition-transform active:scale-95">
+        <button onClick={onAsk} aria-label="Ask Notedrop" data-agent-launcher className="score-capsule flex size-[3.375rem] shrink-0 items-center justify-center rounded-full border transition-transform active:scale-95">
           <Logo className="size-[26px]" />
         </button>
       </div>

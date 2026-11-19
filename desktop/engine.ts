@@ -5,6 +5,7 @@ import { randomBytes } from "node:crypto";
 import { join } from "node:path";
 import type { UtilityProcess } from "electron";
 import { choose, collectionPath, freePort, lastError, probe, usualPort } from "./find.ts";
+import { updateDistribution } from "../src/core/distribution.ts";
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -60,7 +61,7 @@ export class Engine {
     const collection = collectionPath(o.env);
     const usual = usualPort(o.env);
     const found = await probe(usual);
-    const plan = choose(found, collection);
+    const plan = choose(found, collection, updateDistribution(o.root, o.env));
     if (plan.reuse) return new Engine(`http://127.0.0.1:${usual}`, null, collection, found.kind === "etude" ? found.version : "", null);
     const port = plan.port === "usual" ? usual : await freePort();
     try {

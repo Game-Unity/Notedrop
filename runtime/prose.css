@@ -319,7 +319,6 @@ html[data-markdown-editor="true"] #card :is(.prose-etude, .prose) tr:last-child 
 html[data-markdown-editor="true"] #card :is(.prose-etude, .prose) th {
     color: var(--color-main-app);
     font-weight: 700;
-    background: color-mix(in oklab, var(--color-main-app) 5%, transparent);
     -webkit-text-stroke: unset;
 }
 

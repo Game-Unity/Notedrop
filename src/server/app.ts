@@ -17,6 +17,7 @@ import { ASSET_NAME, assetMime } from "../core/assets.ts";
 import { agentFor, AgentError, AGENT_MAX_ATTACHMENT_BYTES, type AgentEvent } from "../core/agent.ts";
 import { streamSSE } from "hono/streaming";
 import { applyUpdate, updateStatus, UpdateError } from "../core/update.ts";
+import type { UpdateDistribution } from "../core/distribution.ts";
 import { isEventName, telemetryAllowed, telemetryFor, usageEventFor } from "../core/telemetry.ts";
 import { buildSubmission, fetchMarketMedia, fetchCover, fetchEntry, fetchIndex, ghStatus, installEntry, installState, installedEntries, manualPublishUrl, marketSettings, publishFile, summarize, entryPath, entryJson, forgetInstall, type MarketKind } from "../core/market.ts";
 
@@ -112,6 +113,8 @@ export interface AppOptions {
   allowHosts?: string[];
   /** Listening on this computer only: keep the Host check even with a token, so a rebound name can't reach the pages outside /api. */
   localOnly?: boolean;
+  /** The build channel that owns updates; Store packages refuse internal update endpoints. */
+  updateDistribution?: UpdateDistribution;
 }
 
 /** Hostnames always served: loopback, and Tailscale MagicDNS names, which only Tailscale can point anywhere. */
@@ -162,7 +165,7 @@ export function createApp(etude: Etude, opts: AppOptions = {}) {
       const code = (err as { code?: unknown }).code;
       return c.json(typeof code === "string" ? { error: err.message, code } : { error: err.message }, err.status as 400);
     }
-    if (err instanceof AgentError) return c.json({ error: err.message }, err.status as 400);
+    if (err instanceof AgentError) return     c.json({ error: err.message }, err.status as 400);
     if (err instanceof UpdateError) return c.json({ error: err.message, details: err.details }, err.status as 400);
     console.error(err);
     // A bug in the core (not a refusal): an anonymous error report, when they're on (src/core/telemetry.ts).
@@ -477,6 +480,7 @@ export function createApp(etude: Etude, opts: AppOptions = {}) {
       dbPath: etude.path,
       mediaDir: etude.mediaDir,
       version: VERSION,
+      updateDistribution: opts.updateDistribution ?? "development",
       defaults: DEFAULT_SETTINGS,
     });
   });
@@ -662,10 +666,10 @@ export function createApp(etude: Etude, opts: AppOptions = {}) {
   // ------------------------------------------------------------- update
   // `?check=1` asks the remote (at most every 10 min unless `force=1`); without it, the last known state.
   app.get("/api/update", async (c) =>
-    c.json({ ...(await updateStatus({ fetch: c.req.query("check") === "1", force: c.req.query("force") === "1" })), canRestart: !!opts.onRestart }),
+    c.json({ ...(await updateStatus({ distribution: opts.updateDistribution, fetch: c.req.query("check") === "1", force: c.req.query("force") === "1" })), canRestart: !!opts.onRestart }),
   );
   app.post("/api/update", async (c) => {
-    const out = await applyUpdate();
+    const out = await applyUpdate({ distribution: opts.updateDistribution, data: { home: etude.home, dbPath: etude.path } });
     const restarting = out.result === "updated" && !!opts.onRestart;
     // Answer first, then restart on the new code.
     if (restarting) setTimeout(() => opts.onRestart!(), 250);

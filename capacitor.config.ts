@@ -4,7 +4,7 @@ import type { CapacitorConfig } from "@capacitor/cli";
 
 const config: CapacitorConfig = {
   appId: "study.etude.app",
-  appName: "Etude",
+  appName: "Notedrop",
   webDir: "dist-browser",
   // The web app is served from https://localhost (Android) and capacitor://localhost (iOS): a
   // secure context, so OPFS, Web Workers and crypto.subtle work.

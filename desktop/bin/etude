@@ -12,9 +12,10 @@ done
 app=$(cd "$(dirname "$self")/../.." && pwd)
 export NOTEDROP_PROFILE=stable
 case $(uname) in
-  Darwin) exe=$app/../../MacOS/Etude ;;
-  *) exe=$app/../../etude-desktop ;;
+  Darwin) exe=$app/../../MacOS/Notedrop; legacy=$app/../../MacOS/Etude ;;
+  *) exe=$app/../../notedrop-desktop; legacy=$app/../../etude-desktop ;;
 esac
 # A checkout has no app program: use Node.
+[ -x "$exe" ] || exe=$legacy
 [ -x "$exe" ] || exec node "$app/bin/etude.js" "$@"
 ELECTRON_RUN_AS_NODE=1 exec "$exe" "$app/bin/etude.js" "$@"

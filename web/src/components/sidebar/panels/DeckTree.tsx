@@ -9,12 +9,13 @@ import { DeckContextMenu, useDeckActions, type DeckMenuEntry } from "@/component
 import { NewDeckDialog } from "@/components/new-deck-dialog";
 import { useDeckTreeDrag } from "@/components/deck-tree-drag";
 import { TooltipHint } from "@/components/ui/tooltip";
+import { SidebarHeader, SidebarScroll } from "../SidebarLayout";
 
 function formatCount(value: number | null) {
   return (value ?? 0).toLocaleString("de-DE");
 }
 
-export function NoteDropTree({ deckName, dataKey }: { deckName: string; dataKey: number }) {
+export function DeckTree({ deckName, dataKey }: { deckName: string; dataKey: number }) {
   const [decks, setDecks] = useState<DeckNode[] | null>(() => cachedDeckList()?.filter((deck) => !deck.archived) ?? null);
   const [deckError, setDeckError] = useState<string | null>(null);
   const dataKeyRef = useRef(dataKey);
@@ -181,7 +182,7 @@ export function NoteDropTree({ deckName, dataKey }: { deckName: string; dataKey:
         <div className="nd-tree-loading" aria-label="Loading deck navigation" />
       ) : (
         <>
-          <div className="nd-item-editor-tabs-nav mb-3 shrink-0">
+          <SidebarHeader className="mb-3 shrink-0">
             <h2 className="min-w-0 flex-1 text-sm font-semibold">Deck</h2>
             <TooltipHint label={`Create subdeck in ${leafOf(root.name)}`}><button
               type="button"
@@ -191,7 +192,7 @@ export function NoteDropTree({ deckName, dataKey }: { deckName: string; dataKey:
             >
               <LayersPlus className="size-4" aria-hidden="true" />
             </button></TooltipHint>
-          </div>
+          </SidebarHeader>
           <TooltipHint label={root.name} side="left"><button
             type="button"
             data-card-drop-target={root.name}
@@ -210,7 +211,7 @@ export function NoteDropTree({ deckName, dataKey }: { deckName: string; dataKey:
             <span className="nd-tree-label">{leafOf(root.name)}</span>
           </button></TooltipHint>
           <h3 className="mt-4 mb-1.5 shrink-0 text-sm font-medium">Chapters</h3>
-          <div className="nd-tree-content nd-side-panel-scroll" ref={treeDrag.setListRef}>
+          <SidebarScroll className="nd-tree-content" ref={treeDrag.setListRef}>
             {childrenOf(decks, root.name).map((name, index) => {
               const child = deckByName.get(name);
               return child ? (
@@ -240,7 +241,7 @@ export function NoteDropTree({ deckName, dataKey }: { deckName: string; dataKey:
                 <span />
               </div>
             )}
-          </div>
+          </SidebarScroll>
           <MasteryProgress progress={progress?.deck === deckName ? progress.value : null} error={progressError?.deck === deckName ? progressError.message : null} />
         </>
       )}

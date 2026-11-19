@@ -420,10 +420,10 @@ These work on every command, before or after the command words.
   - [`db backup`](#db-backup) Copy the database consistently (SQLite online backup; safe while the server runs).
   - [`db check`](#db-check) Run SQLite's integrity and foreign-key checks. Exits 4 when something is wrong.
   - [`db info`](#db-info) Schema version, SQLite version, journal mode, sizes and row counts.
-  - [`db restore`](#db-restore) Replace the database with a backup. The current file is backed up first. Stop the server before restoring.
+  - [`db restore`](#db-restore) Restore a database or Notedrop update backup. The current data is backed up first; stop the server before restoring.
 - **top level**
   - [`serve`](#serve) Run the web app and HTTP API.
-  - [`update`](#update) Update this copy of Etude from its GitHub repo: fetch, fast-forward, install dependencies, rebuild the web app.
+  - [`update`](#update) Update this copy of Notedrop from its GitHub repo: fetch, fast-forward, install dependencies, rebuild the web app.
   - [`search`](#search) Find cards with the search language (one row per card). Same as `etude card list`.
   - [`commands`](#commands) The catalog of every command: args, flags with types and defaults, examples, whether it writes. JSON for agents.
   - [`version`](#version) Print the Etude version.
@@ -5032,7 +5032,7 @@ Output: { path, schemaVersion, sqlite, journalMode, bytes, counts }
 
 <a id="db-restore"></a>
 
-Replace the database with a backup. The current file is backed up first. Stop the server before restoring.
+Restore a database or Notedrop update backup. The current data is backed up first; stop the server before restoring.
 
 ```
 etude db restore <backup> [flags]
@@ -5042,16 +5042,17 @@ etude db restore <backup> [flags]
 
 | Argument | Description |
 | --- | --- |
-| `backup` | Backup file. |
+| `backup` | Database file or update-backup directory. |
 
 | Flag | Type | Description |
 | --- | --- | --- |
 | `-y, --yes` | boolean | Confirm a destructive operation. |
 
-Output: { restored, previous }
+Output: { restored, previous, from? }
 
 ```sh
-etude db restore ~/.etude/backups/etude-20261020-190000.db --yes
+notedrop db restore ~/.notedrop/backups/etude-20261020-190000.db --yes
+notedrop db restore ~/.notedrop/update-backups/update-1.0.0-20261020-190000 --yes
 ```
 
 ## Top-level commands
@@ -5088,9 +5089,9 @@ etude serve --host 0.0.0.0 --token $(openssl rand -hex 16)
 
 <a id="update"></a>
 
-Update this copy of Etude from its GitHub repo: fetch, fast-forward, install dependencies, rebuild the web app.
+Update this copy of Notedrop from its GitHub repo: fetch, fast-forward, install dependencies, rebuild the web app.
 
-Only works in a git checkout with no local changes. A running server keeps the old code until it restarts; the Update button in the app restarts it for you. Package installs (npm, the Mac app) get the latest release's version and a link instead.
+Only works in a git checkout with no local changes. A running server keeps the old code until it restarts; the Update button in the app restarts it for you. Package installs get the latest release's version and a link instead. Microsoft Store installations are updated only by the Store.
 
 ```
 etude update [flags]
@@ -5105,8 +5106,8 @@ etude update [flags]
 Output: --check: { kind: git|package, version, commit, behind, incoming: [{ sha, date, subject }], blocked? } · otherwise { result: updated|current, from, to, commits, steps }
 
 ```sh
-etude update --check
-etude update
+notedrop update --check
+notedrop update
 ```
 
 ### etude search

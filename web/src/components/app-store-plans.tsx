@@ -1,4 +1,4 @@
-// Etude Sync plans from the store, in the iOS app (App Store) and the Android app (Google Play), via
+// Notedrop Sync plans from the store, in the iOS app (App Store) and the Android app (Google Play), via
 // lib/storekit.ts. Prices, names and periods come from the store, localized for the person's country;
 // nothing here is hard-coded. Apple asks for the plan's name, length and price, the auto-renewal
 // terms, Terms and Privacy links, and a way to restore purchases next to the buy button (App Store
@@ -147,7 +147,7 @@ export function AppStorePlans({ productIds, onActive, compact }: { productIds: s
       </Button>
       <p className="text-[12px] leading-relaxed text-muted-foreground" data-subscription-terms>
         {sel ? `${sel.displayName}: ${sel.displayPrice} every ${periodLabel(sel.period)}. ` : ""}
-        Payment is charged to your {w.account} when you confirm the purchase. The subscription renews automatically at the same price unless you cancel it at least 24 hours before the end of the current period, and the renewal is charged within the 24 hours before the period ends. {w.manage} Sync is linked to the Etude account you're signed in to and works on all your devices.
+        Payment is charged to your {w.account} when you confirm the purchase. The subscription renews automatically at the same price unless you cancel it at least 24 hours before the end of the current period, and the renewal is charged within the 24 hours before the period ends. {w.manage} Etude Sync is linked to the Etude account you're signed in to and works on all your devices.
       </p>
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[13px]">
         <button type="button" className="font-medium text-foreground underline-offset-4 hover:underline disabled:opacity-50" disabled={!!busy} onClick={() => void doRestore()} data-restore>

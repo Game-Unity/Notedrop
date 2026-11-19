@@ -35,7 +35,7 @@ export function PrivacySection() {
   };
 
   return (
-    <Section id="privacy" title="Privacy" description="Both are anonymous: not linked to your Etude account, and they go to Etude's own server even when Sync uses yours.">
+    <Section id="privacy" title="Privacy" description="Both are anonymous: not linked to your Etude account, and they go to Etude's telemetry server even when Sync uses yours.">
       <Block
         title={<label htmlFor="privacy-errors">Send error reports</label>}
         description={NATIVE_COPY.privacyErrors}
@@ -47,7 +47,7 @@ export function PrivacySection() {
         aside={<BigSwitch id="privacy-usage" checked={prefs?.usageStats ?? false} disabled={!prefs} onCheckedChange={(v) => void set({ usageStats: v })} />}
       />
       {prefs && !active && (
-        <Block description="This copy of Etude isn't sending either right now (ETUDE_TELEMETRY=0, or an etude serve started outside the app). The switches apply wherever this collection opens in the app." />
+        <Block description="This copy of Notedrop isn't sending either right now (ETUDE_TELEMETRY=0, or an etude serve started outside the app). The switches apply wherever this collection opens in the app." />
       )}
     </Section>
   );

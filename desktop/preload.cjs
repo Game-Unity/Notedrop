@@ -3,6 +3,7 @@ const { contextBridge, ipcRenderer } = require("electron");
 
 contextBridge.exposeInMainWorld("etudeDesktop", {
   platform: process.platform,
+  distribution: process.env.NOTEDROP_DISTRIBUTION || "development",
   /** A folder picked in the system dialog, or null. */
   pickFolder: () => ipcRenderer.invoke("etude:pick-folder"),
   showLogs: () => ipcRenderer.invoke("etude:show-logs"),

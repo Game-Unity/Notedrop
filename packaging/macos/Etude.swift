@@ -1,14 +1,14 @@
-// Etude.app: starts the bundled Etude server and shows it in a native window.
-// Everything it needs is inside the bundle (Node + the app); data lives in ~/.etude.
+// Notedrop.app: starts the bundled Etude-based server and shows it in a native window.
+// Everything it needs is inside the bundle (Node + the app); data lives in ~/.notedrop.
 import Cocoa
 import WebKit
 
 let bundle = Bundle.main.resourceURL!
 let nodeBin = bundle.appendingPathComponent("node/bin/node")
 let appDir = bundle.appendingPathComponent("app")
-let home = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".etude")
-let logURL = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Logs/Etude.log")
-let preferredPort = 4610
+let home = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".notedrop")
+let logURL = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Logs/Notedrop.log")
+let preferredPort = 4613
 
 /// Is something already listening on this port?
 func portInUse(_ port: Int) -> Bool {
@@ -71,15 +71,15 @@ class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, WKUIDe
         window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 1180, height: 800),
                           styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
                           backing: .buffered, defer: false)
-        window.title = "Etude"
+        window.title = "Notedrop"
         window.titlebarAppearsTransparent = true
         window.backgroundColor = NSColor(red: 0.04, green: 0.04, blue: 0.05, alpha: 1)
         window.contentView = web
-        window.setFrameAutosaveName("EtudeMain")
-        if !window.setFrameUsingName("EtudeMain") { window.center() }
+        window.setFrameAutosaveName("NotedropMain")
+        if !window.setFrameUsingName("NotedropMain") { window.center() }
         window.makeKeyAndOrderFront(nil)
         buildMenu()
-        showMessage("Starting Etude…", detail: "")
+        showMessage("Starting Notedrop…", detail: "")
         NSApp.activate(ignoringOtherApps: true)
 
         DispatchQueue.global().async { self.start() }
@@ -105,7 +105,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, WKUIDe
             Thread.sleep(forTimeInterval: 0.2)
         }
         DispatchQueue.main.async {
-            self.showMessage("Etude didn't start.", detail: "The log is in ~/Library/Logs/Etude.log. ⌘R tries again.")
+            self.showMessage("Notedrop didn't start.", detail: "The log is in ~/Library/Logs/Notedrop.log. ⌘R tries again.")
         }
     }
 
@@ -116,6 +116,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, WKUIDe
         p.currentDirectoryURL = appDir
         var env = ProcessInfo.processInfo.environment
         env["ETUDE_HOME"] = env["ETUDE_HOME"] ?? home.path
+        env["NOTEDROP_PROFILE"] = "stable"
         env["NODE_NO_WARNINGS"] = "1"
         p.environment = env
         if let l = log { p.standardOutput = l; p.standardError = l }
@@ -181,9 +182,9 @@ class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, WKUIDe
         let main = NSMenu()
         let appItem = NSMenuItem(); main.addItem(appItem)
         let appMenu = NSMenu()
-        appMenu.addItem(withTitle: "Hide Etude", action: #selector(NSApplication.hide(_:)), keyEquivalent: "h")
+        appMenu.addItem(withTitle: "Hide Notedrop", action: #selector(NSApplication.hide(_:)), keyEquivalent: "h")
         appMenu.addItem(.separator())
-        appMenu.addItem(withTitle: "Quit Etude", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+        appMenu.addItem(withTitle: "Quit Notedrop", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         appItem.submenu = appMenu
 
         let fileItem = NSMenuItem(); main.addItem(fileItem)

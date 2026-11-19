@@ -31,7 +31,7 @@ const webEdition = {
   apply: "build" as const,
   transformIndexHtml(html: string) {
     if (!webBase) return html;
-    const links = `<link rel="manifest" href="${webBase}/app.webmanifest" />\n    <link rel="apple-touch-icon" href="${webBase}/apple-touch-icon.png" />\n  </head>`;
+    const links = `<link rel="manifest" href="${webBase}/app.webmanifest" />\n    <link rel="apple-touch-icon" href="${webBase}/notedrop-apple-touch-icon.png" />\n  </head>`;
     return html.replace("</head>", () => links);
   },
   generateBundle(_: unknown, bundle: Record<string, unknown>) {
@@ -40,8 +40,8 @@ const webEdition = {
     const sw = readFileSync(here("./sw.js"), "utf8").replace(/__BASE__/g, webBase).replace(/__BUILD__/g, build);
     (this as any).emitFile({ type: "asset", fileName: "sw.js", source: sw });
     const manifest = {
-      name: "Etude",
-      short_name: "Etude",
+      name: "Notedrop",
+      short_name: "Notedrop",
       description: "Practice anything: flashcards that check your answers.",
       id: `${webBase}/`,
       start_url: `${webBase}/`,
@@ -50,8 +50,8 @@ const webEdition = {
       background_color: "#000000",
       theme_color: "#000000",
       icons: [
-        { src: `${webBase}/apple-touch-icon.png`, sizes: "180x180", type: "image/png" },
-        { src: `${webBase}/icon-512.png`, sizes: "512x512", type: "image/png", purpose: "any" },
+        { src: `${webBase}/notedrop-apple-touch-icon.png`, sizes: "180x180", type: "image/png" },
+        { src: `${webBase}/notedrop-icon-512.png`, sizes: "512x512", type: "image/png", purpose: "any" },
       ],
     };
     (this as any).emitFile({ type: "asset", fileName: "app.webmanifest", source: JSON.stringify(manifest, null, 2) + "\n" });

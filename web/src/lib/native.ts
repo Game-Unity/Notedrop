@@ -7,7 +7,7 @@ import { api } from "@/lib/api";
 type CapacitorGlobal = { isNativePlatform?: () => boolean; getPlatform?: () => string; isPluginAvailable?: (name: string) => boolean };
 const cap = (): CapacitorGlobal | undefined => (globalThis as { Capacitor?: CapacitorGlobal }).Capacitor;
 
-/** True when there is no Etude server behind the app (browser build or a phone app). */
+/** True when there is no local server behind the app (browser build or a phone app). */
 export const serverless = () => isLocal();
 
 /** True inside the Android or iOS app. */

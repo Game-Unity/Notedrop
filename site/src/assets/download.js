@@ -15,22 +15,22 @@ const OS = {
     note: "With Homebrew, or the installer from <a href=\"https://nodejs.org/en/download\">nodejs.org</a>.",
     cmd: ["brew install node", "node --version   # v24 or newer"],
     ps: "$ ",
-    home: "~/.etude/etude.db",
-    env: "~/.etude/.env",
+    home: "~/.notedrop/etude.db",
+    env: "~/.notedrop/.env",
   },
   windows: {
     note: "In PowerShell with winget, or the installer from <a href=\"https://nodejs.org/en/download\">nodejs.org</a>. You'll also want <a href=\"https://git-scm.com/download/win\">Git</a>.",
     cmd: ["winget install OpenJS.NodeJS Git.Git", "node --version   # v24 or newer"],
     ps: "> ",
-    home: "%USERPROFILE%\\.etude\\etude.db",
-    env: "%USERPROFILE%\\.etude\\.env",
+    home: "%USERPROFILE%\\.notedrop\\etude.db",
+    env: "%USERPROFILE%\\.notedrop\\.env",
   },
   linux: {
     note: "With your package manager, or a version manager like <a href=\"https://mise.jdx.dev\">mise</a> or <a href=\"https://github.com/nvm-sh/nvm\">nvm</a> if your distribution ships an older Node.",
     cmd: ["mise use -g node@24", "node --version   # v24 or newer"],
     ps: "$ ",
-    home: "~/.etude/etude.db",
-    env: "~/.etude/.env",
+    home: "~/.notedrop/etude.db",
+    env: "~/.notedrop/.env",
   },
 };
 

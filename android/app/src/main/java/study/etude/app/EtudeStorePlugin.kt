@@ -271,7 +271,7 @@ class EtudeStorePlugin : Plugin(), PurchasesUpdatedListener {
     /** Play's debug messages are for developers; when the device can't buy at all, say so plainly. */
     private fun fail(call: PluginCall, r: BillingResult, fallback: String) {
         val code = codeOf(r.responseCode)
-        val msg = if (code == "unavailable") "Google Play isn't available on this device. Subscribing needs Etude installed from the Play Store, with a Google account signed in." else r.debugMessage.ifBlank { fallback }
+        val msg = if (code == "unavailable") "Google Play isn't available on this device. Subscribing needs Notedrop installed from the Play Store, with a Google account signed in." else r.debugMessage.ifBlank { fallback }
         call.reject(msg, code)
     }
 

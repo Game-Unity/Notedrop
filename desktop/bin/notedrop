@@ -1,0 +1,20 @@
+#!/bin/sh
+# The notedrop command that comes with the desktop app.
+self=$0
+while [ -L "$self" ]; do
+  link=$(readlink "$self")
+  case $link in
+    /*) self=$link ;;
+    *) self=$(dirname "$self")/$link ;;
+  esac
+done
+app=$(cd "$(dirname "$self")/../.." && pwd)
+export NOTEDROP_PROFILE=stable
+export NOTEDROP_CLI_NAME=notedrop
+case $(uname) in
+  Darwin) exe=$app/../../MacOS/Notedrop; legacy=$app/../../MacOS/Etude ;;
+  *) exe=$app/../../notedrop-desktop; legacy=$app/../../etude-desktop ;;
+esac
+[ -x "$exe" ] || exe=$legacy
+[ -x "$exe" ] || exec node "$app/bin/etude.js" "$@"
+ELECTRON_RUN_AS_NODE=1 exec "$exe" "$app/bin/etude.js" "$@"

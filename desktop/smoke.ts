@@ -12,15 +12,15 @@ const OUT = join(import.meta.dirname, "dist", "out");
 const version: string = JSON.parse(readFileSync(join(import.meta.dirname, "..", "package.json"), "utf8")).version;
 
 const layouts = {
-  linux: { from: "linux-unpacked", exe: "etude-desktop", resources: "resources" },
-  win32: { from: "win-unpacked", exe: "Etude.exe", resources: "resources" },
-  darwin: { from: join(process.arch === "arm64" ? "mac-arm64" : "mac", "Etude.app"), exe: join("Contents", "MacOS", "Etude"), resources: join("Contents", "Resources") },
+  linux: { from: "linux-unpacked", exe: "notedrop-desktop", resources: "resources" },
+  win32: { from: "win-unpacked", exe: "Notedrop.exe", resources: "resources" },
+  darwin: { from: join(process.arch === "arm64" ? "mac-arm64" : "mac", "Notedrop.app"), exe: join("Contents", "MacOS", "Notedrop"), resources: join("Contents", "Resources") },
 } as const;
 const layout = layouts[process.platform as keyof typeof layouts];
 if (!layout) throw new Error(`no packaged app for ${process.platform}`);
 
 const scratch = mkdtempSync(join(tmpdir(), "etude-smoke-"));
-const appDir = join(scratch, "Etude");
+const appDir = join(scratch, "Notedrop");
 cpSync(join(OUT, layout.from), appDir, { recursive: true, verbatimSymlinks: true });
 const exe = join(appDir, layout.exe);
 const app = join(appDir, layout.resources, "app");
@@ -68,6 +68,13 @@ const out =
     ? execFileSync("cmd.exe", ["/d", "/c", launcher, "version"], { env: plainEnv, encoding: "utf8" })
     : execFileSync(launcher, ["version"], { env: plainEnv, encoding: "utf8" });
 check("the etude command runs the app's engine", JSON.parse(out).version === version);
+const notedropLauncher = join(app, "desktop", "bin", process.platform === "win32" ? "notedrop.cmd" : "notedrop");
+check("the notedrop launcher is there", existsSync(notedropLauncher));
+const notedropOut =
+  process.platform === "win32"
+    ? execFileSync("cmd.exe", ["/d", "/c", notedropLauncher, "version"], { env: plainEnv, encoding: "utf8" })
+    : execFileSync(notedropLauncher, ["version"], { env: plainEnv, encoding: "utf8" });
+check("the notedrop command runs the app's engine", JSON.parse(notedropOut).version === version);
 
 // Kept when something fails, to look into.
 rmSync(scratch, { recursive: true, force: true });

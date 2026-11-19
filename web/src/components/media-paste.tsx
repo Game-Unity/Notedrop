@@ -24,7 +24,7 @@ export function MediaPasteProvider({ children, onPendingChange }: { children: Re
     if (!paste) return null;
     pending.current++;
     change.current?.(true);
-    const id = toast.loading("Copying media to Etude…");
+    const id = toast.loading("Copying media to Notedrop…");
     return copyMediaPaste(paste, format).then((text) => {
       toast.dismiss(id);
       return text;

@@ -61,10 +61,10 @@ async function restore(bytes: Uint8Array): Promise<{ media: number }> {
   try {
     files = unzipSync(bytes);
   } catch {
-    throw new Error("that file isn't an Etude backup (not a zip)");
+    throw new Error("that file isn't a Notedrop backup (not a zip)");
   }
   const image = files["etude.db"];
-  if (!image || new TextDecoder().decode(image.subarray(0, 16)) !== SQLITE_MAGIC) throw new Error("that file isn't an Etude backup (no etude.db inside)");
+  if (!image || new TextDecoder().decode(image.subarray(0, 16)) !== SQLITE_MAGIC) throw new Error("that file isn't a Notedrop backup (no etude.db inside)");
   // Check it opens as a collection, and drop its sync state: this device would otherwise reuse the
   // identity of the one the backup came from.
   const { createWasmConnection, importOpfsImage } = await import("../core/sql-wasm.ts");
@@ -72,7 +72,7 @@ async function restore(bytes: Uint8Array): Promise<{ media: number }> {
   let clean: Uint8Array;
   try {
     const tables = (probe.prepare("SELECT name FROM sqlite_master WHERE type = 'table'").all() as { name: string }[]).map((r) => r.name);
-    if (!tables.includes("items") || !tables.includes("cards")) throw new Error("that backup has no Etude collection in it");
+    if (!tables.includes("items") || !tables.includes("cards")) throw new Error("that backup has no Notedrop collection in it");
     for (const t of tables) if (t.startsWith("sync_")) probe.exec(`DELETE FROM "${t}"`);
     clean = probe.serialize!();
   } finally {

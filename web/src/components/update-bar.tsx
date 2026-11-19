@@ -10,7 +10,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { api, relative, type UpdateStatus } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { serverless } from "@/lib/native";
-import { desktopApp } from "@/lib/platform";
+import { desktopApp, internalUpdatesAvailable } from "@/lib/platform";
 
 type Phase = "idle" | "checking" | "updating" | "restarting";
 
@@ -18,15 +18,17 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 export const versionOf = (st: UpdateStatus) => (st.kind === "git" ? `${st.version} (${st.commit})` : st.version);
 const behindOf = (st: UpdateStatus) => (st.kind === "git" ? st.behind : st.kind === "desktop" && st.mode === "self" ? (st.ready ? 1 : 0) : st.latest ? 1 : 0);
-const DOWNLOAD = "https://etude.study/download";
+const DOWNLOAD = "https://github.com/Game-Unity/Notedrop/releases/latest";
 
-/** The news in a few words: "3 updates available", "Etude 2.5.1 is out", "Etude 2.5.1 is ready". */
+/** The news in a few words: "3 updates available", "Notedrop 2.5.1 is out", "Notedrop 2.5.1 is ready". */
 const headline = (st: UpdateStatus) =>
-  st.kind === "git" ? (st.behind === 1 ? "1 update available" : `${st.behind} updates available`) : st.kind === "desktop" && st.ready ? `Etude ${st.latest} is ready` : `Etude ${st.latest} is out`;
+  st.kind === "git" ? (st.behind === 1 ? "1 update available" : `${st.behind} updates available`) : st.kind === "desktop" && st.ready ? `Notedrop ${st.latest} is ready` : `Notedrop ${st.latest} is out`;
 
 /** In the desktop app: its own updater, or (link, system) the engine's check worded for how this copy updates. */
 async function fetchStatus(force: boolean): Promise<UpdateStatus> {
+  if (!internalUpdatesAvailable()) throw new Error("Updates are managed by the Microsoft Store.");
   const d = await desktopApp()?.updates.status(force);
+  if (d?.mode === "store") throw new Error("Updates are managed by the Microsoft Store.");
   if (!d || d.mode === "none") return api.updateStatus(true, force);
   if (d.mode === "self") return { kind: "desktop", mode: "self", version: d.version, latest: d.latest, ready: d.ready, percent: d.percent, url: DOWNLOAD, canRestart: false, checked: d.checked, ...(d.error ? { checkError: d.error } : {}) };
   const st = await api.updateStatus(true, force);
@@ -65,7 +67,7 @@ async function update(onDone?: () => void) {
       return;
     }
     if (!r.restarting) {
-      toast.success(`Updated to ${r.to}`, { description: "Restart Etude to run the new version." });
+      toast.success(`Updated to ${r.to}`, { description: "Restart Notedrop to run the new version." });
       onDone?.();
       set({ phase: "idle" });
       await check();
@@ -83,7 +85,7 @@ async function update(onDone?: () => void) {
         }
       } catch {}
     }
-    toast.error("Etude hasn't come back yet", { description: "The update finished; reload the page in a moment." });
+    toast.error("Notedrop hasn't come back yet", { description: "The update finished; reload the page in a moment." });
     set({ phase: "idle" });
   } catch (e) {
     toast.error("Update failed", { description: (e as Error).message.slice(0, 400) });
@@ -103,7 +105,7 @@ export function useUpdater() {
   useEffect(() => {
     // The server throttles automatic checks, so this doesn't hammer GitHub. With no server (browser
     // build, phone apps) the host updates the app: the web page on deploy, the stores on release.
-    if (!started && !serverless()) {
+    if (!started && !serverless() && internalUpdatesAvailable()) {
       started = true;
       check();
       // The desktop app downloads in the background and says when the update is ready.
@@ -117,7 +119,7 @@ export function useUpdater() {
 function DesktopDetails({ st }: { st: Extract<UpdateStatus, { kind: "desktop" }> }) {
   const text =
     st.mode === "self"
-      ? "Restart Etude to finish. Or keep going: it installs the next time you quit."
+      ? "Restart Notedrop to finish. A safety backup is created before the installer starts."
       : st.mode === "system"
         ? "It comes with your system's updates (on Arch: yay -Syu)."
         : "Download it and install it over this one. Your collection stays as it is.";
@@ -146,7 +148,7 @@ function UpdateDetails({ st, onUpdate }: { st: UpdateStatus; onUpdate(): void })
   if (st.kind !== "git")
     return (
       <div className="px-4 py-3 text-sm">
-        <div className="font-medium">Etude {st.latest} is out</div>
+        <div className="font-medium">Notedrop {st.latest} is out</div>
         <div className="mt-1 text-xs text-muted-foreground">This copy wasn't installed from git, so it can't update itself. Download the new version from GitHub.</div>
         <Button size="sm" className="mt-3" asChild>
           <a href={st.url} target="_blank" rel="noreferrer">
@@ -175,7 +177,7 @@ function UpdateDetails({ st, onUpdate }: { st: UpdateStatus; onUpdate(): void })
         {st.behind > st.incoming.length && <li className="py-1 text-muted-foreground">and {st.behind - st.incoming.length} more</li>}
       </ul>
       <div className="flex items-center justify-between gap-3 border-t px-4 py-3">
-        <span className="text-xs text-muted-foreground">{st.blocked ?? (st.canRestart ? "Takes about a minute." : "Restart Etude afterwards.")}</span>
+        <span className="text-xs text-muted-foreground">{st.blocked ?? (st.canRestart ? "Takes about a minute." : "Restart Notedrop afterwards.")}</span>
         <Button size="sm" className="shrink-0" disabled={!!st.blocked} onClick={onUpdate}>
           Update
         </Button>
@@ -190,10 +192,11 @@ const TINT = "border border-sidebar-border bg-sidebar-accent/60 text-foreground"
 /** Bottom of the sidebar, only while this install is behind. Collapsed: an icon with an accent dot. */
 export function SidebarUpdate({ collapsed }: { collapsed: boolean }) {
   const { st, busy, behind, phase } = useUpdater();
+  if (!internalUpdatesAvailable()) return null;
   const [open, setOpen] = useState(false);
   if (!st || (!behind && !busy)) return null;
   const count = st.kind === "git" ? String(st.behind) : null;
-  const label = busy ? (phase === "updating" ? "Updating…" : "Restarting…") : st.kind === "git" ? "Update Etude" : headline(st);
+  const label = busy ? (phase === "updating" ? "Updating…" : "Restarting…") : st.kind === "git" ? "Update Notedrop" : headline(st);
   const aria = busy ? label : st.kind === "git" ? `Update available: ${st.behind} new commit${st.behind === 1 ? "" : "s"}` : label;
   const button = (
     <button
@@ -252,12 +255,13 @@ export function SidebarUpdate({ collapsed }: { collapsed: boolean }) {
 /** True while there's an update to install or one is running; the phone tab bar puts a dot on Settings. */
 export function useUpdateDot() {
   const { behind, busy } = useUpdater();
-  return behind > 0 || busy;
+  return internalUpdatesAvailable() && (behind > 0 || busy);
 }
 
-/** Settings → About: whether Etude is current, and "Check for updates" / "Review update". */
+/** Settings → About: whether Notedrop is current, and "Check for updates" / "Review update". */
 export function UpdateSettingsRow() {
   const { st, phase, busy, behind } = useUpdater();
+  if (!internalUpdatesAvailable()) return null;
   const [open, setOpen] = useState(false);
   if (serverless()) return null;
   return (
@@ -278,7 +282,7 @@ export function UpdateSettingsRow() {
         ) : st.kind === "desktop" && st.mode === "self" && st.latest ? (
           <>
             <Loader2 className="size-3.5 animate-spin text-muted-foreground" />
-            Downloading Etude {st.latest}… {st.percent ?? 0}%
+            Downloading Notedrop {st.latest}… {st.percent ?? 0}%
           </>
         ) : st.checkError ? (
           <span className="text-muted-foreground">Couldn't check: {st.checkError}</span>

@@ -59,7 +59,7 @@ export function CleanupSection() {
   );
 
   return (
-    <Section id="cleanup" title="Clean up" description={`Things Etude keeps until you decide to delete them. Deleting can't be undone, so ${serverless() ? "download a backup (Data, above)" : "back up the database and media folder"} first if you're unsure.`}>
+    <Section id="cleanup" title="Clean up" description={`Things Notedrop keeps until you decide to delete them. Deleting can't be undone, so ${serverless() ? "download a backup (Data, above)" : "back up the database and media folder"} first if you're unsure.`}>
       <Block
         title="Leftover cards"
         description="Cards your card types no longer create, for example after removing a face from a type: the cards that face made for existing items stay. Saving a type never deletes cards, so review history isn't lost by accident. Until deleted they still come up in study unless suspended. View shows them in Browse."

@@ -1,4 +1,4 @@
-// Typed client for the Etude API.
+// Typed client for the Notedrop API.
 import { apiToken, etudeFetch } from "./transport";
 
 export type Rating = 1 | 2 | 3 | 4;
@@ -273,7 +273,7 @@ export interface TypeSummary {
   name: string;
   description: string;
   builtin: boolean;
-  /** A type with this id ships with Etude. */
+  /** A type with this id ships with Notedrop. */
   shipped: boolean;
   /** Shipped, but replaced by the user's own version (can be reset). */
   edited: boolean;

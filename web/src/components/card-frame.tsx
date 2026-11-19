@@ -105,6 +105,10 @@ function theme(forceDark = false, markdownEditorStyle = false, panel?: Element |
   return { scheme: dark?.scheme ?? pageScheme(), vars, markdownEditorStyle };
 }
 
+function themePanel(frame: HTMLIFrameElement | null) {
+  return frame?.closest(".nd-card-preview-sidebar, .nd-item-editor-panel, .nd-market-sidebar") ?? null;
+}
+
 export const CardFrame = forwardRef<CardFrameHandle, Props>(function CardFrame(props, ref) {
   const iframe = useRef<HTMLIFrameElement>(null);
   const [height, setHeight] = useState(props.minHeight ?? 120);
@@ -229,7 +233,7 @@ export const CardFrame = forwardRef<CardFrameHandle, Props>(function CardFrame(p
       const p = latest.current;
       switch (msg.type) {
         case "loaded":
-          prefsFor(typeOfSrc(p.src)).then((prefs) => post({ type: "init", view: p.view, mode: p.mode ?? "answer", answer: p.answer ?? null, result: p.result ?? null, theme: theme(p.darkTheme, p.markdownEditorStyle, iframe.current?.closest(".nd-card-preview-sidebar")), screen: { height: screenHeight(), viewportHeight: window.innerHeight }, prefs }));
+          prefsFor(typeOfSrc(p.src)).then((prefs) => post({ type: "init", view: p.view, mode: p.mode ?? "answer", answer: p.answer ?? null, result: p.result ?? null, theme: theme(p.darkTheme, p.markdownEditorStyle, themePanel(iframe.current)), screen: { height: screenHeight(), viewportHeight: window.innerHeight }, prefs }));
           break;
         case "set-pref": {
           // Previews of unsaved types (raw HTML) have nowhere to keep preferences.
@@ -291,12 +295,12 @@ export const CardFrame = forwardRef<CardFrameHandle, Props>(function CardFrame(p
   const pageThemeScheme = useScheme();
   const scheme = props.darkTheme ? "dark" : pageThemeScheme;
   useEffect(() => {
-    const onTheme = () => post({ type: "theme", theme: theme(latest.current.darkTheme, latest.current.markdownEditorStyle, iframe.current?.closest(".nd-card-preview-sidebar")) });
+    const onTheme = () => post({ type: "theme", theme: theme(latest.current.darkTheme, latest.current.markdownEditorStyle, themePanel(iframe.current)) });
     window.addEventListener(THEME_EVENT, onTheme);
     return () => window.removeEventListener(THEME_EVENT, onTheme);
   }, [post]);
   useEffect(() => {
-    if (loaded) post({ type: "theme", theme: theme(props.darkTheme, props.markdownEditorStyle, iframe.current?.closest(".nd-card-preview-sidebar")) });
+    if (loaded) post({ type: "theme", theme: theme(props.darkTheme, props.markdownEditorStyle, themePanel(iframe.current)) });
   }, [loaded, props.darkTheme, props.markdownEditorStyle, post]);
 
   return (

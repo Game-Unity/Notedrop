@@ -6,6 +6,8 @@ import { registerHooks, stripTypeScriptTypes } from "node:module";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
+if (/notedrop(?:\.cmd)?$/i.test(process.argv[1] ?? "")) process.env.NOTEDROP_CLI_NAME = "notedrop";
+
 if (Number(process.versions.node.split(".")[0]) < 24) {
   process.stderr.write(`etude needs Node 24 or newer (this is ${process.version})\n`);
   process.exit(1);

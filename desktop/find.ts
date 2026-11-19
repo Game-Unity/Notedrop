@@ -3,6 +3,7 @@
 import { createServer, type AddressInfo } from "node:net";
 import { homedir } from "node:os";
 import { join, resolve } from "node:path";
+import type { UpdateDistribution } from "../src/core/distribution.ts";
 
 /** Where `etude serve` listens unless told otherwise: $ETUDE_PORT, else 4610. */
 export const usualPort = (env: Record<string, string | undefined>) => Number(env.ETUDE_PORT) || 4610;
@@ -19,15 +20,15 @@ export function samePath(a: string, b: string, platform: string = process.platfo
   return norm(a) === norm(b);
 }
 
-export type Probe = { kind: "free" } | { kind: "etude"; db: string; version: string } | { kind: "other" };
+export type Probe = { kind: "free" } | { kind: "etude"; db: string; version: string; updateDistribution?: UpdateDistribution } | { kind: "other" };
 
 /** What answers on this port: nothing, an Etude engine (and which collection it has open), or anything else. */
 export async function probe(port: number, token?: string): Promise<Probe> {
   try {
     const res = await fetch(`http://127.0.0.1:${port}/api/settings`, { headers: token ? { authorization: `Bearer ${token}` } : {}, signal: AbortSignal.timeout(2000) });
     if (!res.ok) return { kind: "other" };
-    const body = (await res.json().catch(() => null)) as { dbPath?: unknown; version?: unknown } | null;
-    return typeof body?.dbPath === "string" ? { kind: "etude", db: body.dbPath, version: String(body.version ?? "") } : { kind: "other" };
+    const body = (await res.json().catch(() => null)) as { dbPath?: unknown; version?: unknown; updateDistribution?: UpdateDistribution } | null;
+    return typeof body?.dbPath === "string" ? { kind: "etude", db: body.dbPath, version: String(body.version ?? ""), ...(body.updateDistribution ? { updateDistribution: body.updateDistribution } : {}) } : { kind: "other" };
   } catch (e) {
     return (e as { cause?: { code?: string } }).cause?.code === "ECONNREFUSED" ? { kind: "free" } : { kind: "other" };
   }
@@ -37,8 +38,9 @@ export async function probe(port: number, token?: string): Promise<Probe> {
  * Reuse the engine on the usual port only if it opens this same collection: another account's
  * engine, or one with a password, is someone else's. Otherwise start one, on the usual port if free.
  */
-export function choose(found: Probe, collection: string): { reuse: true } | { reuse: false; port: "usual" | "any" } {
-  if (found.kind === "etude" && samePath(found.db, collection)) return { reuse: true };
+export function choose(found: Probe, collection: string, distribution?: UpdateDistribution): { reuse: true } | { reuse: false; port: "usual" | "any" } {
+  const storeMismatch = distribution === "microsoft-store" && found.kind === "etude" && found.updateDistribution !== "microsoft-store";
+  if (found.kind === "etude" && samePath(found.db, collection) && !storeMismatch) return { reuse: true };
   return { reuse: false, port: found.kind === "free" ? "usual" : "any" };
 }
 

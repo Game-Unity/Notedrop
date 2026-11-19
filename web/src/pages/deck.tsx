@@ -98,7 +98,7 @@ export function DeckPage({ name, dataKey, activeItemId, onOpenCard, onCreateCard
       try {
         const counts = await api.counts({ deck: name });
         if (![counts.new, counts.learning, counts.review].every((count) => Number.isInteger(count) && count >= 0)) {
-          throw new Error("Etude returned invalid study queue counts");
+          throw new Error("Notedrop returned invalid study queue counts");
         }
         if (live && id === requestId) {
           setQueueCounts({ deck: name, counts });

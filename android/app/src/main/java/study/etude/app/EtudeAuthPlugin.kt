@@ -52,9 +52,9 @@ class EtudeAuthPlugin : Plugin() {
         private const val GCM_IV_BYTES = 12
         private const val GCM_TAG_BITS = 128
         private const val CALLBACK_PAGE =
-            "<!doctype html><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width\"><title>Etude</title>" +
+            "<!doctype html><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width\"><title>Notedrop</title>" +
                 "<body style=\"font:17px/1.5 system-ui,sans-serif;margin:4rem auto;max-width:28rem;padding:0 1.5rem;background:#0f0f0f;color:#f2f2f2\">" +
-                "<h1 style=\"font-size:1.2rem\">Back to Etude…</h1><p>You can close this page.</p></body>"
+                "<h1 style=\"font-size:1.2rem\">Back to Notedrop…</h1><p>You can close this page.</p></body>"
     }
 
     private val io = Executors.newCachedThreadPool()

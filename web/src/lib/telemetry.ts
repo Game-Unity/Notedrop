@@ -12,7 +12,7 @@ const recent = new Map<string, number>();
 let sentThisMinute = 0;
 let minute = 0;
 
-// Noise browsers raise that says nothing about Etude.
+// Noise browsers raise that says nothing about Notedrop.
 const IGNORE = [/ResizeObserver loop/i, /^Script error\.?$/i, /Load failed$/i, /Failed to fetch$/i, /NetworkError when attempting/i, /The operation was aborted/i];
 
 function check(): Promise<void> {

@@ -22,6 +22,7 @@ import { navigate } from "@/lib/router";
 import { cn } from "@/lib/utils";
 import { useLongPress, usePhone } from "@/lib/phone";
 import { LEARNING_SEARCH, MASTERED_SEARCH } from "@/lib/notedrop-metrics";
+import { SidebarFooter, SidebarHeader, SidebarScroll } from "@/components/sidebar/SidebarLayout";
 
 export const STATE_CLS = ["text-new", "text-learn", "text-review", "text-learn"];
 
@@ -423,10 +424,12 @@ export function ItemEditor({ id, decks, tags, onSaved, onSaveSuccess, onDirtyCha
   };
   const allSuspended = item.cards.every((c) => c.suspended);
   const saveFooter = dirty || mediaPending ? (
-    <div className={cn(
-      "flex items-center gap-2 border-t bg-background",
-      closeAlways ? "nd-item-editor-footer shrink-0 py-3" : "sticky bottom-0 -mx-4 mt-2 px-4 py-3 sm:-mx-6 sm:px-6 xl:-mx-10 xl:px-10",
-    )}>
+    closeAlways ? <SidebarFooter className="flex items-center gap-2">
+      <span className="text-sm text-muted-foreground">{mediaPending ? "Copying media…" : "Unsaved changes"}</span>
+      <div className="flex-1" />
+      <Button variant="ghost" size="sm" disabled={mediaPending} onClick={() => setDraft(draftOf(item))}>Discard</Button>
+      <Button size="sm" className="gap-1.5" onClick={() => save()} disabled={saving || mediaPending}>{saving ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}Save <kbd className="hidden text-[10px] opacity-60 sm:inline">Ctrl S</kbd></Button>
+    </SidebarFooter> : <div className="sticky bottom-0 -mx-4 mt-2 flex items-center gap-2 border-t bg-background px-4 py-3 sm:-mx-6 sm:px-6 xl:-mx-10 xl:px-10">
       <span className="text-sm text-muted-foreground">{mediaPending ? "Copying media…" : "Unsaved changes"}</span>
       <div className="flex-1" />
       <Button variant="ghost" size="sm" disabled={mediaPending} onClick={() => setDraft(draftOf(item))}>Discard</Button>
@@ -455,7 +458,7 @@ export function ItemEditor({ id, decks, tags, onSaved, onSaveSuccess, onDirtyCha
     )}>
     <Tabs value={tab} onValueChange={setTab} className={cn(closeAlways ? "min-h-0 flex-1 gap-0" : "gap-6")}>
       {closeAlways ? (
-        <div className="nd-item-editor-title nd-item-editor-tabs-nav shrink-0">
+        <SidebarHeader className="nd-item-editor-title shrink-0">
           <TabsList variant="line" className="nd-item-editor-tabs-list">
             <TabsTrigger value="edit" className="nd-item-editor-tab">Edit</TabsTrigger>
             <TabsTrigger value="preview" className="nd-item-editor-tab">Preview</TabsTrigger>
@@ -481,7 +484,7 @@ export function ItemEditor({ id, decks, tags, onSaved, onSaveSuccess, onDirtyCha
             </DropdownMenu>
             <TooltipHint label="Close card editor"><Button size="icon" variant="ghost" className="nd-types-sidebar-add size-8 transition-colors" onClick={onBack} aria-label="Close card editor"><X className="size-4" /></Button></TooltipHint>
           </div>
-        </div>
+          </SidebarHeader>
       ) : (
         <>
           <div className="flex items-start gap-2 sm:gap-3">
@@ -516,7 +519,7 @@ export function ItemEditor({ id, decks, tags, onSaved, onSaveSuccess, onDirtyCha
         </>
       )}
 
-      <div className={cn("flex min-h-0 flex-col gap-6", closeAlways && "nd-item-editor-scroll nd-side-panel-scroll flex-1 overflow-y-auto overscroll-contain pt-4 pb-4")}>
+      <SidebarScroll className={cn("flex min-h-0 flex-col gap-6", closeAlways && "nd-item-editor-scroll flex-1")}>
     {!closeAlways && <>
       {cardPreview}
       </>}
@@ -573,7 +576,7 @@ export function ItemEditor({ id, decks, tags, onSaved, onSaveSuccess, onDirtyCha
         </TabsContent>
 
       {!closeAlways && saveFooter}
-      </div>
+      </SidebarScroll>
       </Tabs>
       {closeAlways && saveFooter}
     </div>
@@ -862,7 +865,7 @@ export function NewItemDialog({ open, onOpenChange, decks, types, onCreated, def
   if (inline) {
     return (
       <div className="nd-card-create-inline flex min-h-0 flex-1 flex-col">
-        <div className="nd-card-create-form nd-side-panel-scroll flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto overscroll-contain pt-4 pb-4">{form}</div>
+        <div className="nd-card-create-form nd-side-panel-scroll flex min-h-0 flex-1 flex-col gap-4">{form}</div>
         <div className="nd-card-create-footer flex shrink-0 justify-end border-t pt-3">{footer}</div>
       </div>
     );

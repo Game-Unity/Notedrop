@@ -5,7 +5,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { homedir } from "node:os";
 import { basename, dirname, extname, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
-import { Db, type Row } from "./db.ts";
+import { Db, SCHEMA_VERSION, type Row } from "./db.ts";
 import {
   DEFAULT_PRESET,
   type CardRow,
@@ -375,9 +375,21 @@ export class Etude {
 
   static async open(path: string, opts: { builtinTypesDir?: string; builtinSchedulersDir?: string; home?: string } = {}): Promise<Etude> {
     await initSandbox();
-    const db = await Db.open(path);
-    const media = path === ":memory:" ? join(process.env.TMPDIR ?? "/tmp", `etude-media-${process.pid}`) : join(dirname(path), "media");
     const home = resolve(opts.home ?? process.env.ETUDE_HOME ?? join(homedir(), ".etude"));
+    const db = await Db.open(path, undefined, async (sql) => {
+      if (path === ":memory:" || !process.versions?.node || !existsSync(path)) return;
+      let version = 0;
+      try {
+        const row = sql.prepare("SELECT value FROM meta WHERE key = 'schema_version'").get() as { value?: string } | undefined;
+        version = Number(row?.value ?? 0);
+      } catch {}
+      if (version >= SCHEMA_VERSION) return;
+      const { createUpdateBackup } = await import("./update-backup.ts");
+      const { readFileSync: readPackage } = await import("node:fs");
+      const pkg = JSON.parse(readPackage(join(ROOT, "package.json"), "utf8"));
+      await createUpdateBackup({ home, dbPath: path, appVersion: String(pkg.version), kind: "migration", sql });
+    });
+    const media = path === ":memory:" ? join(process.env.TMPDIR ?? "/tmp", `etude-media-${process.pid}`) : join(dirname(path), "media");
     const e = new Etude(db, media, path, home);
     e.syncBuiltinTypes(opts.builtinTypesDir ?? BUILTIN_TYPES_DIR);
     e.syncBuiltinSchedulers(opts.builtinSchedulersDir ?? BUILTIN_SCHEDULERS_DIR);

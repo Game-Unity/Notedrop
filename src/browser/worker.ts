@@ -8,7 +8,7 @@ self.onmessage = (ev: MessageEvent) => void queued.push(ev);
 import("./worker-core.ts").then(
   ({ start }) => start(queued),
   (e) => {
-    const error = `Error: couldn't load the Etude core: ${e instanceof Error ? e.message : String(e)}`;
+    const error = `Error: couldn't load the Notedrop core: ${e instanceof Error ? e.message : String(e)}`;
     const fail = (ev: MessageEvent) => void (ev.data?.id != null && (self as any).postMessage({ id: ev.data.id, ok: false, error }));
     queued.forEach(fail);
     self.onmessage = fail;

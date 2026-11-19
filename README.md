@@ -88,7 +88,7 @@ etude pack import examples/showcase.pack.json
 
 ## Decks from the Market
 
-Whole decks are built the same way, and the [Market](https://github.com/Zibhelina/etude-market) installs them in one click. These are some of the first ones:
+Whole decks are built the same way, and the [Market](https://github.com/Game-Unity/Notedrop-market) installs them in one click. These are some of the first ones:
 
 <table>
 <tr>
@@ -141,21 +141,21 @@ The Market also has a Morse code deck, the Showcase, single card types and 22 th
 - **Statistics:** recall now against your target, true retention, streaks, a forgetting curve for what happens if you stop today, memory strength, a 24-hour study clock, the forecast up to a deadline and recall per tag. Each scheduler gets its own numbers.
 - **Themes:** six built in (four dark, two light), or your own with CSS variables and extra CSS.
 - **A complete CLI** with more than 140 commands, stable JSON output, a machine-readable catalog (`etude commands`) and a dry run on most commands that change data.
-- **Updates from GitHub in one click.** When there are new commits an Update Etude button appears at the bottom of the sidebar and updates the app in place (Settings → About shows the version and checks on demand); `etude update` does the same from a terminal.
+- **Updates from GitHub in one click.** When there are new commits an Update Notedrop button appears at the bottom of the sidebar and updates the app in place (Settings → About shows the version and checks on demand); `notedrop update` does the same from a terminal (`etude update` remains compatible).
 - **Import from Anki.** `.apkg` and `.colpkg` files bring their notetypes, decks, tags, media and review history across; see [docs/anki.md](docs/anki.md).
 - **Ask Etude, an assistant in the app.** The round button in the corner opens a chat that runs Etude's own commands for you: a deck from your notes or a PDF, a reorganized tree, a new theme. Deletes wait for your OK and every change can be undone. See [docs/agent.md](docs/agent.md).
-- **A market for themes, decks and card types.** The Market tab installs what other people shared from [etude-market](https://github.com/Zibhelina/etude-market), and Publish shares yours as a pull request; see [docs/market.md](docs/market.md).
+- **A market for themes, decks and card types.** The Market tab installs what other people shared from [etude-market](https://github.com/Game-Unity/Notedrop-market), and Publish shares yours as a pull request; see [docs/market.md](docs/market.md).
 
 ## Quick start
 
 **In the browser**, with nothing to install: open [etude.study/app](https://etude.study/app/). Your collection stays in that browser, works offline, and Settings → Data downloads a backup of it. Etude Sync keeps it the same as on your other devices.
 
-**The app**, with everything inside, from [etude.study/download](https://etude.study/download.html) or the [latest release](https://github.com/Zibhelina/etude/releases/latest): Mac ([Apple Silicon](https://github.com/Zibhelina/etude/releases/latest/download/Etude-mac-apple-silicon.dmg), [Intel](https://github.com/Zibhelina/etude/releases/latest/download/Etude-mac-intel.dmg)), [Windows](https://github.com/Zibhelina/etude/releases/latest/download/Etude-windows-setup.exe), Linux ([.deb](https://github.com/Zibhelina/etude/releases/latest/download/Etude-linux-amd64.deb), [.rpm](https://github.com/Zibhelina/etude/releases/latest/download/Etude-linux-x86_64.rpm), [AppImage](https://github.com/Zibhelina/etude/releases/latest/download/Etude-linux-x86_64.AppImage)). Windows and the AppImage update themselves.
+**The app**, with everything inside, from the [latest Notedrop release](https://github.com/Game-Unity/Notedrop/releases/latest): Mac ([Apple Silicon](https://github.com/Game-Unity/Notedrop/releases/latest/download/Notedrop-mac-apple-silicon.dmg), [Intel](https://github.com/Game-Unity/Notedrop/releases/latest/download/Notedrop-mac-intel.dmg)), [Windows](https://github.com/Game-Unity/Notedrop/releases/latest/download/Notedrop-windows-setup.exe), Linux ([.deb](https://github.com/Game-Unity/Notedrop/releases/latest/download/Notedrop-linux-amd64.deb), [.rpm](https://github.com/Game-Unity/Notedrop/releases/latest/download/Notedrop-linux-x86_64.rpm), [AppImage](https://github.com/Game-Unity/Notedrop/releases/latest/download/Notedrop-linux-x86_64.AppImage)). Windows and the AppImage update themselves.
 
 **From source**, Etude needs Node 24 or newer. Node runs the TypeScript sources directly, so the server has no compile step.
 
 ```sh
-git clone https://github.com/Zibhelina/etude.git
+git clone https://github.com/Game-Unity/Notedrop.git
 cd etude
 npm install
 npm run build         # builds the web app into web/dist

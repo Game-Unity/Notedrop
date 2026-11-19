@@ -1,4 +1,4 @@
-// Settings → Account: the optional Etude account. Sign in by email code or passkey; then passkeys,
+// Settings → Account: the optional Notedrop account. Sign in by email code or passkey; then passkeys,
 // devices, email, data export and deletion. Selling lives in the Market.
 import { useCallback, useEffect, useId, useState } from "react";
 import type { ReactNode } from "react";
@@ -64,7 +64,7 @@ export function AccountSection() {
     <Section
       id="account"
       title="Account"
-      description="Optional. An Etude account is only needed for Sync and decks from the paid Market. Everything else works without one."
+      description="Optional. An Etude account provides Sync and decks from the paid Etude Market. Notedrop works without one."
     >
       {!st && !loadError && (
         <Block>
@@ -185,7 +185,7 @@ function SignIn({ st, onDone }: { st: AccountStatus; onDone(): Promise<void> }) 
             setEditServer(false);
             await onDone();
           }))}>
-            <TextInput label="Etude server" value={server} onChange={setServer} mono placeholder="https://sync.etude.study" hint="Leave empty for sync.etude.study. Self-hosted servers have Sync without the paid Market." />
+            <TextInput label="Etude service server" value={server} onChange={setServer} mono placeholder="https://sync.etude.study" hint="Leave empty for sync.etude.study. Self-hosted servers have Sync without the paid Market." />
             <Button type="submit" size="sm" variant="outline" className="h-10 md:h-9" disabled={!!busy}>Save</Button>
           </form>
         )}
@@ -279,7 +279,7 @@ function Passkeys({ rpId, guarded }: { rpId?: string; guarded: Guarded }) {
   return (
     <Block
       title="Passkeys"
-      description={here ? "Sign in with your fingerprint, face or device PIN instead of an email code." : isNativeApp() ? NATIVE_COPY.passkeysElsewhere : `Passkeys for this account belong to ${rpId ?? "the server"}, so they can be added from the Etude app or etude.study.`}
+      description={here ? "Sign in with your fingerprint, face or device PIN instead of an email code." : isNativeApp() ? NATIVE_COPY.passkeysElsewhere : `Passkeys for this Etude account belong to ${rpId ?? "the server"}, so they can be added from Notedrop or etude.study.`}
       aside={here ? (
         <Button variant="outline" size="sm" className="h-10 gap-1.5 md:h-8" onClick={() => void guarded("add a passkey", async () => {
           const o = await account.passkeyRegisterOptions();

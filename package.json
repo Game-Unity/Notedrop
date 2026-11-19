@@ -1,6 +1,6 @@
 {
   "name": "@zibhelina/etude",
-  "version": "2.6.0",
+  "version": "2.0.0",
   "description": "Spaced-repetition practice with programmable card types and AI grading.",
   "keywords": [
     "spaced-repetition",
@@ -13,13 +13,13 @@
     "self-hosted"
   ],
   "author": "Joao Araujo",
-  "homepage": "https://github.com/Zibhelina/etude#readme",
+  "homepage": "https://github.com/Game-Unity/Notedrop#readme",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Zibhelina/etude.git"
+    "url": "git+https://github.com/Game-Unity/Notedrop.git"
   },
   "bugs": {
-    "url": "https://github.com/Zibhelina/etude/issues"
+    "url": "https://github.com/Game-Unity/Notedrop/issues"
   },
   "license": "AGPL-3.0-only",
   "files": [
@@ -37,7 +37,8 @@
   ],
   "type": "module",
   "bin": {
-    "etude": "./bin/etude.js"
+    "etude": "./bin/etude.js",
+    "notedrop": "./bin/notedrop.js"
   },
   "engines": {
     "node": ">=24"
@@ -46,6 +47,7 @@
     "dev": "node scripts/serve-profile.ts dev",
     "dev:web": "vite --config web/vite.config.ts",
     "build": "vite build --config web/vite.config.ts && vite build --config web/vite.kit.config.ts",
+    "build:store": "npm run build && node scripts/build-store.ts",
     "start": "node scripts/serve-profile.ts stable",
     "start:stable": "node scripts/serve-profile.ts stable",
     "desktop": "npm --prefix desktop install --no-audit --no-fund --loglevel=error && npm --prefix desktop start",

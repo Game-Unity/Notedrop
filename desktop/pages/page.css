@@ -27,8 +27,12 @@ main {
   text-align: center;
 }
 .mark {
-  font: 64px/1 "Times New Roman", serif;
-  color: #f472b6;
+  display: flex;
+  justify-content: center;
+}
+.mark img {
+  width: 64px;
+  height: 64px;
 }
 #detail {
   color: var(--muted);
